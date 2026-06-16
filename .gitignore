@@ -216,3 +216,34 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# PMO Bot secrets and local credentials
+.env.*
+!.env.template
+client_secret*.json
+token*.json
+*secret*
+*Secret*
+*.pem
+*.key
+
+# PMO runtime/generated data
+pmo_runtime_logs/
+pmo_backups/
+pmo_reports/
+pmo_csv/
+pmo_backtest_data/
+pmo_financial_datasets/
+reports/
+*.err
+*.out
+
+# PMO databases and SQLite sidecars
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+
+# PMO local backup files
+*.bak
+*.bak_*
