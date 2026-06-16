@@ -1,0 +1,34 @@
+{
+  "syntax_check": "PASSED",
+  "syntax_errors": [],
+  "functions": 387,
+  "duplicate_functions": {},
+  "routes": 120,
+  "route_audit_counts": {
+    "READ_ONLY_OR_PAGE": 37,
+    "POST_REVIEW_NEEDED": 4,
+    "ADMIN_REQUIRED": 73,
+    "PUBLIC_WEBHOOK_OR_PUBLIC_INTAKE": 6
+  },
+  "modules": [
+    "__init__.py",
+    "agent.py",
+    "dashboard_context.py",
+    "environment.py",
+    "execution_guard.py",
+    "market_data.py",
+    "paths.py",
+    "payments.py",
+    "proof_center.py",
+    "reporting.py",
+    "route_registry.py",
+    "security.py",
+    "settings_switchboard.py",
+    "storage.py",
+    "tradingview_bridge.py",
+    "v2055_hardening.py",
+    "v206_manifest.py"
+  ],
+  "package": "/mnt/data/pmo_bot_v206_modular_package",
+  "zip": "/mnt/data/pmo_bot_v206_modular_package.zip"
+}

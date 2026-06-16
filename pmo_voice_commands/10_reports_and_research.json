@@ -1,0 +1,105 @@
+{
+  "enabled": true,
+  "pack": "reports_and_research",
+  "description": "Read-only report, proof, backtest, and research commands.",
+  "commands": [
+    {
+      "id": "paper_proof",
+      "label": "Paper Proof",
+      "tool": "run_paper_proof",
+      "intent": "tool",
+      "confidence": 0.88,
+      "phrases": [
+        "paper proof",
+        "proof report",
+        "run proof report",
+        "show proof center",
+        "v112 proof",
+        "paper proof diagnosis"
+      ],
+      "examples": ["run proof report"],
+      "arguments": {}
+    },
+    {
+      "id": "pre_session_checklist",
+      "label": "Pre-Session Checklist",
+      "tool": "run_pre_session_checklist",
+      "intent": "tool",
+      "confidence": 0.86,
+      "phrases": [
+        "run checklist",
+        "morning checklist",
+        "pre session checklist",
+        "pre-session checklist",
+        "check before trading"
+      ],
+      "examples": ["run checklist"],
+      "arguments": {}
+    },
+    {
+      "id": "backtest",
+      "label": "Backtest",
+      "tool": "run_backtest",
+      "intent": "tool",
+      "confidence": 0.86,
+      "phrases": [
+        "run backtest",
+        "backtest",
+        "back test",
+        "run simulator",
+        "strategy simulator"
+      ],
+      "examples": ["run backtest"],
+      "arguments": {
+        "record": false
+      }
+    },
+    {
+      "id": "cobr_sim",
+      "label": "COBR Sim",
+      "tool": "run_cobr_sim",
+      "intent": "tool",
+      "confidence": 0.86,
+      "phrases": [
+        "run cobr",
+        "cobr sim",
+        "run order book sim",
+        "microstructure sim"
+      ],
+      "examples": ["run cobr sim"],
+      "arguments": {
+        "record": false
+      }
+    },
+    {
+      "id": "firewall_check",
+      "label": "Firewall Check",
+      "tool": "run_firewall_check",
+      "intent": "tool",
+      "confidence": 0.88,
+      "phrases": [
+        "run firewall",
+        "firewall check",
+        "execution firewall",
+        "check execution firewall"
+      ],
+      "examples": ["firewall check"],
+      "arguments": {}
+    },
+    {
+      "id": "switchboard_audit",
+      "label": "Switchboard Audit",
+      "tool": "run_switchboard_audit",
+      "intent": "tool",
+      "confidence": 0.86,
+      "phrases": [
+        "switchboard audit",
+        "audit settings",
+        "settings audit",
+        "check switchboard"
+      ],
+      "examples": ["audit settings"],
+      "arguments": {}
+    }
+  ]
+}

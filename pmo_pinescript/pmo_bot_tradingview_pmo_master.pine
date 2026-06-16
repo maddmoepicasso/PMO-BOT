@@ -1,0 +1,160 @@
+//@version=5
+indicator("PMO BOT Master Signal Suite + Prediction Candle", overlay=true, max_labels_count=500, max_boxes_count=100)
+
+// PMO BOT MASTER SIGNAL SUITE
+// TradingView creates visual signals and webhook alerts.
+// PMO BOT receives alerts, evaluates safety, and gates any Alpaca action.
+// PMO Prediction Candle is a probability/bias visualization only, never a guarantee.
+
+groupTrend = "PMO Trend"
+groupSignal = "PMO Signals"
+groupRisk = "Risk + Volatility"
+groupDisplay = "Display"
+
+pmoSecret = "CHANGE_ME_SECRET"
+fastEmaLength = input.int(9, "Fast EMA", minval=1, group=groupTrend)
+slowEmaLength = input.int(21, "Slow EMA", minval=1, group=groupTrend)
+trendEmaLength = input.int(50, "Trend EMA", minval=1, group=groupTrend)
+rsiLength = input.int(14, "RSI Length", minval=1, group=groupSignal)
+rsiBullMin = input.int(45, "Bull RSI Min", minval=1, maxval=100, group=groupSignal)
+rsiBullMax = input.int(75, "Bull RSI Max", minval=1, maxval=100, group=groupSignal)
+rsiBearMax = input.int(55, "Bear RSI Max", minval=1, maxval=100, group=groupSignal)
+basicRvolMin = input.float(1.5, "Basic RVOL Min", minval=0.0, step=0.1, group=groupSignal)
+proRvolMin = input.float(2.0, "CALL/PUT RVOL Burst Min", minval=0.0, step=0.1, group=groupSignal)
+bbLength = input.int(20, "Bollinger Length", minval=1, group=groupRisk)
+bbMult = input.float(2.0, "Bollinger Mult", minval=0.1, step=0.1, group=groupRisk)
+atrLength = input.int(14, "ATR Length", minval=1, group=groupRisk)
+kcMult = input.float(1.5, "Squeeze KC Mult", minval=0.1, step=0.1, group=groupRisk)
+showBasicSignals = input.bool(true, "Show LONG/SHORT Labels", group=groupDisplay)
+showOptionSignals = input.bool(true, "Show CALL/PUT Readiness", group=groupDisplay)
+showPredictionCandle = input.bool(true, "Show PMO Prediction Candle", group=groupDisplay)
+showBackground = input.bool(true, "Show Trend Background", group=groupDisplay)
+showDashboard = input.bool(true, "Show PMO Dashboard Table", group=groupDisplay)
+sendDynamicAlerts = input.bool(true, "Enable Dynamic Webhook alert() Messages", group=groupDisplay)
+
+fastEma = ta.ema(close, fastEmaLength)
+slowEma = ta.ema(close, slowEmaLength)
+trendEma = ta.ema(close, trendEmaLength)
+rsi = ta.rsi(close, rsiLength)
+vwapValue = ta.vwap(hlc3)
+atr = ta.atr(atrLength)
+volumeAvg = ta.sma(volume, 20)
+relativeVolume = volumeAvg > 0 ? volume / volumeAvg : 0.0
+[macdLine, macdSignal, macdHist] = ta.macd(close, 12, 26, 9)
+[bbBasis, bbUpper, bbLower] = ta.bb(close, bbLength, bbMult)
+kcBasis = ta.ema(close, bbLength)
+kcRange = ta.atr(bbLength) * kcMult
+kcUpper = kcBasis + kcRange
+kcLower = kcBasis - kcRange
+squeezeOn = bbUpper < kcUpper and bbLower > kcLower
+squeezeReleased = squeezeOn[1] and not squeezeOn
+
+bullTrend = close > trendEma and fastEma > slowEma and close > vwapValue
+bearTrend = close < trendEma and fastEma < slowEma and close < vwapValue
+trendText = bullTrend ? "BULLISH" : bearTrend ? "BEARISH" : "MIXED"
+macdBull = macdLine > macdSignal and macdHist > 0
+macdBear = macdLine < macdSignal and macdHist < 0
+basicLong = bullTrend and rsi >= rsiBullMin and rsi <= rsiBullMax and relativeVolume >= basicRvolMin
+basicShort = bearTrend and rsi <= rsiBearMax and relativeVolume >= basicRvolMin
+volumeBurst = relativeVolume >= proRvolMin
+callOptionPower = bullTrend and volumeBurst and (squeezeReleased or basicLong or macdBull) and rsi > 45 and rsi < 78
+putOptionPower = bearTrend and volumeBurst and (squeezeReleased or basicShort or macdBear) and rsi < 55
+sniperLong = basicLong and macdBull and close > bbBasis
+sniperShort = basicShort and macdBear and close < bbBasis
+mergedLong = basicLong or sniperLong or callOptionPower
+mergedShort = basicShort or sniperShort or putOptionPower
+
+bullScore = (bullTrend ? 25.0 : 0.0) + (macdBull ? 15.0 : 0.0) + (rsi >= 50 and rsi <= 72 ? 15.0 : 0.0) + (relativeVolume >= basicRvolMin ? 15.0 : 0.0) + (squeezeReleased ? 15.0 : squeezeOn ? 8.0 : 0.0) + (close > bbBasis ? 10.0 : 0.0)
+bearScore = (bearTrend ? 25.0 : 0.0) + (macdBear ? 15.0 : 0.0) + (rsi <= 50 and rsi >= 28 ? 15.0 : 0.0) + (relativeVolume >= basicRvolMin ? 15.0 : 0.0) + (squeezeReleased ? 15.0 : squeezeOn ? 8.0 : 0.0) + (close < bbBasis ? 10.0 : 0.0)
+pmoScore = math.min(100.0, math.max(bullScore, bearScore))
+bullPrediction = bullScore >= 65 and bullScore > bearScore
+bearPrediction = bearScore >= 65 and bearScore > bullScore
+neutralPrediction = not bullPrediction and not bearPrediction
+predictionText = bullPrediction ? "BULLISH_PREDICTION" : bearPrediction ? "BEARISH_PREDICTION" : "WAIT_NEUTRAL"
+biasText = callOptionPower ? "CALL READY" : putOptionPower ? "PUT READY" : sniperLong ? "SNIPER LONG" : sniperShort ? "SNIPER SHORT" : basicLong ? "LONG" : basicShort ? "SHORT" : predictionText
+optionText = callOptionPower ? "CALL" : putOptionPower ? "PUT" : "WAIT"
+
+plot(fastEma, "PMO EMA Fast", color=color.new(color.lime, 0))
+plot(slowEma, "PMO EMA Slow", color=color.new(color.orange, 0))
+plot(trendEma, "PMO EMA Trend", color=color.new(color.blue, 0))
+plot(vwapValue, "PMO VWAP", color=color.new(color.purple, 0))
+plot(bbUpper, "PMO Bollinger Upper", color=color.new(color.gray, 65))
+plot(bbBasis, "PMO Bollinger Basis", color=color.new(color.gray, 80))
+plot(bbLower, "PMO Bollinger Lower", color=color.new(color.gray, 65))
+plot(pmoScore, "PMO Score", display=display.none)
+plot(bullPrediction ? 1 : bearPrediction ? -1 : 0, "PMO Prediction Direction", display=display.none)
+bgcolor(showBackground ? bullTrend ? color.new(color.green, 88) : bearTrend ? color.new(color.red, 88) : color.new(color.gray, 92) : na)
+
+plotshape(showBasicSignals and basicLong and not callOptionPower, title="PMO LONG", style=shape.triangleup, text="PMO LONG", location=location.belowbar, color=color.new(color.green, 0), textcolor=color.white, size=size.small)
+plotshape(showBasicSignals and basicShort and not putOptionPower, title="PMO SHORT", style=shape.triangledown, text="PMO SHORT", location=location.abovebar, color=color.new(color.red, 0), textcolor=color.white, size=size.small)
+plotshape(showBasicSignals and sniperLong, title="PMO Sniper LONG", style=shape.labelup, text="SNIPER LONG", location=location.belowbar, color=color.new(color.teal, 0), textcolor=color.white)
+plotshape(showBasicSignals and sniperShort, title="PMO Sniper SHORT", style=shape.labeldown, text="SNIPER SHORT", location=location.abovebar, color=color.new(color.maroon, 0), textcolor=color.white)
+plotshape(showOptionSignals and callOptionPower, title="PMO CALL Readiness", style=shape.labelup, text="PMO CALL", location=location.belowbar, color=color.new(color.lime, 0), textcolor=color.black)
+plotshape(showOptionSignals and putOptionPower, title="PMO PUT Readiness", style=shape.labeldown, text="PMO PUT", location=location.abovebar, color=color.new(color.red, 0), textcolor=color.white)
+
+var box predBox = na
+var label predLabel = na
+if barstate.islast and showPredictionCandle
+    box.delete(predBox)
+    label.delete(predLabel)
+    predColor = bullPrediction ? color.new(color.lime, 20) : bearPrediction ? color.new(color.red, 20) : color.new(color.gray, 62)
+    predBorder = bullPrediction ? color.lime : bearPrediction ? color.red : color.gray
+    predTop = bullPrediction ? close + atr * 0.65 : bearPrediction ? close : close + atr * 0.25
+    predBottom = bullPrediction ? close : bearPrediction ? close - atr * 0.65 : close - atr * 0.25
+    predBox := box.new(bar_index + 1, predTop, bar_index + 2, predBottom, bgcolor=predColor, border_color=predBorder)
+    predY = bullPrediction ? predTop : bearPrediction ? predBottom : close
+    predLabel := label.new(bar_index + 2, predY, "PMO Prediction Candle\n" + predictionText + "\nScore " + str.tostring(pmoScore, "#.##") + "\nBias only - not guaranteed", style=label.style_label_left, color=color.new(predBorder, 0), textcolor=color.white)
+
+plotshape(showPredictionCandle and bullPrediction and barstate.isconfirmed, title="PMO Bullish Prediction", style=shape.circle, text="PRED BULL", location=location.belowbar, color=color.new(color.lime, 0), textcolor=color.black, size=size.tiny)
+plotshape(showPredictionCandle and bearPrediction and barstate.isconfirmed, title="PMO Bearish Prediction", style=shape.circle, text="PRED BEAR", location=location.abovebar, color=color.new(color.red, 0), textcolor=color.white, size=size.tiny)
+plotshape(showPredictionCandle and neutralPrediction and barstate.isconfirmed, title="PMO Neutral Prediction", style=shape.circle, text="WAIT", location=location.bottom, color=color.new(color.gray, 20), textcolor=color.white, size=size.tiny)
+
+alertcondition(mergedLong, title="PMO BOT MASTER LONG/CALL", message='{"secret":"CHANGE_ME_SECRET","ticker":"{{ticker}}","symbol":"{{ticker}}","action":"BUY","side":"LONG","option_type":"CALL","price":{{close}},"close":{{close}},"open":{{open}},"high":{{high}},"low":{{low}},"volume":{{volume}},"time":"{{time}}","timenow":"{{timenow}}","interval":"{{interval}}","timeframe":"{{interval}}","exchange":"{{exchange}}","bar_index":{{bar_index}},"strategy":"PMO BOT Master Signal Suite","message":"PMO BOT LONG/CALL setup. Use PMO BOT webhook review before any Alpaca action."}')
+alertcondition(mergedShort, title="PMO BOT MASTER SHORT/PUT", message='{"secret":"CHANGE_ME_SECRET","ticker":"{{ticker}}","symbol":"{{ticker}}","action":"SELL","side":"SHORT","option_type":"PUT","price":{{close}},"close":{{close}},"open":{{open}},"high":{{high}},"low":{{low}},"volume":{{volume}},"time":"{{time}}","timenow":"{{timenow}}","interval":"{{interval}}","timeframe":"{{interval}}","exchange":"{{exchange}}","bar_index":{{bar_index}},"strategy":"PMO BOT Master Signal Suite","message":"PMO BOT SHORT/PUT setup. Use PMO BOT webhook review before any Alpaca action."}')
+alertcondition(callOptionPower, title="PMO BOT CALL Readiness", message='{"secret":"CHANGE_ME_SECRET","ticker":"{{ticker}}","symbol":"{{ticker}}","action":"BUY","side":"LONG","option_type":"CALL","price":{{close}},"close":{{close}},"open":{{open}},"high":{{high}},"low":{{low}},"volume":{{volume}},"time":"{{time}}","timenow":"{{timenow}}","interval":"{{interval}}","timeframe":"{{interval}}","exchange":"{{exchange}}","bar_index":{{bar_index}},"strategy":"PMO BOT CALL Readiness","message":"PMO BOT CALL readiness alert."}')
+alertcondition(putOptionPower, title="PMO BOT PUT Readiness", message='{"secret":"CHANGE_ME_SECRET","ticker":"{{ticker}}","symbol":"{{ticker}}","action":"SELL","side":"SHORT","option_type":"PUT","price":{{close}},"close":{{close}},"open":{{open}},"high":{{high}},"low":{{low}},"volume":{{volume}},"time":"{{time}}","timenow":"{{timenow}}","interval":"{{interval}}","timeframe":"{{interval}}","exchange":"{{exchange}}","bar_index":{{bar_index}},"strategy":"PMO BOT PUT Readiness","message":"PMO BOT PUT readiness alert."}')
+
+priceText = str.tostring(close, format.mintick)
+openText = str.tostring(open, format.mintick)
+highText = str.tostring(high, format.mintick)
+lowText = str.tostring(low, format.mintick)
+volumeText = str.tostring(volume, "#")
+timeText = str.tostring(time)
+timenowText = str.tostring(timenow)
+barIndexText = str.tostring(bar_index)
+scoreText = str.tostring(pmoScore, "#.##")
+rsiText = str.tostring(rsi, "#.##")
+rvolText = str.tostring(relativeVolume, "#.##")
+macdText = str.tostring(macdHist, "#.####")
+squeezeText = squeezeReleased ? "RELEASED" : squeezeOn ? "ON" : "OFF"
+if sendDynamicAlerts and barstate.isconfirmed and mergedLong
+    alert('{"secret":"' + pmoSecret + '","ticker":"' + syminfo.ticker + '","symbol":"' + syminfo.ticker + '","action":"BUY","side":"LONG","option_type":"CALL","price":' + priceText + ',"close":' + priceText + ',"open":' + openText + ',"high":' + highText + ',"low":' + lowText + ',"volume":' + volumeText + ',"time":"' + timeText + '","timenow":"' + timenowText + '","interval":"' + timeframe.period + '","timeframe":"' + timeframe.period + '","exchange":"' + syminfo.prefix + '","bar_index":' + barIndexText + ',"strategy":"PMO BOT Master Signal Suite","score":"' + scoreText + '","prediction_bias":"' + predictionText + '","rsi":"' + rsiText + '","rvol":"' + rvolText + '","trend":"' + trendText + '","macd":"' + macdText + '","squeeze":"' + squeezeText + '","message":"PMO BOT LONG/CALL setup. PMO BOT must review before Alpaca."}', alert.freq_once_per_bar_close)
+if sendDynamicAlerts and barstate.isconfirmed and mergedShort
+    alert('{"secret":"' + pmoSecret + '","ticker":"' + syminfo.ticker + '","symbol":"' + syminfo.ticker + '","action":"SELL","side":"SHORT","option_type":"PUT","price":' + priceText + ',"close":' + priceText + ',"open":' + openText + ',"high":' + highText + ',"low":' + lowText + ',"volume":' + volumeText + ',"time":"' + timeText + '","timenow":"' + timenowText + '","interval":"' + timeframe.period + '","timeframe":"' + timeframe.period + '","exchange":"' + syminfo.prefix + '","bar_index":' + barIndexText + ',"strategy":"PMO BOT Master Signal Suite","score":"' + scoreText + '","prediction_bias":"' + predictionText + '","rsi":"' + rsiText + '","rvol":"' + rvolText + '","trend":"' + trendText + '","macd":"' + macdText + '","squeeze":"' + squeezeText + '","message":"PMO BOT SHORT/PUT setup. PMO BOT must review before Alpaca."}', alert.freq_once_per_bar_close)
+
+var table dash = table.new(position.top_right, 2, 12)
+if barstate.islast and showDashboard
+    table.cell(dash, 0, 0, "PMO BOT", bgcolor=color.new(color.blue, 70), text_color=color.white)
+    table.cell(dash, 1, 0, "Signal Suite", bgcolor=color.new(color.blue, 70), text_color=color.white)
+    table.cell(dash, 0, 1, "Trend")
+    table.cell(dash, 1, 1, trendText)
+    table.cell(dash, 0, 2, "RSI")
+    table.cell(dash, 1, 2, rsiText)
+    table.cell(dash, 0, 3, "RVOL")
+    table.cell(dash, 1, 3, rvolText + "x")
+    table.cell(dash, 0, 4, "MACD")
+    table.cell(dash, 1, 4, macdBull ? "BULL" : macdBear ? "BEAR" : "FLAT")
+    table.cell(dash, 0, 5, "Squeeze")
+    table.cell(dash, 1, 5, squeezeText)
+    table.cell(dash, 0, 6, "CALL/PUT")
+    table.cell(dash, 1, 6, optionText)
+    table.cell(dash, 0, 7, "Bias")
+    table.cell(dash, 1, 7, biasText)
+    table.cell(dash, 0, 8, "Prediction")
+    table.cell(dash, 1, 8, predictionText)
+    table.cell(dash, 0, 9, "PMO Score")
+    table.cell(dash, 1, 9, scoreText)
+    table.cell(dash, 0, 10, "Webhook")
+    table.cell(dash, 1, 10, "PMO BOT")
+    table.cell(dash, 0, 11, "Alpaca")
+    table.cell(dash, 1, 11, "BOT GATED")

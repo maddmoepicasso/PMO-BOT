@@ -1,0 +1,79 @@
+{
+  "enabled": true,
+  "pack": "status_and_readiness",
+  "description": "Read-only PMO status and readiness phrases.",
+  "commands": [
+    {
+      "id": "status_overview",
+      "label": "PMO Status",
+      "tool": "get_pmo_status",
+      "intent": "tool",
+      "confidence": 0.9,
+      "phrases": [
+        "status",
+        "pmo status",
+        "pmo bot status",
+        "how is pmo",
+        "how is pmo bot",
+        "tell me the bot status",
+        "is pmo healthy"
+      ],
+      "examples": ["pmo bot status"],
+      "arguments": {}
+    },
+    {
+      "id": "live_readiness",
+      "label": "Live Readiness",
+      "tool": "get_live_readiness",
+      "intent": "tool",
+      "confidence": 0.9,
+      "phrases": [
+        "readiness",
+        "live readiness",
+        "is pmo ready",
+        "is pmo ready for live",
+        "why is live locked",
+        "check live lock",
+        "show readiness"
+      ],
+      "examples": ["why is live locked"],
+      "arguments": {}
+    },
+    {
+      "id": "safety_status",
+      "label": "Safety Status",
+      "tool": "get_safety_status",
+      "intent": "tool",
+      "confidence": 0.88,
+      "phrases": [
+        "safety status",
+        "firewall status",
+        "risk status",
+        "safe mode status",
+        "check safety",
+        "is the firewall on"
+      ],
+      "examples": ["firewall status"],
+      "arguments": {}
+    },
+    {
+      "id": "what_is_missing",
+      "label": "What Is Missing",
+      "tool": "explain_what_is_missing",
+      "intent": "tool",
+      "confidence": 0.92,
+      "phrases": [
+        "what is missing",
+        "what's missing",
+        "what do we need",
+        "what should i fix next",
+        "why blocked",
+        "why not",
+        "what is holding pmo back",
+        "explain blockers"
+      ],
+      "examples": ["what is holding pmo back"],
+      "arguments": {}
+    }
+  ]
+}

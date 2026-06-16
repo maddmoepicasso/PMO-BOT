@@ -1,0 +1,85 @@
+{
+  "enabled": true,
+  "pack": "blocked_safety",
+  "description": "Voice phrases that PMO must block instead of guessing.",
+  "commands": [
+    {
+      "id": "block_live_trading",
+      "label": "Block Live Trading Voice Requests",
+      "tool": "enable_live_trading",
+      "intent": "blocked",
+      "blocked": true,
+      "confidence": 0.99,
+      "reason": "Voice cannot unlock or arm live trading.",
+      "phrases": [
+        "go live",
+        "unlock live",
+        "arm live",
+        "enable live trading",
+        "turn on live master",
+        "live master on"
+      ],
+      "examples": ["go live"],
+      "arguments": {}
+    },
+    {
+      "id": "block_order_submission",
+      "label": "Block Order Submission Voice Requests",
+      "tool": "place_order",
+      "intent": "blocked",
+      "blocked": true,
+      "confidence": 0.99,
+      "reason": "Voice cannot submit paper or live orders directly.",
+      "phrases": [
+        "place order",
+        "submit order",
+        "send order",
+        "execute order",
+        "buy shares",
+        "sell shares",
+        "approve trade"
+      ],
+      "examples": ["place order"],
+      "arguments": {}
+    },
+    {
+      "id": "block_risk_disable",
+      "label": "Block Risk Disable Requests",
+      "tool": "disable_risk_guard",
+      "intent": "blocked",
+      "blocked": true,
+      "confidence": 0.99,
+      "reason": "Voice cannot disable risk guards, proof gates, or execution firewall.",
+      "phrases": [
+        "disable risk",
+        "turn off risk",
+        "disable firewall",
+        "turn off firewall",
+        "bypass proof",
+        "disable proof",
+        "turn off pdt"
+      ],
+      "examples": ["disable firewall"],
+      "arguments": {}
+    },
+    {
+      "id": "block_secrets",
+      "label": "Block Secret Requests",
+      "tool": "show_secret",
+      "intent": "blocked",
+      "blocked": true,
+      "confidence": 0.99,
+      "reason": "Voice cannot reveal API keys, secrets, passwords, or admin tokens.",
+      "phrases": [
+        "show secret",
+        "show api key",
+        "reveal api key",
+        "print token",
+        "show admin token",
+        "show password"
+      ],
+      "examples": ["show admin token"],
+      "arguments": {}
+    }
+  ]
+}

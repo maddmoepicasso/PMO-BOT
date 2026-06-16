@@ -1,0 +1,67 @@
+{
+  "enabled": true,
+  "pack": "navigation",
+  "description": "Frontend-only dashboard navigation commands.",
+  "commands": [
+    {
+      "id": "open_watchlist",
+      "label": "Open Watchlist",
+      "tool": "open_dashboard_section",
+      "intent": "frontend",
+      "confidence": 0.84,
+      "phrases": ["open watchlist", "show watchlist", "go to watchlist", "show signal dna"],
+      "examples": ["show watchlist"],
+      "arguments": {"section_id": "panelDna", "section": "watchlist"}
+    },
+    {
+      "id": "open_readiness",
+      "label": "Open Readiness",
+      "tool": "open_dashboard_section",
+      "intent": "frontend",
+      "confidence": 0.84,
+      "phrases": ["open readiness", "show readiness", "go to readiness", "show live readiness"],
+      "examples": ["show readiness"],
+      "arguments": {"section_id": "panelReadiness", "section": "readiness"}
+    },
+    {
+      "id": "open_trade_truth",
+      "label": "Open Trade Truth",
+      "tool": "open_dashboard_section",
+      "intent": "frontend",
+      "confidence": 0.84,
+      "phrases": ["open trade truth", "show trade truth", "go to trade truth", "show data quality"],
+      "examples": ["show trade truth"],
+      "arguments": {"section_id": "panelTruth", "section": "truth"}
+    },
+    {
+      "id": "open_journal",
+      "label": "Open Journal",
+      "tool": "open_dashboard_section",
+      "intent": "frontend",
+      "confidence": 0.84,
+      "phrases": ["open journal", "show journal", "go to journal", "show trade journal"],
+      "examples": ["show journal"],
+      "arguments": {"section_id": "panelJournal", "section": "journal"}
+    },
+    {
+      "id": "open_chart",
+      "label": "Open Chart",
+      "tool": "open_dashboard_section",
+      "intent": "frontend",
+      "confidence": 0.84,
+      "phrases": ["open chart", "show chart", "go to chart", "show tradingview"],
+      "examples": ["show chart"],
+      "arguments": {"section_id": "panelTradingViewChart", "section": "chart"}
+    },
+    {
+      "id": "open_voice",
+      "label": "Open Voice",
+      "tool": "open_dashboard_section",
+      "intent": "frontend",
+      "confidence": 0.84,
+      "phrases": ["open voice", "show voice commands", "go to voice commands", "show pmo bot commands"],
+      "examples": ["show pmo bot commands"],
+      "arguments": {"section_id": "panelVoice", "section": "voice"}
+    }
+  ]
+}

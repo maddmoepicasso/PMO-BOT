@@ -1,0 +1,91 @@
+{
+  "enabled": true,
+  "pack": "safe_actions_admin",
+  "description": "Admin-gated maintenance commands. The firewall still requires admin permission.",
+  "commands": [
+    {
+      "id": "refresh_connections",
+      "label": "Refresh Connections",
+      "tool": "refresh_connections",
+      "intent": "tool",
+      "confidence": 0.86,
+      "phrases": [
+        "refresh connections",
+        "check connections",
+        "alpaca sync status",
+        "broker connection status"
+      ],
+      "examples": ["refresh connections"],
+      "arguments": {}
+    },
+    {
+      "id": "refresh_watchlist",
+      "label": "Refresh Watchlist",
+      "tool": "refresh_watchlist",
+      "intent": "tool",
+      "confidence": 0.86,
+      "phrases": [
+        "refresh watchlist",
+        "auto watchlist",
+        "watchlist refresh",
+        "reload watchlist"
+      ],
+      "examples": ["refresh watchlist"],
+      "arguments": {}
+    },
+    {
+      "id": "sync_journal",
+      "label": "Sync Journal",
+      "tool": "sync_journal",
+      "intent": "tool",
+      "confidence": 0.88,
+      "phrases": [
+        "sync journal",
+        "sync trades",
+        "sync paper",
+        "sync paper trades"
+      ],
+      "examples": ["sync journal"],
+      "arguments": {
+        "close_hits": false,
+        "days": 30,
+        "limit": 500
+      }
+    },
+    {
+      "id": "sync_close_hits",
+      "label": "Sync And Close Hits",
+      "tool": "sync_journal",
+      "intent": "tool",
+      "confidence": 0.9,
+      "phrases": [
+        "sync and close hits",
+        "close hits",
+        "sync target hits",
+        "sync stop hits",
+        "sync close target stop"
+      ],
+      "examples": ["sync and close hits"],
+      "arguments": {
+        "close_hits": true,
+        "days": 30,
+        "limit": 500
+      }
+    },
+    {
+      "id": "stop_voice",
+      "label": "Stop Voice",
+      "tool": "stop_voice",
+      "intent": "frontend",
+      "confidence": 0.84,
+      "phrases": [
+        "stop voice",
+        "mute",
+        "stop listening",
+        "turn off voice"
+      ],
+      "examples": ["stop voice"],
+      "arguments": {}
+    }
+  ]
+}

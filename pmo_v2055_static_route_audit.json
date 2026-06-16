@@ -1,0 +1,1105 @@
+{
+  "ok": true,
+  "route_count": 120,
+  "counts": {
+    "READ_ONLY_OR_PAGE": 37,
+    "POST_REVIEW_NEEDED": 4,
+    "ADMIN_REQUIRED": 73,
+    "PUBLIC_WEBHOOK_OR_PUBLIC_INTAKE": 6
+  },
+  "routes": [
+    {
+      "rule": "/",
+      "function": "index",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14370
+    },
+    {
+      "rule": "/subscribe",
+      "function": "subscribe_page",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14376
+    },
+    {
+      "rule": "/shop",
+      "function": "subscribe_page",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14376
+    },
+    {
+      "rule": "/logo.png",
+      "function": "logo_png",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14391
+    },
+    {
+      "rule": "/assets/pmo-layout-editor.js",
+      "function": "pmo_layout_editor_asset",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14414
+    },
+    {
+      "rule": "/mobile",
+      "function": "mobile_status",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14422
+    },
+    {
+      "rule": "/m",
+      "function": "mobile_status",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14422
+    },
+    {
+      "rule": "/control",
+      "function": "control",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14451
+    },
+    {
+      "rule": "/api/health",
+      "function": "api_health",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14675
+    },
+    {
+      "rule": "/api/v2055/route-audit",
+      "function": "api_v2055_route_audit",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14708
+    },
+    {
+      "rule": "/api/v206/module-report",
+      "function": "api_v206_module_report",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14713
+    },
+    {
+      "rule": "/api/stability",
+      "function": "api_stability",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "protection": "POST_REVIEW_NEEDED",
+      "line": 14717
+    },
+    {
+      "rule": "/api/admin/status",
+      "function": "api_admin_status",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14735
+    },
+    {
+      "rule": "/api/admin/verify",
+      "function": "api_admin_verify",
+      "methods": [
+        "POST"
+      ],
+      "protection": "POST_REVIEW_NEEDED",
+      "line": 14740
+    },
+    {
+      "rule": "/api/admin/setup-token",
+      "function": "api_admin_setup_token",
+      "methods": [
+        "POST"
+      ],
+      "protection": "POST_REVIEW_NEEDED",
+      "line": 14749
+    },
+    {
+      "rule": "/api/owner-command",
+      "function": "api_owner_command",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 14764
+    },
+    {
+      "rule": "/api/providers/setup",
+      "function": "api_providers_setup",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 14810
+    },
+    {
+      "rule": "/api/dashboard/layout",
+      "function": "api_dashboard_layout",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 14838
+    },
+    {
+      "rule": "/api/cms/status",
+      "function": "api_cms_status",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14853
+    },
+    {
+      "rule": "/api/cms/modules",
+      "function": "api_cms_modules",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14859
+    },
+    {
+      "rule": "/api/cms/module/update",
+      "function": "api_cms_module_update",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 14866
+    },
+    {
+      "rule": "/api/cms/layout",
+      "function": "api_cms_layout",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 14886
+    },
+    {
+      "rule": "/api/cms/content",
+      "function": "api_cms_content",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 14910
+    },
+    {
+      "rule": "/api/cms/reports",
+      "function": "api_cms_reports",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14928
+    },
+    {
+      "rule": "/api/cms/audit",
+      "function": "api_cms_audit",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14933
+    },
+    {
+      "rule": "/api/cms/safety-preset",
+      "function": "api_cms_safety_preset",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 14942
+    },
+    {
+      "rule": "/api/reports/list",
+      "function": "api_reports_list",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14955
+    },
+    {
+      "rule": "/api/reports/open",
+      "function": "api_reports_open",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 14960
+    },
+    {
+      "rule": "/api/dashboard/button-audit",
+      "function": "api_dashboard_button_audit",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 14982
+    },
+    {
+      "rule": "/api/dashboard/button-event",
+      "function": "api_dashboard_button_event",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15006
+    },
+    {
+      "rule": "/api/trading-optimization/report",
+      "function": "api_trading_optimization_report",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15025
+    },
+    {
+      "rule": "/api/trading-optimization/apply-paper-baseline",
+      "function": "api_trading_optimization_apply_paper_baseline",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15037
+    },
+    {
+      "rule": "/api/operations/readiness",
+      "function": "api_operations_readiness",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15053
+    },
+    {
+      "rule": "/api/full-system-test",
+      "function": "api_full_system_test",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15069
+    },
+    {
+      "rule": "/api/system/integrity",
+      "function": "api_system_integrity",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15078
+    },
+    {
+      "rule": "/api/v106/decision-bus",
+      "function": "api_v106_decision_bus",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15087
+    },
+    {
+      "rule": "/api/v106/paper-scorecard",
+      "function": "api_v106_paper_scorecard",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15113
+    },
+    {
+      "rule": "/api/v106/live-readiness-export",
+      "function": "api_v106_live_readiness_export",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15130
+    },
+    {
+      "rule": "/api/v106/connection-wizard",
+      "function": "api_v106_connection_wizard",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15147
+    },
+    {
+      "rule": "/api/v106/log-health",
+      "function": "api_v106_log_health",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15155
+    },
+    {
+      "rule": "/api/v106/feature-audit",
+      "function": "api_v106_feature_audit",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15160
+    },
+    {
+      "rule": "/api/status",
+      "function": "api_status",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 15176
+    },
+    {
+      "rule": "/api/all-day/status",
+      "function": "api_all_day_status",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 15242
+    },
+    {
+      "rule": "/api/all-day/watchtower/start",
+      "function": "api_all_day_watchtower_start",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15263
+    },
+    {
+      "rule": "/api/all-day/overnight-plan",
+      "function": "api_all_day_overnight_plan",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15281
+    },
+    {
+      "rule": "/api/safety/paper-safe",
+      "function": "api_safety_paper_safe",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15308
+    },
+    {
+      "rule": "/api/safety/stock-paper-executor",
+      "function": "api_safety_stock_paper_executor",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15318
+    },
+    {
+      "rule": "/api/safety/status",
+      "function": "api_safety_status",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 15328
+    },
+    {
+      "rule": "/api/safety/preset",
+      "function": "api_safety_preset",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15335
+    },
+    {
+      "rule": "/api/crypto/status",
+      "function": "api_crypto_status",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 15347
+    },
+    {
+      "rule": "/api/crypto/market-data",
+      "function": "api_crypto_market_data",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 15353
+    },
+    {
+      "rule": "/api/crypto/watchlist/refresh",
+      "function": "api_crypto_watchlist_refresh",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15360
+    },
+    {
+      "rule": "/api/crypto/why-not",
+      "function": "api_crypto_why_not",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15377
+    },
+    {
+      "rule": "/api/crypto/paper/enable",
+      "function": "api_crypto_paper_enable",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15383
+    },
+    {
+      "rule": "/api/crypto/research-only",
+      "function": "api_crypto_research_only",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15393
+    },
+    {
+      "rule": "/api/crypto/proof",
+      "function": "api_crypto_proof",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 15403
+    },
+    {
+      "rule": "/api/crypto/journal",
+      "function": "api_crypto_journal",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 15409
+    },
+    {
+      "rule": "/api/intelligence/status",
+      "function": "api_intelligence_status",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 15424
+    },
+    {
+      "rule": "/api/intelligence/premarket/run",
+      "function": "api_intelligence_premarket_run",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15429
+    },
+    {
+      "rule": "/api/intelligence/premarket/latest",
+      "function": "api_intelligence_premarket_latest",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 15435
+    },
+    {
+      "rule": "/api/intelligence/reports",
+      "function": "api_intelligence_reports",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 15447
+    },
+    {
+      "rule": "/api/intelligence/email-latest",
+      "function": "api_intelligence_email_latest",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15457
+    },
+    {
+      "rule": "/api/architecture/plan",
+      "function": "api_architecture_plan",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15477
+    },
+    {
+      "rule": "/api/switchboard",
+      "function": "api_switchboard",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 15484
+    },
+    {
+      "rule": "/api/switchboard/preset",
+      "function": "api_switchboard_preset",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15513
+    },
+    {
+      "rule": "/api/switchboard/audit",
+      "function": "api_switchboard_audit",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15546
+    },
+    {
+      "rule": "/api/switchboard/100-prep",
+      "function": "api_switchboard_100_prep",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15565
+    },
+    {
+      "rule": "/api/level5/review",
+      "function": "api_level5_review",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15590
+    },
+    {
+      "rule": "/api/executor/status",
+      "function": "api_executor_status",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15630
+    },
+    {
+      "rule": "/api/trade-plan/preview",
+      "function": "api_trade_plan_preview",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15642
+    },
+    {
+      "rule": "/api/paper-proof/refresh",
+      "function": "api_paper_proof_refresh",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15662
+    },
+    {
+      "rule": "/api/pre-session/paper-checklist",
+      "function": "api_pre_session_paper_checklist",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15675
+    },
+    {
+      "rule": "/api/v112/paper-replay/log",
+      "function": "api_v112_paper_replay_log",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15727
+    },
+    {
+      "rule": "/api/v112/outcomes/refresh",
+      "function": "api_v112_outcomes_refresh",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15749
+    },
+    {
+      "rule": "/api/v112/proof-report",
+      "function": "api_v112_proof_report",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15761
+    },
+    {
+      "rule": "/api/v113/asi/refresh",
+      "function": "api_v113_asi_refresh",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15771
+    },
+    {
+      "rule": "/api/v113/asi/apply",
+      "function": "api_v113_asi_apply",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15781
+    },
+    {
+      "rule": "/api/v113/asi/report",
+      "function": "api_v113_asi_report",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15792
+    },
+    {
+      "rule": "/api/learning/refresh",
+      "function": "api_learning_refresh",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15805
+    },
+    {
+      "rule": "/api/quantum-learning/refresh",
+      "function": "api_quantum_learning_refresh",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15822
+    },
+    {
+      "rule": "/api/agent/plan",
+      "function": "api_agent_plan",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15834
+    },
+    {
+      "rule": "/api/warp/review",
+      "function": "api_warp_review",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15861
+    },
+    {
+      "rule": "/api/market-data",
+      "function": "api_market_data",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 15895
+    },
+    {
+      "rule": "/api/watchlist/refresh",
+      "function": "api_watchlist_refresh",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15902
+    },
+    {
+      "rule": "/api/watchlist/auto-refresh",
+      "function": "api_watchlist_auto_refresh",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15907
+    },
+    {
+      "rule": "/api/system-review",
+      "function": "api_system_review",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15923
+    },
+    {
+      "rule": "/api/live-data/snapshot",
+      "function": "api_live_data_snapshot",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15930
+    },
+    {
+      "rule": "/api/ops-dashboard",
+      "function": "api_ops_dashboard",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15935
+    },
+    {
+      "rule": "/api/broker-reconciliation",
+      "function": "api_broker_reconciliation",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15954
+    },
+    {
+      "rule": "/api/order-origin-audit",
+      "function": "api_order_origin_audit",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15962
+    },
+    {
+      "rule": "/api/live-readiness",
+      "function": "api_live_readiness",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15975
+    },
+    {
+      "rule": "/api/decision-timeline",
+      "function": "api_decision_timeline",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 15986
+    },
+    {
+      "rule": "/api/why-not",
+      "function": "api_why_not",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 16004
+    },
+    {
+      "rule": "/api/trade-replay",
+      "function": "api_trade_replay",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 16038
+    },
+    {
+      "rule": "/api/watchlist-lab",
+      "function": "api_watchlist_lab",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 16045
+    },
+    {
+      "rule": "/api/connections/refresh",
+      "function": "api_connections_refresh",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 16058
+    },
+    {
+      "rule": "/api/market-universe",
+      "function": "api_market_universe",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 16064
+    },
+    {
+      "rule": "/api/tradingview/refresh-pine",
+      "function": "api_refresh_pine",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 16076
+    },
+    {
+      "rule": "/api/tradingview/status",
+      "function": "api_tradingview_status",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 16093
+    },
+    {
+      "rule": "/api/tradingview/refresh-suite",
+      "function": "api_tradingview_refresh_suite",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 16110
+    },
+    {
+      "rule": "/api/tradingview/test-alert",
+      "function": "api_tradingview_test_alert",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 16126
+    },
+    {
+      "rule": "/api/pmo-access/refresh",
+      "function": "api_pmo_access_refresh",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 16158
+    },
+    {
+      "rule": "/api/receiving-accounts",
+      "function": "api_receiving_accounts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 16163
+    },
+    {
+      "rule": "/api/receiving-accounts/delete",
+      "function": "api_receiving_accounts_delete",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 16194
+    },
+    {
+      "rule": "/api/payments/status",
+      "function": "api_payments_status",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 16209
+    },
+    {
+      "rule": "/api/payments/paypal/create-order",
+      "function": "api_paypal_create_order",
+      "methods": [
+        "POST"
+      ],
+      "protection": "POST_REVIEW_NEEDED",
+      "line": 16215
+    },
+    {
+      "rule": "/api/payments/paypal/return",
+      "function": "api_paypal_return",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 16229
+    },
+    {
+      "rule": "/api/payments/webhook/paypal",
+      "function": "api_paypal_webhook",
+      "methods": [
+        "POST"
+      ],
+      "protection": "PUBLIC_WEBHOOK_OR_PUBLIC_INTAKE",
+      "line": 16242
+    },
+    {
+      "rule": "/api/payments/plaid/link-token",
+      "function": "api_plaid_link_token",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 16264
+    },
+    {
+      "rule": "/api/payments/webhook/plaid",
+      "function": "api_plaid_webhook",
+      "methods": [
+        "POST"
+      ],
+      "protection": "PUBLIC_WEBHOOK_OR_PUBLIC_INTAKE",
+      "line": 16273
+    },
+    {
+      "rule": "/api/subscriptions/config",
+      "function": "api_subscriptions_config",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 16283
+    },
+    {
+      "rule": "/api/subscription-leads",
+      "function": "api_subscription_leads",
+      "methods": [
+        "POST"
+      ],
+      "protection": "PUBLIC_WEBHOOK_OR_PUBLIC_INTAKE",
+      "line": 16288
+    },
+    {
+      "rule": "/api/pmo-donations",
+      "function": "api_pmo_donations",
+      "methods": [
+        "POST"
+      ],
+      "protection": "PUBLIC_WEBHOOK_OR_PUBLIC_INTAKE",
+      "line": 16298
+    },
+    {
+      "rule": "/api/pmo-investor-interest",
+      "function": "api_pmo_investor_interest",
+      "methods": [
+        "POST"
+      ],
+      "protection": "PUBLIC_WEBHOOK_OR_PUBLIC_INTAKE",
+      "line": 16309
+    },
+    {
+      "rule": "/api/install/manifest",
+      "function": "api_install_manifest",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 16318
+    },
+    {
+      "rule": "/api/install/windows",
+      "function": "api_install_windows",
+      "methods": [
+        "GET"
+      ],
+      "protection": "READ_ONLY_OR_PAGE",
+      "line": 16323
+    },
+    {
+      "rule": "/api/settings",
+      "function": "api_settings",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 16332
+    },
+    {
+      "rule": "/api/live-master",
+      "function": "api_live_master",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 16365
+    },
+    {
+      "rule": "/tradingview",
+      "function": "tradingview_webhook",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "protection": "PUBLIC_WEBHOOK_OR_PUBLIC_INTAKE",
+      "line": 16415
+    },
+    {
+      "rule": "/api/discord/test",
+      "function": "api_discord_test",
+      "methods": [
+        "POST"
+      ],
+      "protection": "ADMIN_REQUIRED",
+      "line": 16431
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+# COBR simulator notebook cells
+# Paste these into a Jupyter notebook from the PMO_BOT/Python folder.
+
+# Cell 1: imports and reset
+import cobr_signal
+import market_simulator
+
+cobr_signal.reset_state()
+
+
+# Cell 2: run a synthetic replay
+result = market_simulator.run_synthetic_cobr_replay(duration_ms=3000, step_ms=20)
+result["signals"], result["fills"], result["mode"], result["live_order_allowed"]
+
+
+# Cell 3: inspect recent signals
+signals = [row for row in result["logs"] if row.get("type") == "signal"]
+signals[:10]
+
+
+# Cell 4: inspect simulated fills
+fills = [row for row in result["logs"] if row.get("type") == "simulated_fill"]
+fills[:10]
+
+
+# Cell 5: run a custom feed
+sim = market_simulator.MarketSimulator(decision_latency_ms=5, exchange_latency_ms=5)
+feed = market_simulator.synthetic_feed(duration_ms=1500, step_ms=25)
+logs = market_simulator.run_replay(sim, feed, cobr_signal)
+{
+    "signals": len([row for row in logs if row.get("type") == "signal"]),
+    "fills": len([row for row in logs if row.get("type") == "simulated_fill"]),
+    "live_order_allowed": False,
+}
+
+
+# Cell 6: PMO integration note
+# PMO Bot exposes these research-only routes after restart:
+# GET  /api/edges/advanced
+# GET  /api/cobr/status
+# POST /api/cobr/simulate
+# POST /api/cobr/simulate with {"record": true} requires the PMO admin token.
