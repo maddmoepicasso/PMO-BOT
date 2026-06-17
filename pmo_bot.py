@@ -7150,8 +7150,7 @@ if barstate.islast and showDashboard
 
 
 def master_pine_source(settings: Optional[Dict[str, Any]] = None) -> str:
-    secret = pmo_tradingview_secret(settings)
-    return MASTER_PINE.replace('"CHANGE_ME_SECRET"', json.dumps(secret))
+    return MASTER_PINE
 
 
 def ensure_master_pine() -> Path:
@@ -31426,7 +31425,7 @@ def api_refresh_pine():
         "path": str(path),
         "size": path.stat().st_size,
         "secret_configured": pmo_tradingview_secret(settings) != "CHANGE_ME_SECRET",
-        "message": "Master Pine refreshed with the current PMO TradingView webhook secret.",
+        "message": "Master Pine refreshed with webhook placeholders. Keep the real secret in TradingView alert setup and .env, not in tracked Pine files.",
         "status": status,
     })
 
