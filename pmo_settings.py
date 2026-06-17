@@ -333,6 +333,25 @@ ENABLE_PMO_WALK_FORWARD_VALIDATION = True
 PMO_WALK_FORWARD_MIN_TRAIN_ROWS = 40
 PMO_WALK_FORWARD_MIN_TEST_ROWS = 10
 PMO_WALK_FORWARD_MIN_TEST_WIN_RATE = 0.52
+PMO_ALPHA_DECAY_ENABLED = True
+PMO_ALPHA_DECAY_MIN_TRADES = 3
+PMO_ALPHA_DECAY_CONFIDENT_TRADES = 8
+PMO_ALPHA_DECAY_USE_REC_PARAMS = False
+PMO_ALPHA_DECAY_CONFIDENCE_GATE = 'MEDIUM'
+ENABLE_PMO_INSTITUTIONAL_SIGNALS = True
+PMO_INSTITUTIONAL_SCORE_INFLUENCE = False
+PMO_LIQUIDITY_VACUUM_LOOKBACK_BARS = 20
+PMO_LIQUIDITY_VACUUM_MIN_GAP_PCT = 0.35
+PMO_AUCTION_ATR_PERIOD = 14
+PMO_AUCTION_PROBE_ATR_MULT = 1.0
+PMO_330_EFFECT_ENABLED = True
+PMO_330_EFFECT_START = '15:30'
+PMO_330_EFFECT_BLOCK_TREND_ENTRIES = True
+PMO_EARNINGS_LANGUAGE_MAX_HEDGE_RATIO = 0.035
+PMO_EARNINGS_LANGUAGE_MIN_NUMERIC_RATIO = 0.025
+PMO_ASK_PRINT_MIN_STREAK = 3
+PMO_PEAD_WINDOW_DAYS = 11
+PMO_VRP_MIN_IV_RANK = 50
 PMO_ORB_ENABLED = True
 PMO_ORB_MINUTES = 15
 ENABLE_PMO_OPENING_HOUR_QUALITY_GATES = True
@@ -531,6 +550,37 @@ ENABLE_PMO_SECTOR_TRADE_LIMITS = True
 PMO_STARTUP_MODE = 'SUMMARY'
 PMO_WATCHLIST = ['SPY', 'USO', 'SLV', 'GLD', 'ITB', 'KO', 'XLRE', 'UNH', 'XRT', 'XLP', 'XLB', 'XHB', 'RSP', 'PSQ', 'SH', 'KRE', 'KBE', 'XLC', 'XLU', 'DIS', 'EFA', 'XLI', 'XBI', 'RWM', 'BAC', 'IBB', 'XLV', 'JPM', 'COST', 'NFLX', 'VTI', 'LLY', 'WMT', 'ARKK']
 PMO_AUTO_WATCHLIST_UNIVERSE = ['SPY', 'QQQ', 'DIA', 'IWM', 'SH', 'PSQ', 'DOG', 'RWM', 'USO', 'SLV', 'GLD', 'XLK', 'XLF', 'XLE', 'XLV', 'XLY', 'XLP', 'XLI', 'XLC', 'XLU', 'XLB', 'XLRE', 'AAPL', 'MSFT', 'NVDA', 'AMD', 'META', 'TSLA', 'AMZN', 'GOOGL', 'NFLX', 'AVGO', 'SMH', 'JPM', 'BAC', 'XOM', 'CVX', 'LLY', 'UNH', 'COST', 'WMT', 'KO', 'DIS', 'INTC', 'ORCL', 'CRM', 'PLTR', 'SOFI']
+ENABLE_PMO_INTERNATIONAL_QUALITY_WATCHLIST = True
+PMO_INTERNATIONAL_QUALITY_INCLUDE_HIGHER_RISK = True
+PMO_INTERNATIONAL_QUALITY_TOP_10 = ['TSM', 'ASML', 'SAP', 'NVO', 'MELI', 'HDB', 'AZN', 'ADYEY', 'RACE', 'SBGSY']
+PMO_INTERNATIONAL_QUALITY_ALLOCATION = {'AI_CHIPS': 40, 'HEALTHCARE': 25, 'EMERGING_MARKET_GROWTH': 20, 'INDUSTRIALS_CONSUMER_LEADERS': 15}
+PMO_INTERNATIONAL_QUALITY_WATCHLIST = [
+    {'symbol': 'TSM', 'company': 'Taiwan Semiconductor Manufacturing Company', 'country': 'Taiwan', 'sector_bucket': 'Semiconductors & AI Infrastructure', 'allocation_bucket': 'AI_CHIPS', 'tier': 'CORE_20', 'execution_mode': 'US_LISTED_ADR_COMMON'},
+    {'symbol': 'ASML', 'company': 'ASML Holding', 'country': 'Netherlands', 'sector_bucket': 'Semiconductors & AI Infrastructure', 'allocation_bucket': 'AI_CHIPS', 'tier': 'CORE_20', 'execution_mode': 'US_LISTED_ADR_COMMON'},
+    {'symbol': 'SSNLF', 'company': 'Samsung Electronics', 'country': 'South Korea', 'sector_bucket': 'Semiconductors & AI Infrastructure', 'allocation_bucket': 'AI_CHIPS', 'tier': 'CORE_20', 'execution_mode': 'OTC_SCAN_ONLY'},
+    {'symbol': 'TOELY', 'company': 'Tokyo Electron', 'country': 'Japan', 'sector_bucket': 'Semiconductors & AI Infrastructure', 'allocation_bucket': 'AI_CHIPS', 'tier': 'CORE_20', 'execution_mode': 'OTC_SCAN_ONLY'},
+    {'symbol': 'SAP', 'company': 'SAP', 'country': 'Germany', 'sector_bucket': 'Software & Digital Platforms', 'allocation_bucket': 'INDUSTRIALS_CONSUMER_LEADERS', 'tier': 'CORE_20', 'execution_mode': 'US_LISTED_ADR_COMMON'},
+    {'symbol': 'SHOP', 'company': 'Shopify', 'country': 'Canada', 'sector_bucket': 'Software & Digital Platforms', 'allocation_bucket': 'EMERGING_MARKET_GROWTH', 'tier': 'CORE_20', 'execution_mode': 'US_LISTED_ADR_COMMON'},
+    {'symbol': 'MELI', 'company': 'MercadoLibre', 'country': 'Argentina / Latin America', 'sector_bucket': 'Software & Digital Platforms', 'allocation_bucket': 'EMERGING_MARKET_GROWTH', 'tier': 'CORE_20', 'execution_mode': 'US_LISTED_ADR_COMMON'},
+    {'symbol': 'SE', 'company': 'Sea Limited', 'country': 'Singapore', 'sector_bucket': 'Software & Digital Platforms', 'allocation_bucket': 'EMERGING_MARKET_GROWTH', 'tier': 'CORE_20', 'execution_mode': 'US_LISTED_ADR_COMMON'},
+    {'symbol': 'NVO', 'company': 'Novo Nordisk', 'country': 'Denmark', 'sector_bucket': 'Healthcare & Pharma', 'allocation_bucket': 'HEALTHCARE', 'tier': 'CORE_20', 'execution_mode': 'US_LISTED_ADR_COMMON'},
+    {'symbol': 'AZN', 'company': 'AstraZeneca', 'country': 'United Kingdom', 'sector_bucket': 'Healthcare & Pharma', 'allocation_bucket': 'HEALTHCARE', 'tier': 'CORE_20', 'execution_mode': 'US_LISTED_ADR_COMMON'},
+    {'symbol': 'NVS', 'company': 'Novartis', 'country': 'Switzerland', 'sector_bucket': 'Healthcare & Pharma', 'allocation_bucket': 'HEALTHCARE', 'tier': 'CORE_20', 'execution_mode': 'US_LISTED_ADR_COMMON'},
+    {'symbol': 'RHHBY', 'company': 'Roche', 'country': 'Switzerland', 'sector_bucket': 'Healthcare & Pharma', 'allocation_bucket': 'HEALTHCARE', 'tier': 'CORE_20', 'execution_mode': 'OTC_SCAN_ONLY'},
+    {'symbol': 'HDB', 'company': 'HDFC Bank', 'country': 'India', 'sector_bucket': 'Financials', 'allocation_bucket': 'EMERGING_MARKET_GROWTH', 'tier': 'CORE_20', 'execution_mode': 'US_LISTED_ADR_COMMON'},
+    {'symbol': 'MUFG', 'company': 'Mitsubishi UFJ Financial Group', 'country': 'Japan', 'sector_bucket': 'Financials', 'allocation_bucket': 'INDUSTRIALS_CONSUMER_LEADERS', 'tier': 'CORE_20', 'execution_mode': 'US_LISTED_ADR_COMMON'},
+    {'symbol': 'ADYEY', 'company': 'Adyen', 'country': 'Netherlands', 'sector_bucket': 'Financials', 'allocation_bucket': 'EMERGING_MARKET_GROWTH', 'tier': 'CORE_20', 'execution_mode': 'OTC_SCAN_ONLY'},
+    {'symbol': 'LVMUY', 'company': 'LVMH', 'country': 'France', 'sector_bucket': 'Consumer & Luxury', 'allocation_bucket': 'INDUSTRIALS_CONSUMER_LEADERS', 'tier': 'CORE_20', 'execution_mode': 'OTC_SCAN_ONLY'},
+    {'symbol': 'RACE', 'company': 'Ferrari', 'country': 'Italy', 'sector_bucket': 'Consumer & Luxury', 'allocation_bucket': 'INDUSTRIALS_CONSUMER_LEADERS', 'tier': 'CORE_20', 'execution_mode': 'US_LISTED_ADR_COMMON'},
+    {'symbol': 'NSRGY', 'company': 'Nestle', 'country': 'Switzerland', 'sector_bucket': 'Consumer & Luxury', 'allocation_bucket': 'INDUSTRIALS_CONSUMER_LEADERS', 'tier': 'CORE_20', 'execution_mode': 'OTC_SCAN_ONLY'},
+    {'symbol': 'SIEGY', 'company': 'Siemens', 'country': 'Germany', 'sector_bucket': 'Industrials & Infrastructure', 'allocation_bucket': 'INDUSTRIALS_CONSUMER_LEADERS', 'tier': 'CORE_20', 'execution_mode': 'OTC_SCAN_ONLY'},
+    {'symbol': 'SBGSY', 'company': 'Schneider Electric', 'country': 'France', 'sector_bucket': 'Industrials & Infrastructure', 'allocation_bucket': 'INDUSTRIALS_CONSUMER_LEADERS', 'tier': 'CORE_20', 'execution_mode': 'OTC_SCAN_ONLY'},
+    {'symbol': 'BABA', 'company': 'Alibaba Group', 'country': 'China', 'sector_bucket': 'Higher-Risk, Higher-Upside', 'allocation_bucket': 'EMERGING_MARKET_GROWTH', 'tier': 'HIGHER_RISK', 'execution_mode': 'US_LISTED_ADR_COMMON'},
+    {'symbol': 'BYDDY', 'company': 'BYD', 'country': 'China', 'sector_bucket': 'Higher-Risk, Higher-Upside', 'allocation_bucket': 'EMERGING_MARKET_GROWTH', 'tier': 'HIGHER_RISK', 'execution_mode': 'OTC_SCAN_ONLY'},
+    {'symbol': 'XIACY', 'company': 'Xiaomi', 'country': 'China', 'sector_bucket': 'Higher-Risk, Higher-Upside', 'allocation_bucket': 'EMERGING_MARKET_GROWTH', 'tier': 'HIGHER_RISK', 'execution_mode': 'OTC_SCAN_ONLY'},
+    {'symbol': 'NU', 'company': 'Nu Holdings', 'country': 'Brazil / Latin America', 'sector_bucket': 'Higher-Risk, Higher-Upside', 'allocation_bucket': 'EMERGING_MARKET_GROWTH', 'tier': 'HIGHER_RISK', 'execution_mode': 'US_LISTED_ADR_COMMON'},
+    {'symbol': 'OTGLY', 'company': 'CD Projekt', 'country': 'Poland', 'sector_bucket': 'Higher-Risk, Higher-Upside', 'allocation_bucket': 'EMERGING_MARKET_GROWTH', 'tier': 'HIGHER_RISK', 'execution_mode': 'OTC_SCAN_ONLY'},
+]
 PMO_AUTO_WATCHLIST_REFRESH_MINUTES = 2
 PMO_MAX_DAILY_TRADES = 10
 PMO_MAX_TRADES_BY_MARKET = {'STOCK': 10, 'CRYPTO': 0, 'OPTION': 0}

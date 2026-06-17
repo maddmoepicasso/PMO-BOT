@@ -139,6 +139,29 @@ except Exception as exc:  # pragma: no cover - elite signals are read-only and o
     PMO_ELITE_SIGNALS_ERROR = str(exc)
 
 try:
+    from pmo_alpha_decay import AlphaDecayProfiler, TickerProfile
+
+    _ALPHA_DECAY = AlphaDecayProfiler()
+    PMO_ALPHA_DECAY_AVAILABLE = True
+    PMO_ALPHA_DECAY_ERROR = ""
+except Exception as exc:  # pragma: no cover - alpha decay must not block startup
+    AlphaDecayProfiler = None
+    TickerProfile = None
+    _ALPHA_DECAY = None
+    PMO_ALPHA_DECAY_AVAILABLE = False
+    PMO_ALPHA_DECAY_ERROR = str(exc)
+
+try:
+    from pmo_institutional_signals import analyze_institutional_signals as pmo_institutional_analyze
+
+    PMO_INSTITUTIONAL_SIGNALS_AVAILABLE = True
+    PMO_INSTITUTIONAL_SIGNALS_ERROR = ""
+except Exception as exc:  # pragma: no cover - institutional signals must not block startup
+    pmo_institutional_analyze = None
+    PMO_INSTITUTIONAL_SIGNALS_AVAILABLE = False
+    PMO_INSTITUTIONAL_SIGNALS_ERROR = str(exc)
+
+try:
     from pmo_claude_codex import (
         CLAUDE_CODEX_ROLES,
         SYSTEM_PROMPTS as PMO_CLAUDE_CODEX_SYSTEM_PROMPTS,
@@ -740,6 +763,25 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_WALK_FORWARD_MIN_TRAIN_ROWS": 40,
     "PMO_WALK_FORWARD_MIN_TEST_ROWS": 10,
     "PMO_WALK_FORWARD_MIN_TEST_WIN_RATE": 0.52,
+    "PMO_ALPHA_DECAY_ENABLED": True,
+    "PMO_ALPHA_DECAY_MIN_TRADES": 3,
+    "PMO_ALPHA_DECAY_CONFIDENT_TRADES": 8,
+    "PMO_ALPHA_DECAY_USE_REC_PARAMS": False,
+    "PMO_ALPHA_DECAY_CONFIDENCE_GATE": "MEDIUM",
+    "ENABLE_PMO_INSTITUTIONAL_SIGNALS": True,
+    "PMO_INSTITUTIONAL_SCORE_INFLUENCE": False,
+    "PMO_LIQUIDITY_VACUUM_LOOKBACK_BARS": 20,
+    "PMO_LIQUIDITY_VACUUM_MIN_GAP_PCT": 0.35,
+    "PMO_AUCTION_ATR_PERIOD": 14,
+    "PMO_AUCTION_PROBE_ATR_MULT": 1.0,
+    "PMO_330_EFFECT_ENABLED": True,
+    "PMO_330_EFFECT_START": "15:30",
+    "PMO_330_EFFECT_BLOCK_TREND_ENTRIES": True,
+    "PMO_EARNINGS_LANGUAGE_MAX_HEDGE_RATIO": 0.035,
+    "PMO_EARNINGS_LANGUAGE_MIN_NUMERIC_RATIO": 0.025,
+    "PMO_ASK_PRINT_MIN_STREAK": 3,
+    "PMO_PEAD_WINDOW_DAYS": 11,
+    "PMO_VRP_MIN_IV_RANK": 50,
     "PMO_ORB_ENABLED": True,
     "PMO_ORB_MINUTES": 15,
     "ENABLE_PMO_OPENING_HOUR_QUALITY_GATES": True,
@@ -963,6 +1005,42 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_STARTUP_MODE": "SUMMARY",
     "PMO_WATCHLIST": ["SPY", "USO", "SLV", "GLD", "QQQ", "AAPL", "MSFT", "NVDA", "AMD", "META", "TSLA"],
     "PMO_AUTO_WATCHLIST_UNIVERSE": ["SPY", "USO", "SLV", "GLD", "QQQ", "AAPL", "MSFT", "NVDA", "AMD", "META", "TSLA"],
+    "ENABLE_PMO_INTERNATIONAL_QUALITY_WATCHLIST": True,
+    "PMO_INTERNATIONAL_QUALITY_INCLUDE_HIGHER_RISK": True,
+    "PMO_INTERNATIONAL_QUALITY_TOP_10": ["TSM", "ASML", "SAP", "NVO", "MELI", "HDB", "AZN", "ADYEY", "RACE", "SBGSY"],
+    "PMO_INTERNATIONAL_QUALITY_ALLOCATION": {
+        "AI_CHIPS": 40,
+        "HEALTHCARE": 25,
+        "EMERGING_MARKET_GROWTH": 20,
+        "INDUSTRIALS_CONSUMER_LEADERS": 15,
+    },
+    "PMO_INTERNATIONAL_QUALITY_WATCHLIST": [
+        {"symbol": "TSM", "company": "Taiwan Semiconductor Manufacturing Company", "country": "Taiwan", "sector_bucket": "Semiconductors & AI Infrastructure", "allocation_bucket": "AI_CHIPS", "tier": "CORE_20", "execution_mode": "US_LISTED_ADR_COMMON"},
+        {"symbol": "ASML", "company": "ASML Holding", "country": "Netherlands", "sector_bucket": "Semiconductors & AI Infrastructure", "allocation_bucket": "AI_CHIPS", "tier": "CORE_20", "execution_mode": "US_LISTED_ADR_COMMON"},
+        {"symbol": "SSNLF", "company": "Samsung Electronics", "country": "South Korea", "sector_bucket": "Semiconductors & AI Infrastructure", "allocation_bucket": "AI_CHIPS", "tier": "CORE_20", "execution_mode": "OTC_SCAN_ONLY"},
+        {"symbol": "TOELY", "company": "Tokyo Electron", "country": "Japan", "sector_bucket": "Semiconductors & AI Infrastructure", "allocation_bucket": "AI_CHIPS", "tier": "CORE_20", "execution_mode": "OTC_SCAN_ONLY"},
+        {"symbol": "SAP", "company": "SAP", "country": "Germany", "sector_bucket": "Software & Digital Platforms", "allocation_bucket": "INDUSTRIALS_CONSUMER_LEADERS", "tier": "CORE_20", "execution_mode": "US_LISTED_ADR_COMMON"},
+        {"symbol": "SHOP", "company": "Shopify", "country": "Canada", "sector_bucket": "Software & Digital Platforms", "allocation_bucket": "EMERGING_MARKET_GROWTH", "tier": "CORE_20", "execution_mode": "US_LISTED_ADR_COMMON"},
+        {"symbol": "MELI", "company": "MercadoLibre", "country": "Argentina / Latin America", "sector_bucket": "Software & Digital Platforms", "allocation_bucket": "EMERGING_MARKET_GROWTH", "tier": "CORE_20", "execution_mode": "US_LISTED_ADR_COMMON"},
+        {"symbol": "SE", "company": "Sea Limited", "country": "Singapore", "sector_bucket": "Software & Digital Platforms", "allocation_bucket": "EMERGING_MARKET_GROWTH", "tier": "CORE_20", "execution_mode": "US_LISTED_ADR_COMMON"},
+        {"symbol": "NVO", "company": "Novo Nordisk", "country": "Denmark", "sector_bucket": "Healthcare & Pharma", "allocation_bucket": "HEALTHCARE", "tier": "CORE_20", "execution_mode": "US_LISTED_ADR_COMMON"},
+        {"symbol": "AZN", "company": "AstraZeneca", "country": "United Kingdom", "sector_bucket": "Healthcare & Pharma", "allocation_bucket": "HEALTHCARE", "tier": "CORE_20", "execution_mode": "US_LISTED_ADR_COMMON"},
+        {"symbol": "NVS", "company": "Novartis", "country": "Switzerland", "sector_bucket": "Healthcare & Pharma", "allocation_bucket": "HEALTHCARE", "tier": "CORE_20", "execution_mode": "US_LISTED_ADR_COMMON"},
+        {"symbol": "RHHBY", "company": "Roche", "country": "Switzerland", "sector_bucket": "Healthcare & Pharma", "allocation_bucket": "HEALTHCARE", "tier": "CORE_20", "execution_mode": "OTC_SCAN_ONLY"},
+        {"symbol": "HDB", "company": "HDFC Bank", "country": "India", "sector_bucket": "Financials", "allocation_bucket": "EMERGING_MARKET_GROWTH", "tier": "CORE_20", "execution_mode": "US_LISTED_ADR_COMMON"},
+        {"symbol": "MUFG", "company": "Mitsubishi UFJ Financial Group", "country": "Japan", "sector_bucket": "Financials", "allocation_bucket": "INDUSTRIALS_CONSUMER_LEADERS", "tier": "CORE_20", "execution_mode": "US_LISTED_ADR_COMMON"},
+        {"symbol": "ADYEY", "company": "Adyen", "country": "Netherlands", "sector_bucket": "Financials", "allocation_bucket": "EMERGING_MARKET_GROWTH", "tier": "CORE_20", "execution_mode": "OTC_SCAN_ONLY"},
+        {"symbol": "LVMUY", "company": "LVMH", "country": "France", "sector_bucket": "Consumer & Luxury", "allocation_bucket": "INDUSTRIALS_CONSUMER_LEADERS", "tier": "CORE_20", "execution_mode": "OTC_SCAN_ONLY"},
+        {"symbol": "RACE", "company": "Ferrari", "country": "Italy", "sector_bucket": "Consumer & Luxury", "allocation_bucket": "INDUSTRIALS_CONSUMER_LEADERS", "tier": "CORE_20", "execution_mode": "US_LISTED_ADR_COMMON"},
+        {"symbol": "NSRGY", "company": "Nestle", "country": "Switzerland", "sector_bucket": "Consumer & Luxury", "allocation_bucket": "INDUSTRIALS_CONSUMER_LEADERS", "tier": "CORE_20", "execution_mode": "OTC_SCAN_ONLY"},
+        {"symbol": "SIEGY", "company": "Siemens", "country": "Germany", "sector_bucket": "Industrials & Infrastructure", "allocation_bucket": "INDUSTRIALS_CONSUMER_LEADERS", "tier": "CORE_20", "execution_mode": "OTC_SCAN_ONLY"},
+        {"symbol": "SBGSY", "company": "Schneider Electric", "country": "France", "sector_bucket": "Industrials & Infrastructure", "allocation_bucket": "INDUSTRIALS_CONSUMER_LEADERS", "tier": "CORE_20", "execution_mode": "OTC_SCAN_ONLY"},
+        {"symbol": "BABA", "company": "Alibaba Group", "country": "China", "sector_bucket": "Higher-Risk, Higher-Upside", "allocation_bucket": "EMERGING_MARKET_GROWTH", "tier": "HIGHER_RISK", "execution_mode": "US_LISTED_ADR_COMMON"},
+        {"symbol": "BYDDY", "company": "BYD", "country": "China", "sector_bucket": "Higher-Risk, Higher-Upside", "allocation_bucket": "EMERGING_MARKET_GROWTH", "tier": "HIGHER_RISK", "execution_mode": "OTC_SCAN_ONLY"},
+        {"symbol": "XIACY", "company": "Xiaomi", "country": "China", "sector_bucket": "Higher-Risk, Higher-Upside", "allocation_bucket": "EMERGING_MARKET_GROWTH", "tier": "HIGHER_RISK", "execution_mode": "OTC_SCAN_ONLY"},
+        {"symbol": "NU", "company": "Nu Holdings", "country": "Brazil / Latin America", "sector_bucket": "Higher-Risk, Higher-Upside", "allocation_bucket": "EMERGING_MARKET_GROWTH", "tier": "HIGHER_RISK", "execution_mode": "US_LISTED_ADR_COMMON"},
+        {"symbol": "OTGLY", "company": "CD Projekt", "country": "Poland", "sector_bucket": "Higher-Risk, Higher-Upside", "allocation_bucket": "EMERGING_MARKET_GROWTH", "tier": "HIGHER_RISK", "execution_mode": "OTC_SCAN_ONLY"},
+    ],
     "PMO_AUTO_WATCHLIST_REFRESH_MINUTES": 15,
     "PMO_MAX_DAILY_TRADES": 2,
     "PMO_MAX_TRADES_BY_MARKET": {"STOCK": 2, "CRYPTO": 0, "OPTION": 0},
@@ -1386,6 +1464,25 @@ EDITABLE_SETTINGS: Dict[str, Dict[str, Any]] = {
     "PMO_WALK_FORWARD_MIN_TRAIN_ROWS": {"type": "int", "min": 1, "max": 10000},
     "PMO_WALK_FORWARD_MIN_TEST_ROWS": {"type": "int", "min": 1, "max": 10000},
     "PMO_WALK_FORWARD_MIN_TEST_WIN_RATE": {"type": "float", "min": 0, "max": 1},
+    "PMO_ALPHA_DECAY_ENABLED": {"type": "bool"},
+    "PMO_ALPHA_DECAY_MIN_TRADES": {"type": "int", "min": 1, "max": 1000},
+    "PMO_ALPHA_DECAY_CONFIDENT_TRADES": {"type": "int", "min": 1, "max": 1000},
+    "PMO_ALPHA_DECAY_USE_REC_PARAMS": {"type": "bool"},
+    "PMO_ALPHA_DECAY_CONFIDENCE_GATE": {"type": "select", "options": ["LOW", "MEDIUM", "HIGH"]},
+    "ENABLE_PMO_INSTITUTIONAL_SIGNALS": {"type": "bool"},
+    "PMO_INSTITUTIONAL_SCORE_INFLUENCE": {"type": "bool"},
+    "PMO_LIQUIDITY_VACUUM_LOOKBACK_BARS": {"type": "int", "min": 5, "max": 200},
+    "PMO_LIQUIDITY_VACUUM_MIN_GAP_PCT": {"type": "float", "min": 0.01, "max": 10},
+    "PMO_AUCTION_ATR_PERIOD": {"type": "int", "min": 2, "max": 100},
+    "PMO_AUCTION_PROBE_ATR_MULT": {"type": "float", "min": 0.1, "max": 5},
+    "PMO_330_EFFECT_ENABLED": {"type": "bool"},
+    "PMO_330_EFFECT_START": {"type": "text"},
+    "PMO_330_EFFECT_BLOCK_TREND_ENTRIES": {"type": "bool"},
+    "PMO_EARNINGS_LANGUAGE_MAX_HEDGE_RATIO": {"type": "float", "min": 0, "max": 1},
+    "PMO_EARNINGS_LANGUAGE_MIN_NUMERIC_RATIO": {"type": "float", "min": 0, "max": 1},
+    "PMO_ASK_PRINT_MIN_STREAK": {"type": "int", "min": 2, "max": 20},
+    "PMO_PEAD_WINDOW_DAYS": {"type": "int", "min": 1, "max": 60},
+    "PMO_VRP_MIN_IV_RANK": {"type": "float", "min": 0, "max": 100},
     "PMO_ORB_ENABLED": {"type": "bool"},
     "PMO_ORB_MINUTES": {"type": "int", "min": 5, "max": 60},
     "ENABLE_PMO_OPENING_HOUR_QUALITY_GATES": {"type": "bool"},
@@ -1579,6 +1676,8 @@ EDITABLE_SETTINGS: Dict[str, Dict[str, Any]] = {
     "ENABLE_CASH_LOCKOUT": {"type": "bool"},
     "ENABLE_PMO_ACCESS_SOURCE_HUB": {"type": "bool"},
     "ENABLE_PMO_AUTO_WATCHLIST_AI": {"type": "bool"},
+    "ENABLE_PMO_INTERNATIONAL_QUALITY_WATCHLIST": {"type": "bool"},
+    "PMO_INTERNATIONAL_QUALITY_INCLUDE_HIGHER_RISK": {"type": "bool"},
     "PMO_AUTO_WATCHLIST_MAX_SYMBOLS": {"type": "int", "min": 1, "max": 100},
     "PMO_AUTO_WATCHLIST_MIN_SCORE": {"type": "int", "min": 1, "max": 100},
     "PMO_AUTO_WATCHLIST_ALLOW_FILL_BELOW_MIN": {"type": "bool"},
@@ -1767,6 +1866,7 @@ SWITCHBOARD_GROUPS = {
         "ENABLE_PMO_ACCESS_SOURCE_HUB", "ENABLE_PMO_AUTO_WATCHLIST_AI",
         "PMO_ACCESS_MAX_ITEMS", "PMO_AUTO_WATCHLIST_MAX_SYMBOLS",
         "PMO_AUTO_WATCHLIST_MIN_SCORE", "PMO_AUTO_WATCHLIST_REFRESH_MINUTES",
+        "ENABLE_PMO_INTERNATIONAL_QUALITY_WATCHLIST", "PMO_INTERNATIONAL_QUALITY_INCLUDE_HIGHER_RISK",
         "PMO_AUTO_WATCHLIST_ALLOW_FILL_BELOW_MIN", "PMO_AUTO_WATCHLIST_MAX_CHASE_PCT",
         "PMO_AUTO_WATCHLIST_CHASE_PENALTY_PER_PCT", "PMO_AUTO_WATCHLIST_CHASE_PENALTY_CAP",
         "PMO_AUTO_WATCHLIST_PENALIZE_LEVERAGED_UNTIL_PROOF", "PMO_AUTO_WATCHLIST_LEVERAGED_PROOF_PENALTY",
@@ -1917,6 +2017,11 @@ PMO_SOCIAL_VELOCITY_FILE = CSV_DIR / "pmo_social_velocity_events.csv"
 PMO_USDJPY_CARRY_FILE = CSV_DIR / "pmo_usdjpy_carry_bars.csv"
 PMO_ELITE_SIGNALS_REPORT_FILE = REPORT_DIR / "pmo_elite_signals_latest.json"
 PMO_WALK_FORWARD_REPORT_FILE = REPORT_DIR / "pmo_walk_forward_validation_latest.json"
+PMO_ALPHA_DECAY_REPORT_FILE = REPORT_DIR / "pmo_alpha_decay_latest.json"
+PMO_INSTITUTIONAL_SIGNALS_REPORT_FILE = REPORT_DIR / "pmo_institutional_signals_latest.json"
+PMO_EARNINGS_EVENTS_FILE = CSV_DIR / "pmo_earnings_events.csv"
+PMO_IV_CONTEXT_FILE = CSV_DIR / "pmo_iv_context.csv"
+PMO_QUOTE_PRINTS_FILE = CSV_DIR / "pmo_quote_prints.csv"
 PMO_EDGE_LIBRARY_REPORT_FILE = REPORT_DIR / "pmo_edge_library_latest.json"
 PMO_COBR_RESEARCH_REPORT_FILE = REPORT_DIR / "pmo_cobr_research_latest.json"
 PMO_EXECUTION_FIREWALL_REPORT_FILE = REPORT_DIR / "pmo_execution_firewall_latest.json"
@@ -2475,14 +2580,74 @@ def is_path_inside(child: Path, parent: Path) -> bool:
         return False
 
 
+def pmo_international_quality_rows(settings: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    settings = settings or load_settings()
+    raw_rows = settings.get("PMO_INTERNATIONAL_QUALITY_WATCHLIST") or DEFAULT_SETTINGS.get("PMO_INTERNATIONAL_QUALITY_WATCHLIST", [])
+    top_10 = set(unique_symbols(settings.get("PMO_INTERNATIONAL_QUALITY_TOP_10") or DEFAULT_SETTINGS.get("PMO_INTERNATIONAL_QUALITY_TOP_10", [])))
+    include_higher_risk = bool(settings.get("PMO_INTERNATIONAL_QUALITY_INCLUDE_HIGHER_RISK", True))
+    rows: List[Dict[str, Any]] = []
+    for item in raw_rows:
+        if not isinstance(item, dict):
+            continue
+        symbol = str(item.get("symbol", "")).strip().upper()
+        if not symbol:
+            continue
+        tier = str(item.get("tier", "CORE_20")).strip().upper() or "CORE_20"
+        if tier == "HIGHER_RISK" and not include_higher_risk:
+            continue
+        execution_mode = str(item.get("execution_mode", "WATCH_ONLY")).strip().upper() or "WATCH_ONLY"
+        row = dict(item)
+        row.update({
+            "symbol": symbol,
+            "tier": tier,
+            "top_10": symbol in top_10,
+            "market": detect_market(symbol, "AUTO"),
+            "watchlist_only": True,
+            "live_order_unlocked": False,
+            "broker_support": "VERIFY_OTC_SUPPORT" if "OTC" in execution_mode else "VERIFY_US_LISTING_SUPPORT",
+            "source": "PMO_INTERNATIONAL_QUALITY_WATCHLIST",
+        })
+        rows.append(row)
+    return rows
+
+
+def pmo_international_quality_watchlist(settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    enabled = bool(settings.get("ENABLE_PMO_INTERNATIONAL_QUALITY_WATCHLIST", True))
+    rows = pmo_international_quality_rows(settings)
+    symbols = unique_symbols(row.get("symbol") for row in rows)
+    core_rows = [row for row in rows if row.get("tier") == "CORE_20"]
+    higher_risk_rows = [row for row in rows if row.get("tier") == "HIGHER_RISK"]
+    top_rows = [row for row in rows if row.get("top_10")]
+    return {
+        "ok": True,
+        "enabled": enabled,
+        "source": "user_supplied_long_term_non_us_quality_watchlist",
+        "watchlist_only": True,
+        "live_order_unlocked": False,
+        "settings_changed_by_endpoint": False,
+        "execution_note": "Added to PMO for scanning/research. Live execution remains blocked by PMO proof, broker support, and safety gates.",
+        "symbols": symbols,
+        "core_20_count": len(core_rows),
+        "higher_risk_count": len(higher_risk_rows),
+        "top_10": [row.get("symbol") for row in top_rows],
+        "allocation_model_pct": settings.get("PMO_INTERNATIONAL_QUALITY_ALLOCATION") or DEFAULT_SETTINGS.get("PMO_INTERNATIONAL_QUALITY_ALLOCATION", {}),
+        "rows": rows,
+    }
+
+
 def pmo_market_universe(settings: Dict[str, Any]) -> List[str]:
     if bool(settings.get("ENABLE_PMO_MICRO_ACCOUNT_MODE", False)):
         safe_symbols = settings.get("PMO_MICRO_SAFE_WATCHLIST") or DEFAULT_SETTINGS.get("PMO_MICRO_SAFE_WATCHLIST", [])
         return unique_symbols(safe_symbols)
     sector_symbols = [item["symbol"] for item in SECTOR_ROTATION_SYMBOLS]
+    international_symbols: List[str] = []
+    if bool(settings.get("ENABLE_PMO_INTERNATIONAL_QUALITY_WATCHLIST", True)):
+        international_symbols = [row["symbol"] for row in pmo_international_quality_rows(settings)]
     return unique_symbols(
         settings.get("PMO_WATCHLIST", []),
         settings.get("PMO_AUTO_WATCHLIST_UNIVERSE", []),
+        international_symbols,
         sector_symbols,
         ALL_MARKET_WATCHLIST_SYMBOLS,
     )
@@ -5161,6 +5326,24 @@ class PMOBot:
             elite_signals_report = pmo_elite_signals_empty("ERROR", f"elite signal score check error: {str(exc)[:80]}")
         edge_six_context["elite_signals"] = elite_signals_report
         edge_six_context["elite_signal"] = (elite_signals_report.get("ensemble", {}) or {}).get("status", "BUILDING")
+        try:
+            alpha_decay_report = pmo_alpha_decay_profile(symbol, self.settings)
+            alpha_decay_params = pmo_alpha_decay_params(symbol, self.settings)
+        except Exception as exc:
+            alpha_decay_report = pmo_alpha_decay_empty("ERROR", f"alpha decay score check error: {str(exc)[:80]}")
+            alpha_decay_params = {}
+        edge_six_context["alpha_decay"] = alpha_decay_report
+        try:
+            institutional_report = pmo_institutional_signals_report(
+                symbol,
+                self.settings,
+                candidate=edge_six_context,
+                market_change_pct=change_pct,
+                record=False,
+            )
+        except Exception as exc:
+            institutional_report = pmo_institutional_signals_empty("ERROR", f"institutional signal score check error: {str(exc)[:80]}")
+        edge_six_context["institutional_signals"] = institutional_report
         tod_gate_report = pmo_time_of_day_gate(self.settings, record=False)
         edge_six_context["time_of_day_gate"] = tod_gate_report
         engine_confluence_report = pmo_engine_confluence_report(edge_six_context, self.settings)
@@ -5179,6 +5362,11 @@ class PMOBot:
         if elite_signals_report.get("enabled"):
             ensemble = elite_signals_report.get("ensemble", {}) if isinstance(elite_signals_report.get("ensemble"), dict) else {}
             reasons.append(f"elite ensemble {ensemble.get('status', 'BUILDING')} bull {ensemble.get('bull_votes', 0)} / bear {ensemble.get('bear_votes', 0)}")
+        if alpha_decay_report.get("ok"):
+            alpha_profile = alpha_decay_report.get("profile", {}) if isinstance(alpha_decay_report.get("profile"), dict) else {}
+            reasons.append(f"alpha decay {alpha_profile.get('profile', 'UNKNOWN')} conf {alpha_profile.get('confidence', 'LOW')}")
+        if institutional_report.get("enabled"):
+            reasons.append(f"institutional {institutional_report.get('consensus', 'DATA_BUILDING')} ready {institutional_report.get('ready_count', 0)}")
         if trade_similarity_report.get("enabled"):
             reasons.append(f"similarity {trade_similarity_report.get('status')} from {trade_similarity_report.get('similar_count', 0)} clean match(es)")
         if tick_timing_report.get("enabled"):
@@ -5217,6 +5405,24 @@ class PMOBot:
             "elite_bear_votes": (elite_signals_report.get("journal", {}) or {}).get("elite_bear_votes", 0),
             "elite_agree_ratio": (elite_signals_report.get("journal", {}) or {}).get("elite_agree_ratio", 0),
             "elite_blockers": (elite_signals_report.get("journal", {}) or {}).get("elite_blockers", ""),
+            "alpha_decay": alpha_decay_report,
+            "alpha_decay_params": alpha_decay_params,
+            "decay_profile": (alpha_decay_report.get("profile", {}) or {}).get("profile", ""),
+            "decay_half_life": (alpha_decay_report.get("journal", {}) or {}).get("decay_half_life", ""),
+            "decay_optimal_hold": (alpha_decay_report.get("journal", {}) or {}).get("decay_optimal_hold", ""),
+            "decay_rec_tp": (alpha_decay_report.get("journal", {}) or {}).get("decay_rec_tp", ""),
+            "decay_rec_stop": (alpha_decay_report.get("journal", {}) or {}).get("decay_rec_stop", ""),
+            "decay_confidence": (alpha_decay_report.get("journal", {}) or {}).get("decay_confidence", ""),
+            "institutional_signals": institutional_report,
+            "inst_consensus": (institutional_report.get("journal", {}) or {}).get("inst_consensus", ""),
+            "inst_ready_count": (institutional_report.get("journal", {}) or {}).get("inst_ready_count", 0),
+            "inst_blockers": (institutional_report.get("journal", {}) or {}).get("inst_blockers", ""),
+            "inst_liquidity_vacuum": (institutional_report.get("journal", {}) or {}).get("inst_liquidity_vacuum", ""),
+            "inst_auction_probe": (institutional_report.get("journal", {}) or {}).get("inst_auction_probe", ""),
+            "inst_330_effect": (institutional_report.get("journal", {}) or {}).get("inst_330_effect", ""),
+            "inst_ask_prints": (institutional_report.get("journal", {}) or {}).get("inst_ask_prints", ""),
+            "inst_pead": (institutional_report.get("journal", {}) or {}).get("inst_pead", ""),
+            "inst_vrp": (institutional_report.get("journal", {}) or {}).get("inst_vrp", ""),
             "fvg": fvg_report,
             "fvg_found": fvg_report.get("fvg_found", False),
             "fvg_signal": fvg_report.get("fvg_signal", "NONE"),
@@ -5725,6 +5931,8 @@ class PMOBot:
         edge_engines = decision.get("edge_engines") if isinstance(decision.get("edge_engines"), dict) else {}
         intelligence_bundle = decision.get("intelligence_bundle") if isinstance(decision.get("intelligence_bundle"), dict) else {}
         elite_signals = decision.get("elite_signals") if isinstance(decision.get("elite_signals"), dict) else {}
+        alpha_decay = decision.get("alpha_decay") if isinstance(decision.get("alpha_decay"), dict) else {}
+        institutional_signals = decision.get("institutional_signals") if isinstance(decision.get("institutional_signals"), dict) else {}
         sentiment = decision.get("sentiment") if isinstance(decision.get("sentiment"), dict) else {}
         ml = decision.get("ml") if isinstance(decision.get("ml"), dict) else {}
         confluence = decision.get("engine_confluence") if isinstance(decision.get("engine_confluence"), dict) else entry_guard.get("engine_confluence") if isinstance(entry_guard.get("engine_confluence"), dict) else {}
@@ -5738,6 +5946,8 @@ class PMOBot:
         crypto_profile = decision.get("crypto_profile") if isinstance(decision.get("crypto_profile"), dict) else trade_plan.get("crypto_profile") if isinstance(trade_plan.get("crypto_profile"), dict) else {}
         intelligence_journal = intelligence_bundle.get("journal") if isinstance(intelligence_bundle.get("journal"), dict) else {}
         elite_journal = elite_signals.get("journal") if isinstance(elite_signals.get("journal"), dict) else {}
+        alpha_journal = alpha_decay.get("journal") if isinstance(alpha_decay.get("journal"), dict) else {}
+        institutional_journal = institutional_signals.get("journal") if isinstance(institutional_signals.get("journal"), dict) else {}
         sentiment_journal = sentiment.get("journal") if isinstance(sentiment.get("journal"), dict) else {}
         ml_journal = ml.get("journal") if isinstance(ml.get("journal"), dict) else {}
         quality_fields: Dict[str, Any] = {}
@@ -5802,6 +6012,23 @@ class PMOBot:
             "elite_blockers": elite_journal.get("elite_blockers", decision.get("elite_blockers", "")),
             "elite_read_only": True,
             "elite_score_influence": False,
+            "decay_profile": alpha_journal.get("decay_profile", decision.get("decay_profile", "")),
+            "decay_half_life": alpha_journal.get("decay_half_life", decision.get("decay_half_life", "")),
+            "decay_optimal_hold": alpha_journal.get("decay_optimal_hold", decision.get("decay_optimal_hold", "")),
+            "decay_rec_tp": alpha_journal.get("decay_rec_tp", decision.get("decay_rec_tp", "")),
+            "decay_rec_stop": alpha_journal.get("decay_rec_stop", decision.get("decay_rec_stop", "")),
+            "decay_confidence": alpha_journal.get("decay_confidence", decision.get("decay_confidence", "")),
+            "decay_read_only": not bool(active_settings.get("PMO_ALPHA_DECAY_USE_REC_PARAMS", False)),
+            "inst_consensus": institutional_journal.get("inst_consensus", decision.get("inst_consensus", "")),
+            "inst_ready_count": institutional_journal.get("inst_ready_count", decision.get("inst_ready_count", "")),
+            "inst_blockers": institutional_journal.get("inst_blockers", decision.get("inst_blockers", "")),
+            "inst_liquidity_vacuum": institutional_journal.get("inst_liquidity_vacuum", decision.get("inst_liquidity_vacuum", "")),
+            "inst_auction_probe": institutional_journal.get("inst_auction_probe", decision.get("inst_auction_probe", "")),
+            "inst_330_effect": institutional_journal.get("inst_330_effect", decision.get("inst_330_effect", "")),
+            "inst_ask_prints": institutional_journal.get("inst_ask_prints", decision.get("inst_ask_prints", "")),
+            "inst_pead": institutional_journal.get("inst_pead", decision.get("inst_pead", "")),
+            "inst_vrp": institutional_journal.get("inst_vrp", decision.get("inst_vrp", "")),
+            "inst_read_only": True,
             "sentiment_fng": sentiment_journal.get("sentiment_fng", ""),
             "sentiment_fng_label": sentiment_journal.get("sentiment_fng_label", ""),
             "sentiment_vix": sentiment_journal.get("sentiment_vix", ""),
@@ -13158,6 +13385,32 @@ def pmo_trade_discipline_check(
         confirmation_sources.append("direction")
     else:
         blockers.append("discipline: no clear directional plan")
+    institutional_check: Dict[str, Any] = {}
+    if settings.get("ENABLE_PMO_INSTITUTIONAL_SIGNALS", True):
+        try:
+            institutional_check = pmo_institutional_signals_report(
+                symbol,
+                settings,
+                candidate=row,
+                bars=[],
+                quotes=[],
+                earnings_rows=[],
+                iv_rows=[],
+                market_change_pct=row.get("market_change_pct", row.get("change_pct")),
+                now_value=row.get("timestamp") or row.get("time"),
+                record=False,
+            )
+            three_thirty = ((institutional_check.get("signals") or {}).get("three_thirty_effect") or {})
+            if three_thirty.get("hard_block"):
+                blockers.append(f"discipline: 3:30 effect blocks trend-direction entry - {three_thirty.get('reason')}")
+            elif three_thirty.get("status") == "CAUTION":
+                warnings.append(f"discipline: 3:30 effect caution - {three_thirty.get('reason')}")
+            if safe_float(institutional_check.get("ready_count"), 0) > 0:
+                confirmations.append(f"institutional signal ready count {institutional_check.get('ready_count')}")
+                confirmation_sources.append("institutional_signals")
+        except Exception as exc:
+            institutional_check = {"ok": False, "error": str(exc)[:160]}
+            warnings.append("discipline: institutional signal check failed; keeping review conservative")
     regime_name = str(regime.get("regime") or "UNKNOWN").upper()
     risk_multiplier = safe_float(regime.get("risk_multiplier"), 1.0)
     if regime_name not in {"UNKNOWN", "DEFENSIVE", "CHOPPY"} and risk_multiplier <= 1.25:
@@ -13272,6 +13525,7 @@ def pmo_trade_discipline_check(
             "rule": "Ratios can start review, but PMO must combine them with cash-flow, revenue trends, competitive position, and catalysts before raising confidence.",
         },
         "strategy_knowledge": strategy_check,
+        "institutional_signals": institutional_check,
         "live_order_allowed": False,
         "definitions": pmo_trade_discipline_definitions(),
     }
@@ -18254,7 +18508,7 @@ def pmo_cms_known_module_seeds() -> List[Dict[str, Any]]:
         {"id": "core_safety", "name": "Core Safety", "category": "Core Safety", "setting_prefixes": ["ALPACA_PAPER", "PMO_LIVE", "PMO_ALLOW_LIVE", "PMO_DRY_RUN", "ORDER_AUTOMATION"], "endpoints": ["/api/safety/status", "/api/safety/preset", "/api/cms/safety-preset"], "section": "pmoSafetyModePanel", "reports": [str(PMO_MODE_CHANGE_EVENTS_FILE)], "safety_level": "LIVE_LOCKED", "notes": "Paper/live/order safety switches and preset guardrails."},
         {"id": "alpaca_broker", "name": "Alpaca / Broker", "category": "Alpaca / Broker", "setting_prefixes": ["ALPACA_", "ENABLE_ALPACA_ORDER_EXECUTOR", "PMO_ORDER_EXECUTION_MODE"], "endpoints": ["/api/status", "/api/executor/status", "/api/broker-reconciliation"], "section": "ops-broker-grid", "reports": [str(PMO_ORDER_EXECUTION_FILE), str(PMO_TRADE_PLAN_FILE)], "safety_level": "PAPER_ONLY", "notes": "Broker connection, reconciliation, executor, and order journal."},
         {"id": "tradingview", "name": "TradingView", "category": "TradingView", "setting_prefixes": ["TRADINGVIEW_", "ENABLE_TRADINGVIEW", "RUN_TRADINGVIEW"], "endpoints": ["/tradingview", "/api/tradingview/status", "/api/tradingview/refresh-suite", "/api/tradingview/refresh-pine", "/api/tradingview/test-alert"], "section": "tradingview", "reports": [str(CSV_DIR / "pmo_tradingview_alerts.csv")], "safety_level": "SCAN_ONLY", "notes": "Webhook bridge, alert mode, Pine files, and test alerts."},
-        {"id": "watchlist", "name": "Watchlist", "category": "Watchlist", "setting_prefixes": ["PMO_WATCHLIST", "PMO_AUTO_WATCHLIST", "ENABLE_PMO_AUTO_WATCHLIST"], "endpoints": ["/api/watchlist/refresh", "/api/watchlist/auto-refresh", "/api/market-data"], "section": "watchlist", "reports": [str(AUTO_WATCHLIST_FILE), str(AUTO_WATCHLIST_CSV)], "safety_level": "NO_ORDER_SUBMIT", "notes": "Manual, auto, expanded, sector, and discovery watchlists."},
+        {"id": "watchlist", "name": "Watchlist", "category": "Watchlist", "setting_prefixes": ["PMO_WATCHLIST", "PMO_AUTO_WATCHLIST", "PMO_INTERNATIONAL_QUALITY", "ENABLE_PMO_AUTO_WATCHLIST", "ENABLE_PMO_INTERNATIONAL_QUALITY"], "endpoints": ["/api/watchlist/refresh", "/api/watchlist/auto-refresh", "/api/market-data", "/api/international-quality-watchlist"], "section": "watchlist", "reports": [str(AUTO_WATCHLIST_FILE), str(AUTO_WATCHLIST_CSV)], "safety_level": "NO_ORDER_SUBMIT", "notes": "Manual, auto, expanded, sector, international quality, and discovery watchlists."},
         {"id": "paper_proof", "name": "Paper Proof", "category": "Paper Proof", "setting_prefixes": ["PMO_PAPER_PROOF", "PMO_MIN_PAPER", "ENABLE_PMO_V112"], "endpoints": ["/api/paper-proof/refresh", "/api/paper-proof/diagnosis", "/api/v112/paper-replay/log", "/api/v112/outcomes/refresh", "/api/v112/proof-report"], "section": "stability-proof-dashboard", "reports": [str(PMO_PAPER_PROOF_FILE), str(PMO_V112_PROOF_REPORT_FILE), str(PMO_PROOF_DIAGNOSIS_FILE)], "safety_level": "LIVE_LOCK", "notes": "Paper proof, proof diagnosis, replay journal, closed outcomes, and live-readiness proof gates."},
         {"id": "asi_learning", "name": "ASI Learning", "category": "ASI Learning", "setting_prefixes": ["ENABLE_PMO_ASI", "PMO_ASI"], "endpoints": ["/api/v113/asi/refresh", "/api/v113/asi/apply", "/api/v113/asi/report"], "section": "asi", "reports": [str(PMO_ASI_MEMORY_FILE), str(PMO_ASI_EVENTS_FILE)], "safety_level": "OBSERVE_ONLY", "notes": "ASI recommendations and watchlist influence controls."},
         {"id": "quantum_learning", "name": "Quantum Learning", "category": "Quantum Learning", "setting_prefixes": ["ENABLE_PMO_QUANTUM", "PMO_QUANTUM"], "endpoints": ["/api/quantum-learning/refresh"], "section": "quantum", "reports": [str(PMO_QUANTUM_MATRIX_FILE), str(PMO_QUANTUM_EVENTS_FILE)], "safety_level": "WATCHLIST_ASSIST", "notes": "Sector memory and score adjustment review."},
@@ -19147,6 +19401,8 @@ def pmo_intelligence_status(settings: Optional[Dict[str, Any]] = None) -> Dict[s
         "report_count": len(reports),
         "learning_constellation": constellation,
         "intelligence_bundle": pmo_latest_intelligence_bundle_snapshot(settings),
+        "alpha_decay": pmo_alpha_decay_snapshot(settings, record=False),
+        "institutional_signals": read_json_file(PMO_INSTITUTIONAL_SIGNALS_REPORT_FILE, {"status": "WAITING", "read_only": True}),
         "next_action": "Premarket briefing is disabled until ENABLE_PMO_PREMARKET_BRIEFING is turned on." if not settings.get("ENABLE_PMO_PREMARKET_BRIEFING", False) else "Run the premarket briefing from Intelligence Ops.",
     }
 
@@ -19649,6 +19905,217 @@ def pmo_walk_forward_validation_report(settings: Optional[Dict[str, Any]] = None
     if record:
         write_json_file(PMO_WALK_FORWARD_REPORT_FILE, payload)
     return payload
+
+
+def pmo_alpha_decay_empty(status: str = "UNAVAILABLE", note: str = "") -> Dict[str, Any]:
+    return {
+        "ok": False,
+        "enabled": False,
+        "available": PMO_ALPHA_DECAY_AVAILABLE,
+        "status": status,
+        "note": note,
+        "read_only": True,
+        "score_influence": False,
+        "live_unlocked": False,
+        "orders_placed": False,
+        "settings_changed": False,
+        "error": "" if PMO_ALPHA_DECAY_AVAILABLE else PMO_ALPHA_DECAY_ERROR,
+    }
+
+
+def pmo_alpha_decay_profiler(settings: Optional[Dict[str, Any]] = None, reload_journal: bool = False) -> Any:
+    settings = settings or load_settings()
+    if not PMO_ALPHA_DECAY_AVAILABLE or _ALPHA_DECAY is None:
+        return None
+    if reload_journal or not getattr(_ALPHA_DECAY, "_rows", []):
+        _ALPHA_DECAY._blocklist = pmo_symbol_blocklist(settings)
+        _ALPHA_DECAY._default_tp = safe_float(settings.get("PMO_DEFAULT_TAKE_PROFIT_PCT"), 6.0)
+        _ALPHA_DECAY._default_stop = safe_float(settings.get("PMO_DEFAULT_STOP_LOSS_PCT"), 4.0)
+        _ALPHA_DECAY._default_hold = int(safe_float(settings.get("PMO_PAPER_MAX_HOLD_MINUTES"), 90))
+        _ALPHA_DECAY._min_trades = int(max(1, safe_float(settings.get("PMO_ALPHA_DECAY_MIN_TRADES", 3), 3)))
+        _ALPHA_DECAY._confident_trades = int(max(_ALPHA_DECAY._min_trades, safe_float(settings.get("PMO_ALPHA_DECAY_CONFIDENT_TRADES", 8), 8)))
+        _ALPHA_DECAY.load(str(TRADE_JOURNAL_FILE))
+    return _ALPHA_DECAY
+
+
+def pmo_alpha_decay_snapshot(settings: Optional[Dict[str, Any]] = None, record: bool = False) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    if not bool(settings.get("PMO_ALPHA_DECAY_ENABLED", True)):
+        return pmo_alpha_decay_empty("OFF", "PMO_ALPHA_DECAY_ENABLED is false.")
+    profiler = pmo_alpha_decay_profiler(settings, reload_journal=True)
+    if profiler is None:
+        return pmo_alpha_decay_empty("UNAVAILABLE", PMO_ALPHA_DECAY_ERROR or "alpha decay profiler unavailable.")
+    summary = profiler.summary_report()
+    payload = {
+        "ok": True,
+        "enabled": True,
+        "available": True,
+        "status": "READY",
+        "updated": now_et().isoformat(),
+        "source_file": str(TRADE_JOURNAL_FILE),
+        "read_only": True,
+        "use_recommended_params": bool(settings.get("PMO_ALPHA_DECAY_USE_REC_PARAMS", False)),
+        "confidence_gate": str(settings.get("PMO_ALPHA_DECAY_CONFIDENCE_GATE", "MEDIUM")),
+        **summary,
+        "file": str(PMO_ALPHA_DECAY_REPORT_FILE),
+        "live_unlocked": False,
+        "orders_placed": False,
+        "settings_changed": False,
+    }
+    if record:
+        write_json_file(PMO_ALPHA_DECAY_REPORT_FILE, payload)
+    return payload
+
+
+def pmo_alpha_decay_profile(symbol: str, settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    if not bool(settings.get("PMO_ALPHA_DECAY_ENABLED", True)):
+        return pmo_alpha_decay_empty("OFF", "PMO_ALPHA_DECAY_ENABLED is false.")
+    profiler = pmo_alpha_decay_profiler(settings, reload_journal=True)
+    if profiler is None:
+        return pmo_alpha_decay_empty("UNAVAILABLE", PMO_ALPHA_DECAY_ERROR or "alpha decay profiler unavailable.")
+    clean_symbol = str(symbol or "").upper().strip()
+    profile = profiler.get_profile(clean_symbol)
+    if not profile:
+        return {
+            "ok": False,
+            "enabled": True,
+            "available": True,
+            "status": "DATA_REQUIRED",
+            "ticker": clean_symbol,
+            "error": f"No alpha decay profile for {clean_symbol}; need {settings.get('PMO_ALPHA_DECAY_MIN_TRADES', 3)}+ closed trades.",
+            "read_only": True,
+            "live_unlocked": False,
+            "orders_placed": False,
+        }
+    return {
+        "ok": True,
+        "enabled": True,
+        "available": True,
+        "status": "READY",
+        "read_only": True,
+        "profile": profile.get_dashboard_dict(),
+        "journal": profile.get_journal_dict(),
+        "live_unlocked": False,
+        "orders_placed": False,
+        "settings_changed": False,
+    }
+
+
+def pmo_alpha_decay_params(symbol: str, settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    clean_symbol = str(symbol or "").upper().strip()
+    enabled = bool(settings.get("PMO_ALPHA_DECAY_ENABLED", True))
+    profiler = pmo_alpha_decay_profiler(settings, reload_journal=True) if enabled else None
+    if profiler is None:
+        params = {
+            "tp_pct": safe_float(settings.get("PMO_DEFAULT_TAKE_PROFIT_PCT"), 6.0),
+            "stop_pct": safe_float(settings.get("PMO_DEFAULT_STOP_LOSS_PCT"), 4.0),
+            "hold_min": int(safe_float(settings.get("PMO_PAPER_MAX_HOLD_MINUTES"), 90)),
+            "profile": "DEFAULT",
+            "half_life": None,
+            "source": "DISABLED" if not enabled else "DEFAULT",
+            "confidence": "NONE",
+        }
+    else:
+        params = profiler.get_optimal_params(clean_symbol, min_confidence=str(settings.get("PMO_ALPHA_DECAY_CONFIDENCE_GATE", "MEDIUM")))
+    return {
+        "ok": True,
+        "ticker": clean_symbol,
+        "enabled": enabled,
+        "read_only": not bool(settings.get("PMO_ALPHA_DECAY_USE_REC_PARAMS", False)),
+        "use_recommended_params": bool(settings.get("PMO_ALPHA_DECAY_USE_REC_PARAMS", False)),
+        **params,
+        "live_unlocked": False,
+        "orders_placed": False,
+        "settings_changed": False,
+    }
+
+
+def pmo_institutional_signals_empty(status: str = "UNAVAILABLE", note: str = "") -> Dict[str, Any]:
+    return {
+        "ok": False,
+        "enabled": False,
+        "available": PMO_INSTITUTIONAL_SIGNALS_AVAILABLE,
+        "status": status,
+        "note": note,
+        "read_only": True,
+        "score_influence": False,
+        "live_unlocked": False,
+        "orders_placed": False,
+        "settings_changed": False,
+        "error": "" if PMO_INSTITUTIONAL_SIGNALS_AVAILABLE else PMO_INSTITUTIONAL_SIGNALS_ERROR,
+        "signals": {},
+        "journal": {},
+    }
+
+
+def pmo_filter_symbol_rows(rows: List[Dict[str, Any]], symbol: str) -> List[Dict[str, Any]]:
+    clean = str(symbol or "").upper().strip()
+    filtered = []
+    for row in rows or []:
+        row_symbol = str(row.get("symbol") or row.get("ticker") or "").upper().strip()
+        if not row_symbol or row_symbol == clean:
+            filtered.append(row)
+    return filtered
+
+
+def pmo_institutional_signals_report(
+    symbol: str,
+    settings: Optional[Dict[str, Any]] = None,
+    *,
+    candidate: Optional[Dict[str, Any]] = None,
+    bars: Optional[List[Dict[str, Any]]] = None,
+    quotes: Optional[List[Dict[str, Any]]] = None,
+    earnings_rows: Optional[List[Dict[str, Any]]] = None,
+    iv_rows: Optional[List[Dict[str, Any]]] = None,
+    earnings_text: str = "",
+    market_change_pct: Any = None,
+    now_value: Any = None,
+    record: bool = False,
+) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    if not bool(settings.get("ENABLE_PMO_INSTITUTIONAL_SIGNALS", True)):
+        return pmo_institutional_signals_empty("OFF", "ENABLE_PMO_INSTITUTIONAL_SIGNALS is false.")
+    if not PMO_INSTITUTIONAL_SIGNALS_AVAILABLE or pmo_institutional_analyze is None:
+        return pmo_institutional_signals_empty("UNAVAILABLE", PMO_INSTITUTIONAL_SIGNALS_ERROR or "institutional signals unavailable.")
+    clean_symbol = str(symbol or "").strip().upper()
+    try:
+        lookback = int(max(30, safe_float(settings.get("PMO_LIQUIDITY_VACUUM_LOOKBACK_BARS", 20), 20) + 20))
+        bar_rows = bars if isinstance(bars, list) else pmo_edge_load_ohlcv_rows(clean_symbol, intraday=True, limit=lookback)
+        quote_rows = quotes if isinstance(quotes, list) else pmo_filter_symbol_rows(recent_csv_rows(PMO_QUOTE_PRINTS_FILE, 200), clean_symbol)
+        earnings_data = earnings_rows if isinstance(earnings_rows, list) else pmo_filter_symbol_rows(recent_csv_rows(PMO_EARNINGS_EVENTS_FILE, 500), clean_symbol)
+        iv_data = iv_rows if isinstance(iv_rows, list) else pmo_filter_symbol_rows(recent_csv_rows(PMO_IV_CONTEXT_FILE, 500), clean_symbol)
+        payload = pmo_institutional_analyze(
+            clean_symbol,
+            settings,
+            bars=bar_rows,
+            candidate=candidate or {},
+            quotes=quote_rows,
+            earnings_rows=earnings_data,
+            iv_rows=iv_data,
+            earnings_text=earnings_text,
+            market_change_pct=market_change_pct,
+            now_value=now_value,
+        )
+        payload.update({
+            "updated": now_et().isoformat(),
+            "available": True,
+            "data_sources": {
+                "intraday_bars": "pmo_backtest_data or Alpaca chart cache",
+                "quote_prints": str(PMO_QUOTE_PRINTS_FILE),
+                "earnings_events": str(PMO_EARNINGS_EVENTS_FILE),
+                "iv_context": str(PMO_IV_CONTEXT_FILE),
+            },
+            "report_file": str(PMO_INSTITUTIONAL_SIGNALS_REPORT_FILE),
+        })
+        if record:
+            write_json_file(PMO_INSTITUTIONAL_SIGNALS_REPORT_FILE, payload)
+        return payload
+    except Exception as exc:
+        payload = pmo_institutional_signals_empty("ERROR", f"institutional signal error: {str(exc)[:160]}")
+        payload.update({"enabled": True, "symbol": clean_symbol, "updated": now_et().isoformat(), "error": str(exc)[:200]})
+        return payload
 
 
 def pmo_barchart_index_context(settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -26233,6 +26700,52 @@ def api_elite_walk_forward():
     return jsonify({"ok": True, "walk_forward": pmo_walk_forward_validation_report(settings, record=bool(payload.get("record", False)))})
 
 
+@app.route("/api/institutional-signals", methods=["GET", "POST"])
+def api_institutional_signals():
+    payload = request.get_json(force=True, silent=True) or {} if request.method == "POST" else {}
+    settings = load_settings()
+    symbol = str(payload.get("symbol") or request.args.get("symbol") or "SPY").strip().upper()
+    candidate = payload.get("candidate") if isinstance(payload.get("candidate"), dict) else {}
+    bars = payload.get("bars") if isinstance(payload.get("bars"), list) else None
+    quotes = payload.get("quotes") if isinstance(payload.get("quotes"), list) else None
+    earnings_rows = payload.get("earnings_rows") if isinstance(payload.get("earnings_rows"), list) else None
+    iv_rows = payload.get("iv_rows") if isinstance(payload.get("iv_rows"), list) else None
+    earnings_text = str(payload.get("earnings_text") or "")
+    market_change_pct = payload.get("market_change_pct", request.args.get("market_change_pct"))
+    now_value = payload.get("now") or payload.get("timestamp") or request.args.get("now") or request.args.get("timestamp")
+    report = pmo_institutional_signals_report(
+        symbol,
+        settings,
+        candidate=candidate,
+        bars=bars,
+        quotes=quotes,
+        earnings_rows=earnings_rows,
+        iv_rows=iv_rows,
+        earnings_text=earnings_text,
+        market_change_pct=market_change_pct,
+        now_value=now_value,
+        record=bool(payload.get("record", False)),
+    )
+    return jsonify({"ok": bool(report.get("ok")), "institutional_signals": report})
+
+
+@app.route("/api/alpha-decay/summary", methods=["GET", "POST"])
+def api_alpha_decay_summary():
+    payload = request.get_json(force=True, silent=True) or {} if request.method == "POST" else {}
+    settings = load_settings()
+    return jsonify({"ok": True, "alpha_decay": pmo_alpha_decay_snapshot(settings, record=bool(payload.get("record", False)))})
+
+
+@app.route("/api/alpha-decay/profile/<ticker>", methods=["GET"])
+def api_alpha_decay_profile(ticker):
+    return jsonify(pmo_alpha_decay_profile(ticker, load_settings()))
+
+
+@app.route("/api/alpha-decay/params/<ticker>", methods=["GET"])
+def api_alpha_decay_params(ticker):
+    return jsonify(pmo_alpha_decay_params(ticker, load_settings()))
+
+
 @app.route("/api/crypto/status", methods=["GET"])
 def api_crypto_status():
     settings = load_settings()
@@ -30418,13 +30931,28 @@ def api_connections_refresh():
 @app.route("/api/market-universe")
 def api_market_universe():
     settings = load_settings()
+    international_quality = pmo_international_quality_watchlist(settings)
     return jsonify({
         "ok": True,
         "supported_markets": settings.get("PMO_SUPPORTED_MARKETS", []),
         "execution_note": "PMO scans the full universe, but live execution remains limited by Alpaca support and PMO safety gates.",
         "symbols": pmo_market_universe(settings),
         "sectors": SECTOR_ROTATION_SYMBOLS,
+        "international_quality": {
+            "enabled": international_quality["enabled"],
+            "watchlist_only": international_quality["watchlist_only"],
+            "core_20_count": international_quality["core_20_count"],
+            "higher_risk_count": international_quality["higher_risk_count"],
+            "symbols": international_quality["symbols"],
+        },
     })
+
+
+@app.route("/api/international-quality-watchlist", methods=["GET"])
+@app.route("/api/international/watchlist", methods=["GET"])
+def api_international_quality_watchlist():
+    settings = load_settings()
+    return jsonify(pmo_international_quality_watchlist(settings))
 
 
 @app.route("/api/tradingview/refresh-pine", methods=["POST"])

@@ -243,6 +243,47 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
             with self.subTest(score=score):
                 self.assertEqual(self.mod.pmo_score_range_label(score, dict(self.mod.DEFAULT_SETTINGS)), expected)
 
+    def test_international_quality_watchlist_tracks_core_top_and_otc_safety(self):
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        snapshot = self.mod.pmo_international_quality_watchlist(settings)
+        rows_by_symbol = {row["symbol"]: row for row in snapshot["rows"]}
+
+        self.assertTrue(snapshot["ok"])
+        self.assertTrue(snapshot["watchlist_only"])
+        self.assertFalse(snapshot["live_order_unlocked"])
+        self.assertEqual(snapshot["core_20_count"], 20)
+        self.assertEqual(snapshot["higher_risk_count"], 5)
+        self.assertEqual(snapshot["allocation_model_pct"]["AI_CHIPS"], 40)
+        self.assertIn("TSM", snapshot["top_10"])
+        self.assertIn("ADYEY", snapshot["top_10"])
+        self.assertEqual(rows_by_symbol["TSM"]["execution_mode"], "US_LISTED_ADR_COMMON")
+        self.assertEqual(rows_by_symbol["ADYEY"]["broker_support"], "VERIFY_OTC_SUPPORT")
+        self.assertTrue(rows_by_symbol["ADYEY"]["top_10"])
+        self.assertEqual(rows_by_symbol["BABA"]["tier"], "HIGHER_RISK")
+
+    def test_international_quality_symbols_join_market_universe_when_enabled(self):
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        settings["ENABLE_PMO_MICRO_ACCOUNT_MODE"] = False
+        universe = self.mod.pmo_market_universe(settings)
+        self.assertIn("ASML", universe)
+        self.assertIn("NVO", universe)
+        self.assertIn("OTGLY", universe)
+
+        settings["ENABLE_PMO_INTERNATIONAL_QUALITY_WATCHLIST"] = False
+        disabled_universe = self.mod.pmo_market_universe(settings)
+        self.assertNotIn("ASML", disabled_universe)
+        self.assertNotIn("OTGLY", disabled_universe)
+
+    def test_international_quality_endpoint_is_read_only(self):
+        response = self.client.get("/api/international-quality-watchlist")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertTrue(payload["watchlist_only"])
+        self.assertFalse(payload["live_order_unlocked"])
+        self.assertFalse(payload["settings_changed_by_endpoint"])
+        self.assertGreaterEqual(len(payload["rows"]), 20)
+
     def test_sqlite_paper_outcome_upsert_populates_legacy_created_at(self):
         with tempfile.TemporaryDirectory() as tmp:
             db_path = Path(tmp) / "pmo_storage.sqlite3"
@@ -1029,9 +1070,11 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         original_smart_limits = self.mod.pmo_smart_trade_limit_snapshot
         original_paper_proof = self.mod.pmo_paper_proof_snapshot
         original_order_file = self.mod.PMO_ORDER_EXECUTION_FILE
+        original_order_prestage_file = self.mod.PMO_ORDER_PRESTAGE_FILE
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 self.mod.PMO_ORDER_EXECUTION_FILE = Path(tmp) / "pmo_order_execution.csv"
+                self.mod.PMO_ORDER_PRESTAGE_FILE = Path(tmp) / "pmo_order_prestage.json"
                 settings = dict(self.mod.DEFAULT_SETTINGS)
                 settings.update({
                     "ENABLE_PMO_MULTI_ACCOUNT_PAPER_EXECUTION": True,
@@ -1044,6 +1087,7 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
                     "PMO_DRY_RUN_ORDERS": False,
                     "ALPACA_PAPER": True,
                     "ENABLE_PMO_SCORE_REBUILD_GATES": False,
+                    "ENABLE_PMO_OPENING_HOUR_QUALITY_GATES": False,
                     "PMO_WHY_NOT_REQUIRE_RVOL": False,
                     "ENABLE_PMO_WHY_NOT_VWAP_BLOCKER": False,
                     "PMO_WHY_NOT_REQUIRE_VWAP_DATA": False,
@@ -1099,6 +1143,7 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
             self.mod.pmo_smart_trade_limit_snapshot = original_smart_limits
             self.mod.pmo_paper_proof_snapshot = original_paper_proof
             self.mod.PMO_ORDER_EXECUTION_FILE = original_order_file
+            self.mod.PMO_ORDER_PRESTAGE_FILE = original_order_prestage_file
 
     def test_execution_firewall_never_allows_live_with_paper_mode(self):
         settings = dict(self.mod.DEFAULT_SETTINGS)
@@ -1265,6 +1310,129 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertEqual(wf["test_rows"], 2)
         edge_validation = next(row for row in wf["validations"] if row["field"] == "edge_signal")
         self.assertTrue(edge_validation["validated"])
+
+    def test_alpha_decay_profiler_profiles_ticker_specific_params(self):
+        alpha_mod = load_local_module("pmo_alpha_decay")
+        rows = [
+            {"timestamp": "2026-06-01T10:00:00-04:00", "symbol": "NVDA", "status": "CLOSED_WIN", "pnl": "4.0", "hold_minutes": "10"},
+            {"timestamp": "2026-06-02T10:00:00-04:00", "symbol": "NVDA", "status": "CLOSED_WIN", "pnl": "3.5", "hold_minutes": "12"},
+            {"timestamp": "2026-06-03T10:00:00-04:00", "symbol": "NVDA", "status": "CLOSED_WIN", "pnl": "3.0", "hold_minutes": "15"},
+            {"timestamp": "2026-06-04T10:00:00-04:00", "symbol": "NVDA", "status": "CLOSED_LOSS", "pnl": "-2.0", "hold_minutes": "34"},
+            {"timestamp": "2026-06-05T10:00:00-04:00", "symbol": "HOOD", "status": "CLOSED_WIN", "pnl": "9.0", "hold_minutes": "5"},
+        ]
+        profiler = alpha_mod.AlphaDecayProfiler(min_trades=3, confident_trades=4)
+        loaded = profiler.load(rows)
+        profile = profiler.get_profile("NVDA")
+        params = profiler.get_optimal_params("NVDA", min_confidence="LOW")
+
+        self.assertEqual(loaded, 4)
+        self.assertIsNotNone(profile)
+        self.assertEqual(profile.move_profile, "FAST_BURST")
+        self.assertEqual(profile.confidence, "HIGH")
+        self.assertEqual(params["source"], "TICKER_PROFILE")
+        self.assertLessEqual(params["tp_pct"], 5.0)
+        self.assertEqual(profiler.get_profile("HOOD"), None)
+
+    def test_alpha_decay_api_is_read_only_and_does_not_unlock_live(self):
+        response = self.client.get("/api/alpha-decay/summary")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()["alpha_decay"]
+        self.assertTrue(payload["read_only"])
+        self.assertFalse(payload["orders_placed"])
+        self.assertFalse(payload["live_unlocked"])
+        self.assertFalse(payload["settings_changed"])
+
+        params_response = self.client.get("/api/alpha-decay/params/SPY")
+        self.assertEqual(params_response.status_code, 200)
+        params = params_response.get_json()
+        self.assertTrue(params["read_only"])
+        self.assertFalse(params["orders_placed"])
+        self.assertFalse(params["live_unlocked"])
+        disabled = dict(self.mod.DEFAULT_SETTINGS)
+        disabled["PMO_ALPHA_DECAY_ENABLED"] = False
+        disabled_params = self.mod.pmo_alpha_decay_params("SPY", disabled)
+        self.assertFalse(disabled_params["enabled"])
+        self.assertEqual(disabled_params["source"], "DISABLED")
+
+    def test_institutional_signals_cover_all_requested_edges(self):
+        inst_mod = load_local_module("pmo_institutional_signals")
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        bars = []
+        for idx, close in enumerate(list(range(100, 110)) + list(range(112, 123))):
+            bars.append({"timestamp": f"2026-06-17T10:{idx:02d}:00-04:00", "open": close - 0.2, "high": close + 0.4, "low": close - 0.4, "close": close, "volume": 1000})
+        bars.append({"timestamp": "2026-06-17T10:30:00-04:00", "open": 110.2, "high": 110.8, "low": 110.0, "close": 110.5, "volume": 1800})
+        report = inst_mod.analyze_institutional_signals(
+            "SPY",
+            settings,
+            bars=bars,
+            candidate={"symbol": "SPY", "bias": "CALL_BIAS", "time": "15:35", "change_pct": 1.2},
+            quotes=[
+                {"symbol": "SPY", "price": 101.0, "bid": 100.9, "ask": 101.0},
+                {"symbol": "SPY", "price": 101.1, "bid": 101.0, "ask": 101.1},
+                {"symbol": "SPY", "price": 101.2, "bid": 101.1, "ask": 101.2},
+            ],
+            earnings_rows=[{"symbol": "SPY", "earnings_date": "2026-06-14", "surprise_pct": "8.5", "result": "BEAT"}],
+            iv_rows=[{"symbol": "SPY", "iv_rank": "76", "implied_volatility": "0.52", "realized_volatility": "0.31"}],
+            earnings_text="Revenue increased 23 percent, EPS was 2.31, margin reached 14 percent, cash flow was 1.2 billion.",
+            market_change_pct=1.2,
+            now_value="2026-06-17T15:35:00",
+        )
+        signals = report["signals"]
+        self.assertEqual(signals["liquidity_vacuum"]["status"], "READY")
+        self.assertNotEqual(signals["auction_vwap_atr"]["status"], "DATA_REQUIRED")
+        self.assertTrue(signals["three_thirty_effect"]["hard_block"])
+        self.assertEqual(signals["earnings_language"]["status"], "READY")
+        self.assertEqual(signals["ask_side_prints"]["status"], "READY")
+        self.assertEqual(signals["pead"]["status"], "READY")
+        self.assertEqual(signals["volatility_risk_premium"]["status"], "READY")
+        self.assertFalse(report["orders_placed"])
+        self.assertFalse(report["live_unlocked"])
+
+    def test_institutional_signals_api_is_read_only(self):
+        response = self.client.post(
+            "/api/institutional-signals",
+            json={
+                "symbol": "SPY",
+                "candidate": {"symbol": "SPY", "bias": "CALL_BIAS", "time": "15:35", "change_pct": 1.0},
+                "market_change_pct": 1.0,
+                "now": "2026-06-17T15:35:00",
+                "bars": [],
+                "quotes": [],
+                "earnings_rows": [],
+                "iv_rows": [],
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        report = response.get_json()["institutional_signals"]
+        self.assertTrue(report["read_only"])
+        self.assertFalse(report["orders_placed"])
+        self.assertFalse(report["live_unlocked"])
+        self.assertEqual(report["signals"]["three_thirty_effect"]["status"], "BLOCK")
+
+    def test_trade_discipline_blocks_trend_entry_after_three_thirty(self):
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        settings.update({
+            "PMO_DISCIPLINE_MIN_CONFIRMATIONS": 0,
+            "PMO_WHY_NOT_REQUIRE_RVOL": False,
+            "ENABLE_PMO_STRATEGY_KNOWLEDGE_PACK": False,
+        })
+        report = self.mod.pmo_trade_discipline_check(
+            {
+                "symbol": "SPY",
+                "score": 90,
+                "relative_volume": 2.4,
+                "bias": "CALL_BIAS",
+                "change_pct": 1.1,
+                "time": "15:35",
+                "notional": 20,
+            },
+            settings,
+            regime={"regime": "BULLISH", "risk_multiplier": 1.0},
+            vwap_check={"status": "PASS"},
+        )
+        self.assertEqual(report["status"], "BLOCK")
+        self.assertTrue(any("3:30 effect blocks trend-direction entry" in item for item in report["blockers"]))
+        self.assertFalse(report["live_order_allowed"])
 
     def test_elite_signals_api_is_read_only(self):
         response = self.client.post(
