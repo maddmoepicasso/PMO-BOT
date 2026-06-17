@@ -1568,14 +1568,29 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
 
     def test_control_deck_injects_deep_intelligence_panel(self):
         html = (
+            ".const-wrap{position:relative;height:215px}\n"
+            "<svg class=\"csvg\" viewBox=\"0 0 570 215\"></svg>\n"
+            "<div class=\"star-node\" style=\"left:266px;top:3px\" onclick=\"aiNodeInfo('agent')\"><div class=\"sc s-green\" style=\"width:31px;height:31px;font-size:13px\" id=\"cn-agent\">PLAN</div><div class=\"sl\" style=\"color:var(--green)\">Agent Plan</div></div>\n"
+            "  const whynot=engineMap.whynot?!!engineMap.whynot.active:!!s.ENABLE_PMO_WHY_NOT_ENGINE;\n"
+            "  const agent=engineMap.agent?!!engineMap.agent.active:!!s.ENABLE_PMO_ARCHITECTURE_PLANNER;\n"
+            "  nodeState('whynot',whynot?'amber':'dim');\n"
+            "    : [quantum,learning,warp,asi,signal,watchlist,sector,v112,whynot,agent].filter(Boolean).length;\n"
+            "  const total=Number.isFinite(Number(constellation.total))?Number(constellation.total):10;\n"
+            "    whynot:['Why-Not Engine','Records every blocked signal with reason.',[['ENABLE_PMO_WHY_NOT_ENGINE',S('ENABLE_PMO_WHY_NOT_ENGINE'),'var(--amber)'],['Min score',S('PMO_WHY_NOT_MIN_SCORE'),'var(--text2)'],['Min RVOL',S('PMO_WHY_NOT_MIN_RVOL'),'var(--text2)'],['Record audit',S('PMO_WHY_NOT_RECORD_AUDIT'),'var(--text2)']]],\n"
             "<div class=\"ca\" onclick=\"apiCmd('POST','/api/learning/refresh',{},'Refresh Learning Memory','')\"></div>\n"
             "    <div class=\"ca\" onclick=\"apiCmd('POST','/api/v113/asi/report',{},'Export ASI Report','')\"></div>"
         )
         updated = self.mod.pmo_deep_intelligence_deck_html(html)
         self.assertIn("deepIntelligencePanel", updated)
         self.assertIn("PMO Deep Intelligence", updated)
+        self.assertIn("cn-deep", updated)
+        self.assertIn("cn-ensemble", updated)
+        self.assertIn("engineMap.deep", updated)
+        self.assertIn("Number(constellation.total):16", updated)
         self.assertEqual(updated.count("deepIntelligencePanel"), 1)
+        self.assertEqual(updated.count("cn-deep"), 1)
         self.assertEqual(self.mod.pmo_deep_intelligence_deck_html(updated).count("deepIntelligencePanel"), 1)
+        self.assertEqual(self.mod.pmo_deep_intelligence_deck_html(updated).count("cn-deep"), 1)
 
     def test_trade_discipline_blocks_trend_entry_after_three_thirty(self):
         settings = dict(self.mod.DEFAULT_SETTINGS)
@@ -1688,13 +1703,21 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
             "ENABLE_SECTOR_ROTATION_MOMENTUM_AI": True,
             "ENABLE_PMO_V112_PAPER_REPLAY_JOURNAL": True,
             "ENABLE_PMO_WHY_NOT_ENGINE": True,
+            "ENABLE_PMO_ENSEMBLE_VOTING": True,
+            "PMO_ALPHA_DECAY_ENABLED": True,
+            "ENABLE_PMO_INSTITUTIONAL_SIGNALS": True,
+            "ENABLE_PMO_DEEP_INTELLIGENCE": True,
+            "PMO_CRYPTO_PROFILE_ENABLED": True,
+            "ENABLE_PMO_POST_GATE_EQUITY_PROOF": True,
             "ENABLE_PMO_ARCHITECTURE_PLANNER": True,
             "PMO_ASI_ALLOW_LIVE_INFLUENCE": False,
             "PMO_AI_WARP_ENABLED": False,
         })
         result = self.mod.pmo_learning_constellation_status(settings)
-        self.assertEqual(result["active_count"], 10)
-        self.assertEqual(result["total"], 10)
+        engine_ids = {row["id"] for row in result["engines"]}
+        self.assertEqual(result["total"], 16)
+        self.assertGreaterEqual(result["active_count"], 10)
+        self.assertTrue({"ensemble", "alpha", "institutional", "deep", "crypto", "postgate"}.issubset(engine_ids))
         self.assertTrue(result["live_influence_locked"])
         self.assertFalse(result["passive_provider_calls"])
 

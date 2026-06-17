@@ -19523,6 +19523,48 @@ def pmo_learning_constellation_status(settings: Optional[Dict[str, Any]] = None)
             "influence": "block/report",
         },
         {
+            "id": "ensemble",
+            "name": "Ensemble Vote",
+            "active": bool(settings.get("ENABLE_PMO_ENSEMBLE_VOTING", True)),
+            "mode": f"{int(safe_float(settings.get('PMO_ENSEMBLE_MIN_BULL_VOTES', 6), 6))}+ bull votes",
+            "influence": "signal confirmation",
+        },
+        {
+            "id": "alpha",
+            "name": "Alpha Decay",
+            "active": bool(settings.get("PMO_ALPHA_DECAY_ENABLED", True)) and bool(PMO_ALPHA_DECAY_AVAILABLE),
+            "mode": "READ_ONLY" if not settings.get("PMO_ALPHA_DECAY_USE_REC_PARAMS", False) else "PARAM_ASSIST",
+            "influence": "exit/hold research",
+        },
+        {
+            "id": "institutional",
+            "name": "Institutional Signals",
+            "active": bool(settings.get("ENABLE_PMO_INSTITUTIONAL_SIGNALS", True)) and bool(PMO_INSTITUTIONAL_SIGNALS_AVAILABLE),
+            "mode": "READ_ONLY" if not settings.get("PMO_INSTITUTIONAL_SCORE_INFLUENCE", False) else "SCORE_ASSIST",
+            "influence": "institutional context",
+        },
+        {
+            "id": "deep",
+            "name": "Deep Intelligence",
+            "active": bool(settings.get("ENABLE_PMO_DEEP_INTELLIGENCE", True)) and bool(PMO_DEEP_INTELLIGENCE_AVAILABLE),
+            "mode": "READ_ONLY" if not settings.get("PMO_DEEP_INTELLIGENCE_SCORE_INFLUENCE", False) else "SCORE_ASSIST",
+            "influence": "Bayesian/counterfactual guidance",
+        },
+        {
+            "id": "crypto",
+            "name": "Crypto Profile",
+            "active": bool(settings.get("PMO_CRYPTO_PROFILE_ENABLED", True)) and bool(PMO_CRYPTO_PROFILE_AVAILABLE),
+            "mode": "PAPER_PROFILE" if not settings.get("PMO_CRYPTO_ALLOW_LIVE_AFTER_PROOF", False) else "PROOF_GATED",
+            "influence": "crypto params/proof",
+        },
+        {
+            "id": "postgate",
+            "name": "Post-Gate Proof",
+            "active": bool(settings.get("ENABLE_PMO_POST_GATE_EQUITY_PROOF", True)),
+            "mode": f"target {int(safe_float(settings.get('PMO_POST_GATE_EQUITY_MIN_CLOSED_TRADES', 20), 20))} closes",
+            "influence": "live readiness lock",
+        },
+        {
             "id": "agent",
             "name": "Agent Plan",
             "active": bool(settings.get("ENABLE_PMO_ARCHITECTURE_PLANNER", True)),
@@ -19539,7 +19581,7 @@ def pmo_learning_constellation_status(settings: Optional[Dict[str, Any]] = None)
         "engines": engines,
         "live_influence_locked": not bool(settings.get("PMO_ASI_ALLOW_LIVE_INFLUENCE", False)),
         "passive_provider_calls": bool(settings.get("PMO_AI_WARP_ENABLED", False)),
-        "safety_note": "10/10 means all learning/research engines are online. It does not mean live AI trading is unlocked.",
+        "safety_note": f"{active_count}/{len(engines)} means learning/research engines are online. It does not mean live AI trading is unlocked.",
     }
 
 
@@ -25588,7 +25630,67 @@ def pmo_deep_intelligence_deck_panel_html() -> str:
     )
 
 
+def pmo_ai_engine_map_extra_nodes_html() -> str:
+    return """
+    <div class="star-node" style="left:34px;top:230px" onclick="aiNodeInfo('ensemble')"><div class="sc s-cyan" id="cn-ensemble">ENS</div><div class="sl" style="color:var(--cyan)">Ensemble</div></div>
+    <div class="star-node" style="left:123px;top:230px" onclick="aiNodeInfo('alpha')"><div class="sc s-cyan" id="cn-alpha">AD</div><div class="sl" style="color:var(--blue)">Alpha Decay</div></div>
+    <div class="star-node" style="left:219px;top:230px" onclick="aiNodeInfo('institutional')"><div class="sc s-amber" id="cn-institutional">INST</div><div class="sl" style="color:var(--amber)">Institutional</div></div>
+    <div class="star-node" style="left:309px;top:230px" onclick="aiNodeInfo('deep')"><div class="sc s-act" id="cn-deep">DI</div><div class="sl" style="color:var(--violet)">Deep Intel</div></div>
+    <div class="star-node" style="left:403px;top:230px" onclick="aiNodeInfo('crypto')"><div class="sc s-green" id="cn-crypto">CR</div><div class="sl" style="color:var(--green)">Crypto Profile</div></div>
+    <div class="star-node" style="left:493px;top:230px" onclick="aiNodeInfo('postgate')"><div class="sc s-amber" id="cn-postgate">PG</div><div class="sl" style="color:var(--amber)">Post-Gate</div></div>"""
+
+
+def pmo_ai_engine_map_deck_html(html: str) -> str:
+    if "cn-deep" in html and "engineMap.deep" in html:
+        return html
+    html = html.replace(".const-wrap{position:relative;height:215px}", ".const-wrap{position:relative;height:300px}")
+    html = html.replace('viewBox="0 0 570 215"', 'viewBox="0 0 570 300"')
+    agent_node = '<div class="star-node" style="left:266px;top:3px" onclick="aiNodeInfo(\'agent\')"><div class="sc s-green" style="width:31px;height:31px;font-size:13px" id="cn-agent">PLAN</div><div class="sl" style="color:var(--green)">Agent Plan</div></div>'
+    if "cn-deep" not in html and agent_node in html:
+        html = html.replace(agent_node, agent_node + pmo_ai_engine_map_extra_nodes_html(), 1)
+    agent_const = "  const agent=engineMap.agent?!!engineMap.agent.active:!!s.ENABLE_PMO_ARCHITECTURE_PLANNER;"
+    extra_consts = (
+        "  const ensemble=engineMap.ensemble?!!engineMap.ensemble.active:!!s.ENABLE_PMO_ENSEMBLE_VOTING;\n"
+        "  const alpha=engineMap.alpha?!!engineMap.alpha.active:!!s.PMO_ALPHA_DECAY_ENABLED;\n"
+        "  const institutional=engineMap.institutional?!!engineMap.institutional.active:!!s.ENABLE_PMO_INSTITUTIONAL_SIGNALS;\n"
+        "  const deep=engineMap.deep?!!engineMap.deep.active:!!s.ENABLE_PMO_DEEP_INTELLIGENCE;\n"
+        "  const crypto=engineMap.crypto?!!engineMap.crypto.active:!!s.PMO_CRYPTO_PROFILE_ENABLED;\n"
+        "  const postgate=engineMap.postgate?!!engineMap.postgate.active:!!s.ENABLE_PMO_POST_GATE_EQUITY_PROOF;\n"
+    )
+    if "engineMap.deep" not in html and agent_const in html:
+        html = html.replace(agent_const, extra_consts + agent_const, 1)
+    whynot_state = "  nodeState('whynot',whynot?'amber':'dim');"
+    extra_states = (
+        "  nodeState('ensemble',ensemble?'cyan':'dim');\n"
+        "  nodeState('alpha',alpha?'cyan':'dim');\n"
+        "  nodeState('institutional',institutional?'amber':'dim');\n"
+        "  nodeState('deep',deep?'act':'dim');\n"
+        "  nodeState('crypto',crypto?'green':'dim');\n"
+        "  nodeState('postgate',postgate?'amber':'dim');"
+    )
+    if "nodeState('deep'" not in html and whynot_state in html:
+        html = html.replace(whynot_state, whynot_state + "\n" + extra_states, 1)
+    html = html.replace(
+        "[quantum,learning,warp,asi,signal,watchlist,sector,v112,whynot,agent].filter(Boolean).length",
+        "[quantum,learning,warp,asi,signal,watchlist,sector,v112,whynot,ensemble,alpha,institutional,deep,crypto,postgate,agent].filter(Boolean).length",
+    )
+    html = html.replace("Number(constellation.total):10", "Number(constellation.total):16")
+    whynot_info = "    whynot:['Why-Not Engine','Records every blocked signal with reason.',[['ENABLE_PMO_WHY_NOT_ENGINE',S('ENABLE_PMO_WHY_NOT_ENGINE'),'var(--amber)'],['Min score',S('PMO_WHY_NOT_MIN_SCORE'),'var(--text2)'],['Min RVOL',S('PMO_WHY_NOT_MIN_RVOL'),'var(--text2)'],['Record audit',S('PMO_WHY_NOT_RECORD_AUDIT'),'var(--text2)']]],"
+    extra_info = (
+        "\n    ensemble:['Ensemble Voting','Aggregates engine votes before PMO trusts a direction.',[['ENABLE_PMO_ENSEMBLE_VOTING',S('ENABLE_PMO_ENSEMBLE_VOTING'),'var(--cyan)'],['Min bull votes',S('PMO_ENSEMBLE_MIN_BULL_VOTES'),'var(--text2)'],['Min agree ratio',S('PMO_ENSEMBLE_MIN_AGREE_RATIO'),'var(--text2)']]],"
+        "\n    alpha:['Alpha Decay','Profiles symbol edge decay, optimal hold, stop, and target behavior.',[['PMO_ALPHA_DECAY_ENABLED',S('PMO_ALPHA_DECAY_ENABLED'),'var(--blue)'],['Use rec params',S('PMO_ALPHA_DECAY_USE_REC_PARAMS'),'var(--amber)'],['Confidence gate',S('PMO_ALPHA_DECAY_CONFIDENCE_GATE'),'var(--text2)']]],"
+        "\n    institutional:['Institutional Signals','Liquidity vacuum, auction probes, PEAD, VRP, ask prints, and 3:30 discipline.',[['ENABLE_PMO_INSTITUTIONAL_SIGNALS',S('ENABLE_PMO_INSTITUTIONAL_SIGNALS'),'var(--amber)'],['Score influence',S('PMO_INSTITUTIONAL_SCORE_INFLUENCE'),'var(--red)'],['Mode','read-only unless enabled','var(--text3)']]],"
+        "\n    deep:['Deep Intelligence','Counterfactual exits, causal trust, Bayesian sizing, attention, and meta-learning.',[['ENABLE_PMO_DEEP_INTELLIGENCE',S('ENABLE_PMO_DEEP_INTELLIGENCE'),'var(--violet)'],['Score influence',S('PMO_DEEP_INTELLIGENCE_SCORE_INFLUENCE'),'var(--red)'],['Status','read-only guidance','var(--text3)']]],"
+        "\n    crypto:['Crypto Profile','Separate afterhours crypto profile with staged exits and crypto proof tracking.',[['PMO_CRYPTO_PROFILE_ENABLED',S('PMO_CRYPTO_PROFILE_ENABLED'),'var(--green)'],['Allow live after proof',S('PMO_CRYPTO_ALLOW_LIVE_AFTER_PROOF'),'var(--red)'],['Max notional',S('PMO_CRYPTO_MAX_NOTIONAL_USD'),'var(--text2)']]],"
+        "\n    postgate:['Post-Gate Equity Proof','Tracks only equity trades generated after the new gates.',[['ENABLE_PMO_POST_GATE_EQUITY_PROOF',S('ENABLE_PMO_POST_GATE_EQUITY_PROOF'),'var(--amber)'],['Min closes',S('PMO_POST_GATE_EQUITY_MIN_CLOSED_TRADES'),'var(--text2)'],['Start',S('PMO_POST_GATE_EQUITY_PROOF_START'),'var(--text3)']]],"
+    )
+    if "ensemble:['Ensemble Voting'" not in html and whynot_info in html:
+        html = html.replace(whynot_info, whynot_info + extra_info, 1)
+    return html
+
+
 def pmo_deep_intelligence_deck_html(html: str) -> str:
+    html = pmo_ai_engine_map_deck_html(html)
     if "deepIntelligencePanel" in html:
         return html
     anchor = "<div class=\"ca\" onclick=\"apiCmd('POST','/api/v113/asi/report'"
