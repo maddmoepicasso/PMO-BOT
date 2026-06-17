@@ -212,6 +212,7 @@ def causal_inference_proxy(trades: List[Dict[str, Any]], settings: Dict[str, Any
             "rows": len(clean),
             "treated_rows": len(treated),
             "control_rows": len(untreated),
+            "signal_trust_multiplier": 0.5,
             "reason": "needs enough high-RVOL and low-RVOL outcomes before causal proxy can compare intervention-like cohorts",
         }
     tw, tl = _wins_losses(treated)
@@ -220,6 +221,7 @@ def causal_inference_proxy(trades: List[Dict[str, Any]], settings: Dict[str, Any
     untreated_wr = uw / (uw + ul) if (uw + ul) else 0.0
     lift = treated_wr - untreated_wr
     status = "CAUSAL_CANDIDATE" if lift >= 0.10 else ("CORRELATED_ONLY" if abs(lift) < 0.05 else "WEAK_CANDIDATE")
+    trust_multiplier = 1.1 if status == "CAUSAL_CANDIDATE" else (0.75 if status == "CORRELATED_ONLY" else 0.9)
     return {
         "id": "causal_inference",
         "status": status,
@@ -230,13 +232,14 @@ def causal_inference_proxy(trades: List[Dict[str, Any]], settings: Dict[str, Any
         "treated_win_rate": round(treated_wr, 4),
         "control_win_rate": round(untreated_wr, 4),
         "estimated_lift": round(lift, 4),
+        "signal_trust_multiplier": trust_multiplier,
         "reason": "Observational causal proxy; not proof, but it separates likely causal filters from plain correlations.",
     }
 
 
 def attention_mechanism(bars: List[Dict[str, Any]], settings: Dict[str, Any]) -> Dict[str, Any]:
     if not bars:
-        return {"id": "attention_mechanism", "status": "DATA_REQUIRED", "reason": "bar rows unavailable", "top_bars": []}
+        return {"id": "attention_mechanism", "status": "DATA_REQUIRED", "reason": "bar rows unavailable", "top_bars": [], "signal": "NONE", "score_mod": 0.0}
     max_rows = int(max(5, _safe_float(settings.get("PMO_ATTENTION_LOOKBACK_BARS"), 30)))
     sample = bars[-max_rows:]
     weighted = []
@@ -256,11 +259,31 @@ def attention_mechanism(bars: List[Dict[str, Any]], settings: Dict[str, Any]) ->
             "attention_weight": round(weight, 4),
         })
     top = sorted(weighted, key=lambda item: item["attention_weight"], reverse=True)[:5]
+    total_weight = sum(item["attention_weight"] for item in weighted) or 1.0
+    weighted_close = sum(item["close"] * item["attention_weight"] for item in weighted) / total_weight
+    weighted_rvol = sum(item["relative_volume"] * item["attention_weight"] for item in weighted) / total_weight
+    first_close = weighted[0]["close"] if weighted else 0.0
+    latest_close = weighted[-1]["close"] if weighted else 0.0
+    weighted_change_pct = _pct_change(first_close, latest_close)
+    if weighted_change_pct >= 0.35 and weighted_rvol >= 1.25:
+        signal = "BULLISH_ATTENTION"
+        score_mod = min(3.0, weighted_change_pct)
+    elif weighted_change_pct <= -0.35 and weighted_rvol >= 1.25:
+        signal = "BEARISH_ATTENTION"
+        score_mod = -min(3.0, abs(weighted_change_pct))
+    else:
+        signal = "NEUTRAL_ATTENTION"
+        score_mod = 0.0
     return {
         "id": "attention_mechanism",
         "status": "READY",
         "bars": len(sample),
         "top_bars": top,
+        "weighted_close": round(weighted_close, 4),
+        "weighted_rvol": round(weighted_rvol, 4),
+        "weighted_change_pct": round(weighted_change_pct, 4),
+        "signal": signal,
+        "score_mod": round(score_mod, 4),
         "reason": "Weights recent bars, RVOL spikes, and wide information bars above older neutral bars.",
     }
 
@@ -352,22 +375,104 @@ def meta_learning(trades: List[Dict[str, Any]], settings: Dict[str, Any]) -> Dic
     clean = [row for row in trades if _is_win(row) or _is_loss(row)]
     fast_window = int(max(3, _safe_float(settings.get("PMO_META_LEARNING_FAST_WINDOW"), 5)))
     if len(clean) < fast_window:
-        return {"id": "meta_learning", "status": "DATA_BUILDING", "rows": len(clean), "reason": "needs first fast-adaptation window"}
+        return {"id": "meta_learning", "status": "DATA_BUILDING", "rows": len(clean), "adaptation_multiplier": 0.5, "reason": "needs first fast-adaptation window"}
     recent = clean[-fast_window:]
     rw, rl = _wins_losses(recent)
     recent_wr = rw / (rw + rl) if (rw + rl) else 0.0
     all_w, all_l = _wins_losses(clean)
     all_wr = all_w / (all_w + all_l) if (all_w + all_l) else 0.0
     update_pressure = recent_wr - all_wr
+    status = "ADAPT_UP" if update_pressure > 0.15 else ("ADAPT_DOWN" if update_pressure < -0.15 else "STABLE")
+    adaptation_multiplier = 1.05 if status == "ADAPT_UP" else (0.65 if status == "ADAPT_DOWN" else 1.0)
     return {
         "id": "meta_learning",
-        "status": "ADAPT_UP" if update_pressure > 0.15 else ("ADAPT_DOWN" if update_pressure < -0.15 else "STABLE"),
+        "status": status,
         "rows": len(clean),
         "fast_window": fast_window,
         "recent_win_rate": round(recent_wr, 4),
         "baseline_win_rate": round(all_wr, 4),
         "belief_update_pressure": round(update_pressure, 4),
+        "adaptation_multiplier": adaptation_multiplier,
         "reason": "Fast-window gradient proxy for how aggressively PMO should update beliefs in a new regime.",
+    }
+
+
+def counterfactual_exit_policy(counterfactual: Dict[str, Any], settings: Dict[str, Any]) -> Dict[str, Any]:
+    rows = counterfactual.get("rows") if isinstance(counterfactual.get("rows"), list) else []
+    checked = int(_safe_float(counterfactual.get("checked"), 0))
+    if not rows or checked <= 0:
+        return {
+            "status": "DATA_REQUIRED",
+            "checked": checked,
+            "exit_bias": "UNKNOWN",
+            "target_extension_multiplier": 1.0,
+            "stop_confidence": "UNKNOWN",
+            "reason": "needs post-exit bars before exit policy can be learned",
+        }
+    exit_early = sum(1 for row in rows if row.get("lesson") == "EXIT_TOO_EARLY")
+    stop_saved = sum(1 for row in rows if row.get("lesson") == "STOP_SAVED_MORE")
+    reasonable = sum(1 for row in rows if row.get("lesson") == "EXIT_REASONABLE")
+    exit_early_rate = exit_early / max(1, len(rows))
+    stop_saved_rate = stop_saved / max(1, len(rows))
+    if exit_early_rate >= _safe_float(settings.get("PMO_COUNTERFACTUAL_EXIT_EARLY_ALERT_RATE"), 0.35):
+        exit_bias = "LET_WINNERS_WORK"
+        target_extension = 1.25
+    elif stop_saved_rate >= _safe_float(settings.get("PMO_COUNTERFACTUAL_STOP_SAVED_ALERT_RATE"), 0.35):
+        exit_bias = "STOPS_ARE_HELPING"
+        target_extension = 1.0
+    else:
+        exit_bias = "EXIT_POLICY_OK"
+        target_extension = 1.0
+    return {
+        "status": "READY",
+        "checked": checked,
+        "exit_too_early": exit_early,
+        "stop_saved_more": stop_saved,
+        "exit_reasonable": reasonable,
+        "exit_too_early_rate": round(exit_early_rate, 4),
+        "stop_saved_rate": round(stop_saved_rate, 4),
+        "exit_bias": exit_bias,
+        "target_extension_multiplier": target_extension,
+        "stop_confidence": "HIGH" if stop_saved_rate >= 0.25 else "NORMAL",
+        "reason": "Turns post-exit counterfactual evidence into exit-policy guidance.",
+    }
+
+
+def deep_operational_guidance(signals: Dict[str, Dict[str, Any]], settings: Dict[str, Any]) -> Dict[str, Any]:
+    counterfactual_policy = counterfactual_exit_policy(signals.get("counterfactual_reasoning", {}), settings)
+    concept_size = _safe_float(signals.get("concept_drift", {}).get("position_size_multiplier"), 1.0)
+    bayes_size = _safe_float(signals.get("bayesian_edge", {}).get("position_size_multiplier"), 1.0)
+    causal_trust = _safe_float(signals.get("causal_inference", {}).get("signal_trust_multiplier"), 1.0)
+    meta_size = _safe_float(signals.get("meta_learning", {}).get("adaptation_multiplier"), 1.0)
+    attention_mod = _safe_float(signals.get("attention_mechanism", {}).get("score_mod"), 0.0)
+    adversarial_size = 0.65 if str(signals.get("adversarial_examples", {}).get("status", "")).upper() == "ALERT" else 1.0
+    crowd_size = 0.65 if str(signals.get("emergent_behavior", {}).get("status", "")).upper() == "CROWDING_DETECTED" else 1.0
+    info_bonus = 1.05 if str(signals.get("information_asymmetry", {}).get("status", "")).upper() == "DETECTED" else 1.0
+    size_multiplier = round(max(0.1, min(concept_size, bayes_size, meta_size, adversarial_size, crowd_size) * min(1.1, causal_trust) * info_bonus), 4)
+    score_mod = round(max(-5.0, min(5.0, attention_mod)), 4)
+    blockers = []
+    if concept_size < 1.0:
+        blockers.append("concept_drift")
+    if bayes_size < 1.0:
+        blockers.append("bayesian_uncertainty")
+    if meta_size < 1.0:
+        blockers.append("meta_learning_adapt_down")
+    if adversarial_size < 1.0:
+        blockers.append("adversarial_examples")
+    if crowd_size < 1.0:
+        blockers.append("crowded_signal")
+    return {
+        "status": "CAUTION" if blockers else "NORMAL",
+        "position_size_multiplier": size_multiplier,
+        "score_mod_recommendation": score_mod,
+        "score_mod_applied": False,
+        "exit_policy": counterfactual_policy,
+        "causal_trust_multiplier": causal_trust,
+        "bayesian_size_multiplier": bayes_size,
+        "meta_adaptation_multiplier": meta_size,
+        "attention_signal": signals.get("attention_mechanism", {}).get("signal", "NONE"),
+        "blockers": blockers,
+        "reason": "Combines the advanced five layers into read-only sizing, scoring, and exit guidance.",
     }
 
 
@@ -435,11 +540,10 @@ def analyze_deep_intelligence(
         "emergent_behavior": emergent_behavior(bars, settings),
         "silence_signal": silence_signal(trades, market_rows, settings),
     }
+    operational = deep_operational_guidance(signals, settings)
     alert_keys = [key for key, value in signals.items() if str(value.get("status", "")).upper() in {"ALERT", "BLOCK", "DETECTED", "CROWDING_DETECTED", "ADAPT_DOWN"}]
     ready_count = sum(1 for value in signals.values() if str(value.get("status", "")).upper() in {"READY", "CLEAR", "DETECTED", "ALERT", "CAUSAL_CANDIDATE", "WEAK_CANDIDATE", "CORRELATED_ONLY", "STABLE", "ADAPT_UP", "ADAPT_DOWN", "CROWDING_DETECTED"})
-    concept_size = _safe_float(signals["concept_drift"].get("position_size_multiplier"), 1.0)
-    bayes_size = _safe_float(signals["bayesian_edge"].get("position_size_multiplier"), 1.0)
-    recommended_size = round(min(concept_size, bayes_size), 4)
+    recommended_size = _safe_float(operational.get("position_size_multiplier"), 1.0)
     if alert_keys:
         status = "ATTENTION_REQUIRED"
     elif ready_count >= 5:
@@ -460,14 +564,20 @@ def analyze_deep_intelligence(
         "ready_count": ready_count,
         "alert_keys": alert_keys,
         "recommended_position_size_multiplier": recommended_size,
+        "operational_guidance": operational,
         "signals": signals,
         "journal": {
             "deep_status": status,
             "deep_ready_count": ready_count,
             "deep_alerts": ",".join(alert_keys),
             "deep_size_mult": recommended_size,
+            "deep_score_mod_rec": operational.get("score_mod_recommendation", 0),
+            "deep_attention_signal": operational.get("attention_signal", "NONE"),
+            "deep_exit_policy": (operational.get("exit_policy") or {}).get("exit_bias", "UNKNOWN"),
             "concept_drift": signals["concept_drift"].get("status"),
             "bayesian_confidence": signals["bayesian_edge"].get("confidence"),
+            "causal_trust_mult": operational.get("causal_trust_multiplier", 1.0),
+            "meta_adaptation_mult": operational.get("meta_adaptation_multiplier", 1.0),
             "info_asymmetry": signals["information_asymmetry"].get("status"),
             "silence_avoided_loss_pct": signals["silence_signal"].get("synthetic_avoided_loss_pct", 0),
         },

@@ -1503,6 +1503,14 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertEqual(report["signals"]["adversarial_examples"]["status"], "ALERT")
         self.assertIn(report["signals"]["emergent_behavior"]["status"], {"CROWDING_DETECTED", "CLEAR"})
         self.assertLess(report["recommended_position_size_multiplier"], 1.0)
+        guidance = report["operational_guidance"]
+        self.assertEqual(guidance["status"], "CAUTION")
+        self.assertLess(guidance["position_size_multiplier"], 1.0)
+        self.assertIn(guidance["attention_signal"], {"BULLISH_ATTENTION", "NEUTRAL_ATTENTION", "BEARISH_ATTENTION"})
+        self.assertIn("bayesian_size_multiplier", guidance)
+        self.assertIn("causal_trust_multiplier", guidance)
+        self.assertIn("meta_adaptation_multiplier", guidance)
+        self.assertIn("exit_policy", guidance)
 
     def test_deep_intelligence_endpoint_is_read_only(self):
         response = self.client.post(
@@ -1522,6 +1530,52 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertFalse(report["settings_changed"])
         self.assertIn("concept_drift", report["signals"])
         self.assertIn("bayesian_edge", report["signals"])
+        self.assertIn("operational_guidance", report)
+        self.assertFalse(report["operational_guidance"]["score_mod_applied"])
+
+    def test_trade_journal_quality_fields_auto_logs_deep_exit_policy(self):
+        original_report = self.mod.pmo_deep_intelligence_report
+        try:
+            self.mod.pmo_deep_intelligence_report = lambda *args, **kwargs: {
+                "journal": {
+                    "deep_status": "READY",
+                    "deep_size_mult": 0.35,
+                    "deep_score_mod_rec": 0,
+                    "deep_attention_signal": "NEUTRAL_ATTENTION",
+                    "deep_exit_policy": "LET_WINNERS_WORK",
+                    "bayesian_confidence": "LOW",
+                    "causal_trust_mult": 0.5,
+                    "meta_adaptation_mult": 0.65,
+                }
+            }
+            fields = self.mod.pmo_trade_journal_quality_fields(
+                "SPY",
+                {
+                    "side": "LONG",
+                    "entry_price": "100",
+                    "exit_price": "106",
+                    "entry_timestamp": "2026-06-17T09:45:00-04:00",
+                    "exit_timestamp": "2026-06-17T10:30:00-04:00",
+                },
+                {},
+                use_live_context=True,
+            )
+        finally:
+            self.mod.pmo_deep_intelligence_report = original_report
+        self.assertEqual(fields["deep_exit_policy"], "LET_WINNERS_WORK")
+        self.assertEqual(fields["deep_attention_signal"], "NEUTRAL_ATTENTION")
+        self.assertEqual(fields["deep_bayesian_confidence"], "LOW")
+
+    def test_control_deck_injects_deep_intelligence_panel(self):
+        html = (
+            "<div class=\"ca\" onclick=\"apiCmd('POST','/api/learning/refresh',{},'Refresh Learning Memory','')\"></div>\n"
+            "    <div class=\"ca\" onclick=\"apiCmd('POST','/api/v113/asi/report',{},'Export ASI Report','')\"></div>"
+        )
+        updated = self.mod.pmo_deep_intelligence_deck_html(html)
+        self.assertIn("deepIntelligencePanel", updated)
+        self.assertIn("PMO Deep Intelligence", updated)
+        self.assertEqual(updated.count("deepIntelligencePanel"), 1)
+        self.assertEqual(self.mod.pmo_deep_intelligence_deck_html(updated).count("deepIntelligencePanel"), 1)
 
     def test_trade_discipline_blocks_trend_entry_after_three_thirty(self):
         settings = dict(self.mod.DEFAULT_SETTINGS)

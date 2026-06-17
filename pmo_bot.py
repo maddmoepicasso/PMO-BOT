@@ -797,6 +797,8 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_COUNTERFACTUAL_HORIZON_MINUTES": 30,
     "PMO_COUNTERFACTUAL_MISSED_UPSIDE_PCT": 3.0,
     "PMO_COUNTERFACTUAL_STOP_SAVED_PCT": 3.0,
+    "PMO_COUNTERFACTUAL_EXIT_EARLY_ALERT_RATE": 0.35,
+    "PMO_COUNTERFACTUAL_STOP_SAVED_ALERT_RATE": 0.35,
     "PMO_CONCEPT_DRIFT_ROLLING_WINDOW": 15,
     "PMO_CONCEPT_DRIFT_ALERT_DROP": 0.15,
     "PMO_CONCEPT_DRIFT_SIZE_MULTIPLIER": 0.65,
@@ -1518,6 +1520,8 @@ EDITABLE_SETTINGS: Dict[str, Dict[str, Any]] = {
     "PMO_COUNTERFACTUAL_HORIZON_MINUTES": {"type": "int", "min": 5, "max": 240},
     "PMO_COUNTERFACTUAL_MISSED_UPSIDE_PCT": {"type": "float", "min": 0, "max": 50},
     "PMO_COUNTERFACTUAL_STOP_SAVED_PCT": {"type": "float", "min": 0, "max": 50},
+    "PMO_COUNTERFACTUAL_EXIT_EARLY_ALERT_RATE": {"type": "float", "min": 0, "max": 1},
+    "PMO_COUNTERFACTUAL_STOP_SAVED_ALERT_RATE": {"type": "float", "min": 0, "max": 1},
     "PMO_CONCEPT_DRIFT_ROLLING_WINDOW": {"type": "int", "min": 3, "max": 200},
     "PMO_CONCEPT_DRIFT_ALERT_DROP": {"type": "float", "min": 0, "max": 1},
     "PMO_CONCEPT_DRIFT_SIZE_MULTIPLIER": {"type": "float", "min": 0, "max": 1},
@@ -5400,6 +5404,17 @@ class PMOBot:
         except Exception as exc:
             institutional_report = pmo_institutional_signals_empty("ERROR", f"institutional signal score check error: {str(exc)[:80]}")
         edge_six_context["institutional_signals"] = institutional_report
+        try:
+            deep_intelligence_report = pmo_deep_intelligence_report(
+                symbol,
+                self.settings,
+                candidate=edge_six_context,
+                bars=bars,
+                record=False,
+            )
+        except Exception as exc:
+            deep_intelligence_report = pmo_deep_intelligence_empty("ERROR", f"deep intelligence score check error: {str(exc)[:80]}")
+        edge_six_context["deep_intelligence"] = deep_intelligence_report
         tod_gate_report = pmo_time_of_day_gate(self.settings, record=False)
         edge_six_context["time_of_day_gate"] = tod_gate_report
         engine_confluence_report = pmo_engine_confluence_report(edge_six_context, self.settings)
@@ -5423,6 +5438,13 @@ class PMOBot:
             reasons.append(f"alpha decay {alpha_profile.get('profile', 'UNKNOWN')} conf {alpha_profile.get('confidence', 'LOW')}")
         if institutional_report.get("enabled"):
             reasons.append(f"institutional {institutional_report.get('consensus', 'DATA_BUILDING')} ready {institutional_report.get('ready_count', 0)}")
+        if deep_intelligence_report.get("enabled"):
+            guidance = deep_intelligence_report.get("operational_guidance", {}) if isinstance(deep_intelligence_report.get("operational_guidance"), dict) else {}
+            reasons.append(
+                f"deep intelligence {deep_intelligence_report.get('status', 'DATA_BUILDING')} "
+                f"size {safe_float(guidance.get('position_size_multiplier'), 1):.2f}x "
+                f"attention {guidance.get('attention_signal', 'NONE')}"
+            )
         if trade_similarity_report.get("enabled"):
             reasons.append(f"similarity {trade_similarity_report.get('status')} from {trade_similarity_report.get('similar_count', 0)} clean match(es)")
         if tick_timing_report.get("enabled"):
@@ -5479,6 +5501,15 @@ class PMOBot:
             "inst_ask_prints": (institutional_report.get("journal", {}) or {}).get("inst_ask_prints", ""),
             "inst_pead": (institutional_report.get("journal", {}) or {}).get("inst_pead", ""),
             "inst_vrp": (institutional_report.get("journal", {}) or {}).get("inst_vrp", ""),
+            "deep_intelligence": deep_intelligence_report,
+            "deep_status": (deep_intelligence_report.get("journal", {}) or {}).get("deep_status", ""),
+            "deep_size_mult": (deep_intelligence_report.get("journal", {}) or {}).get("deep_size_mult", 1.0),
+            "deep_score_mod_rec": (deep_intelligence_report.get("journal", {}) or {}).get("deep_score_mod_rec", 0),
+            "deep_attention_signal": (deep_intelligence_report.get("journal", {}) or {}).get("deep_attention_signal", "NONE"),
+            "deep_exit_policy": (deep_intelligence_report.get("journal", {}) or {}).get("deep_exit_policy", "UNKNOWN"),
+            "deep_bayesian_confidence": (deep_intelligence_report.get("journal", {}) or {}).get("bayesian_confidence", ""),
+            "deep_causal_trust_mult": (deep_intelligence_report.get("journal", {}) or {}).get("causal_trust_mult", 1.0),
+            "deep_meta_adaptation_mult": (deep_intelligence_report.get("journal", {}) or {}).get("meta_adaptation_mult", 1.0),
             "fvg": fvg_report,
             "fvg_found": fvg_report.get("fvg_found", False),
             "fvg_signal": fvg_report.get("fvg_signal", "NONE"),
@@ -8838,6 +8869,25 @@ def pmo_trade_journal_quality_fields(symbol: str, source_row: Optional[Dict[str,
             risk_multiplier = risk_multiplier or regime_snapshot.get("risk_multiplier", "")
         except Exception:
             pass
+    deep_journal: Dict[str, Any] = {}
+    settings_snapshot = load_settings() if use_live_context else {}
+    if use_live_context and bool(settings_snapshot.get("ENABLE_PMO_DEEP_INTELLIGENCE", True)):
+        try:
+            candidate = {
+                **source_row,
+                "symbol": symbol,
+                "market": market,
+                "asset_class": asset_class,
+                "setup_type": setup_type,
+                "relative_volume": rvol,
+                "entry_distance_vwap": vwap_distance,
+                "market_regime": regime_name,
+                "risk_multiplier": risk_multiplier,
+            }
+            deep_report = pmo_deep_intelligence_report(symbol, settings_snapshot, candidate=candidate, record=False)
+            deep_journal = deep_report.get("journal", {}) if isinstance(deep_report.get("journal"), dict) else {}
+        except Exception:
+            deep_journal = {}
     return {
         "market": market,
         "asset_class": asset_class,
@@ -8904,6 +8954,14 @@ def pmo_trade_journal_quality_fields(symbol: str, source_row: Optional[Dict[str,
         "mae": source_row.get("mae") or plan.get("mae") or intraday_quality.get("mae", ""),
         "max_favorable_excursion": source_row.get("max_favorable_excursion") or plan.get("max_favorable_excursion") or intraday_quality.get("max_favorable_excursion", ""),
         "max_adverse_excursion": source_row.get("max_adverse_excursion") or plan.get("max_adverse_excursion") or intraday_quality.get("max_adverse_excursion", ""),
+        "deep_status": deep_journal.get("deep_status", source_row.get("deep_status") or plan.get("deep_status") or ""),
+        "deep_size_mult": deep_journal.get("deep_size_mult", source_row.get("deep_size_mult") or plan.get("deep_size_mult") or ""),
+        "deep_score_mod_rec": deep_journal.get("deep_score_mod_rec", source_row.get("deep_score_mod_rec") or plan.get("deep_score_mod_rec") or ""),
+        "deep_attention_signal": deep_journal.get("deep_attention_signal", source_row.get("deep_attention_signal") or plan.get("deep_attention_signal") or ""),
+        "deep_exit_policy": deep_journal.get("deep_exit_policy", source_row.get("deep_exit_policy") or plan.get("deep_exit_policy") or ""),
+        "deep_bayesian_confidence": deep_journal.get("bayesian_confidence", source_row.get("deep_bayesian_confidence") or plan.get("deep_bayesian_confidence") or ""),
+        "deep_causal_trust_mult": deep_journal.get("causal_trust_mult", source_row.get("deep_causal_trust_mult") or plan.get("deep_causal_trust_mult") or ""),
+        "deep_meta_adaptation_mult": deep_journal.get("meta_adaptation_mult", source_row.get("deep_meta_adaptation_mult") or plan.get("deep_meta_adaptation_mult") or ""),
     }
 
 
@@ -22379,6 +22437,27 @@ RICH_CONTROL_TEMPLATE = """
                 <tr><td colspan="6">Press Refresh Learning Memory after alerts, watchlist scans, or paper executions.</td></tr>
                 {% endfor %}
             </table></div>
+            <h4 style="margin-top:14px;">PMO Deep Intelligence</h4>
+            <div class="setting-value">Read-only operational guidance from counterfactual exits, Bayesian sizing, causal trust, attention signal, and meta-learning adaptation.</div>
+            <div class="grid" style="margin-top:10px;">
+                <div><div class="setting-value">Deep Status</div><div class="metric yellow" id="deepStatus">WAITING</div></div>
+                <div><div class="setting-value">Size Mult</div><div class="metric blue" id="deepSizeMult">--</div></div>
+                <div><div class="setting-value">Attention</div><div class="metric green" id="deepAttention">--</div></div>
+                <div><div class="setting-value">Exit Policy</div><div class="metric yellow" id="deepExitPolicy">--</div></div>
+            </div>
+            <div class="grid" style="margin-top:10px;">
+                <div><div class="setting-value">Bayesian</div><div class="metric blue" id="deepBayesian">--</div></div>
+                <div><div class="setting-value">Causal Trust</div><div class="metric yellow" id="deepCausal">--</div></div>
+                <div><div class="setting-value">Meta Adapt</div><div class="metric yellow" id="deepMeta">--</div></div>
+                <div><div class="setting-value">Score Rec</div><div class="metric blue" id="deepScoreRec">--</div></div>
+            </div>
+            <div class="row" style="margin-top:10px;">
+                <input id="deepIntelligenceSymbolInput" value="SPY" placeholder="SPY">
+                <button id="refreshDeepIntelligenceButton">Refresh Deep Intelligence</button>
+                <span class="pill">Read-only</span>
+                <span class="pill">Score mod not applied</span>
+            </div>
+            <pre id="deepIntelligenceOut">Deep intelligence output will appear here.</pre>
             <h4 style="margin-top:14px;">PMO v109 WARP Engine</h4>
             <div class="setting-value">Watch, Analyze, Recommend, Protect. WARP reviews PMO BOT status fast, records recommendations, and keeps owner approval required for risky actions.</div>
             <div class="grid" style="margin-top:10px;">
@@ -24231,6 +24310,24 @@ bindClick('refreshLearningButton', async () => {
     setText('executorOut', JSON.stringify(payload.learning, null, 2));
     toast('PMO learning memory refreshed: ' + (payload.learning.summary?.symbol_count ?? 0) + ' symbol(s)');
 });
+bindClick('refreshDeepIntelligenceButton', async () => {
+    const symbol = getValue('deepIntelligenceSymbolInput', getValue('symbolInput', 'SPY'));
+    const payload = await postJson('/api/deep-intelligence', {symbol});
+    const report = payload.deep_intelligence || {};
+    const guidance = report.operational_guidance || {};
+    const exitPolicy = guidance.exit_policy || {};
+    const journal = report.journal || {};
+    document.getElementById('deepStatus').textContent = report.status || journal.deep_status || 'UNKNOWN';
+    document.getElementById('deepSizeMult').textContent = String(guidance.position_size_multiplier ?? journal.deep_size_mult ?? '--');
+    document.getElementById('deepAttention').textContent = guidance.attention_signal || journal.deep_attention_signal || '--';
+    document.getElementById('deepExitPolicy').textContent = exitPolicy.exit_bias || journal.deep_exit_policy || '--';
+    document.getElementById('deepBayesian').textContent = journal.bayesian_confidence || report.signals?.bayesian_edge?.confidence || '--';
+    document.getElementById('deepCausal').textContent = String(guidance.causal_trust_multiplier ?? journal.causal_trust_mult ?? '--');
+    document.getElementById('deepMeta').textContent = String(guidance.meta_adaptation_multiplier ?? journal.meta_adaptation_mult ?? '--');
+    document.getElementById('deepScoreRec').textContent = String(guidance.score_mod_recommendation ?? journal.deep_score_mod_rec ?? '--');
+    setText('deepIntelligenceOut', JSON.stringify(report, null, 2));
+    toast('Deep intelligence: ' + (report.status || 'loaded'));
+});
 bindClick('runWarpButton', async () => {
     const payload = await postJson('/api/warp/review', {
         system: 'PMO_BOT',
@@ -25481,6 +25578,25 @@ def mobile_status():
     )
 
 
+def pmo_deep_intelligence_deck_panel_html() -> str:
+    return (
+        "<div class=\"ca\" id=\"deepIntelligencePanel\" "
+        "onclick=\"apiCmd('POST','/api/deep-intelligence',{symbol:'SPY',record:false},"
+        "'PMO Deep Intelligence','Read-only guidance: counterfactual exit, Bayesian sizing, causal trust, attention, and meta-learning.')\">"
+        "<span class=\"ca-ico\">DEEP</span><div class=\"ca-info\"><div class=\"ca-nm\">PMO Deep Intelligence</div>"
+        "<div class=\"ca-desc\">/api/deep-intelligence - read-only panel</div></div></div>"
+    )
+
+
+def pmo_deep_intelligence_deck_html(html: str) -> str:
+    if "deepIntelligencePanel" in html:
+        return html
+    anchor = "<div class=\"ca\" onclick=\"apiCmd('POST','/api/v113/asi/report'"
+    if anchor not in html:
+        return html
+    return html.replace(anchor, pmo_deep_intelligence_deck_panel_html() + "\n    " + anchor, 1)
+
+
 @app.route("/control")
 @app.route("/orbital")
 def control():
@@ -25493,7 +25609,11 @@ def control():
     ]
     for deck_path in deck_candidates:
         if deck_path.exists():
-            return send_file(deck_path, mimetype="text/html", max_age=0)
+            try:
+                html = deck_path.read_text(encoding="utf-8")
+                return Response(pmo_deep_intelligence_deck_html(html), mimetype="text/html")
+            except Exception:
+                return send_file(deck_path, mimetype="text/html", max_age=0)
     return Response(
         "PMO Orbital Command Deck file was not found. Expected pmo_orbital_command_deck (1).html on the Desktop.",
         status=503,
