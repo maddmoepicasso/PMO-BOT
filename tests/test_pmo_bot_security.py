@@ -1140,6 +1140,75 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertGreaterEqual(len(result["blockers"]), 1)
         self.assertFalse(result["live_order_allowed"])
 
+    def test_opening_hour_quality_gate_passes_clean_opening_long(self):
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        row = {
+            "symbol": "SPY",
+            "side": "LONG",
+            "timestamp": "2026-06-16T09:45:00-04:00",
+            "relative_volume": 2.4,
+            "edge_engines": {
+                "edge_engine_status": "READY",
+                "gap_signal": "GAP_UP_HOLD",
+                "orb_signal": "BULLISH",
+            },
+        }
+        result = self.mod.pmo_opening_hour_quality_gate("SPY", "LONG", "CALL_BIAS", row, settings, 2.4)
+        self.assertTrue(result["active"])
+        self.assertTrue(result["allowed"])
+        confirmations = " | ".join(result["confirmations"])
+        self.assertIn("opening RVOL gate passed", confirmations)
+        self.assertIn("opening ORB gate passed", confirmations)
+
+    def test_opening_hour_quality_gate_blocks_weak_opening_long(self):
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        row = {
+            "symbol": "SPY",
+            "side": "LONG",
+            "timestamp": "2026-06-16T09:34:00-04:00",
+            "relative_volume": 1.2,
+            "edge_engines": {
+                "edge_engine_status": "READY",
+                "gap_signal": "GAP_UP_FILL",
+                "orb_signal": "INSIDE",
+            },
+        }
+        result = self.mod.pmo_opening_hour_quality_gate("SPY", "LONG", "CALL_BIAS", row, settings, 1.2)
+        self.assertTrue(result["active"])
+        self.assertFalse(result["allowed"])
+        blockers = " | ".join(result["blockers"])
+        self.assertIn("wait until 09:40", blockers)
+        self.assertIn("opening RVOL gate", blockers)
+        self.assertIn("GAP_UP_HOLD", blockers)
+        self.assertIn("ORB BULLISH", blockers)
+
+    def test_post_gate_equity_proof_counts_only_post_gate_equity(self):
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        settings.update({
+            "PMO_POST_GATE_EQUITY_PROOF_START": "2026-06-16T00:00:00-04:00",
+            "PMO_POST_GATE_EQUITY_MIN_CLOSED_TRADES": 2,
+            "PMO_POST_GATE_EQUITY_MIN_WIN_RATE": 0.5,
+            "PMO_POST_GATE_EQUITY_MIN_PROFIT_FACTOR": 1.0,
+        })
+        rows = [
+            {"timestamp": "2026-06-16T09:34:00-04:00", "symbol": "SPY", "status": "CLOSED_LOSS", "pnl": "-1.0"},
+            {"timestamp": "2026-06-16T09:45:00-04:00", "symbol": "SPY", "status": "CLOSED_WIN", "pnl": "2.0"},
+            {"timestamp": "2026-06-16T11:00:00-04:00", "symbol": "XLP", "status": "CLOSED_LOSS", "pnl": "-1.0"},
+            {"timestamp": "2026-06-16T20:00:00-04:00", "symbol": "SOL/USD", "status": "CLOSED_WIN", "pnl": "3.0"},
+        ]
+        original_rows = self.mod.pmo_closed_trade_rows_for_learning
+        try:
+            self.mod.pmo_closed_trade_rows_for_learning = lambda *args, **kwargs: rows
+            proof = self.mod.pmo_post_gate_equity_proof_snapshot(settings)
+        finally:
+            self.mod.pmo_closed_trade_rows_for_learning = original_rows
+        self.assertEqual(proof["summary"]["closed"], 2)
+        self.assertEqual(proof["summary"]["wins"], 1)
+        self.assertEqual(proof["summary"]["losses"], 1)
+        self.assertEqual(proof["excluded_counts"]["pre_gate_opening_slot"], 1)
+        self.assertEqual(proof["excluded_counts"]["non_equity"], 1)
+        self.assertTrue(proof["ready"])
+
     def test_ratio_context_filter_is_not_a_trade_verdict(self):
         settings = dict(self.mod.DEFAULT_SETTINGS)
         settings.update({

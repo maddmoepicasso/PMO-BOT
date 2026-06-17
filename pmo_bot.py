@@ -415,6 +415,11 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_PROOF_MIN_PF": 1.25,
     "PMO_PROOF_MIN_TRADES": 50,
     "PMO_LIVE_READINESS_USE_CLEAN_PROOF": True,
+    "ENABLE_PMO_POST_GATE_EQUITY_PROOF": True,
+    "PMO_POST_GATE_EQUITY_PROOF_START": "2026-06-16T00:00:00-04:00",
+    "PMO_POST_GATE_EQUITY_MIN_CLOSED_TRADES": 20,
+    "PMO_POST_GATE_EQUITY_MIN_WIN_RATE": 0.52,
+    "PMO_POST_GATE_EQUITY_MIN_PROFIT_FACTOR": 1.25,
     "PMO_REBUILT_SCORE_MODEL_ENABLED": True,
     "PMO_REBUILT_SCORE_SUPPRESS_POSITIVE_LEARNING": True,
     "PMO_REBUILT_SCORE_USE_PROOF_DIAGNOSIS": True,
@@ -686,6 +691,17 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_EDGE_SCORE_INFLUENCE_ENABLED": False,
     "PMO_ORB_ENABLED": True,
     "PMO_ORB_MINUTES": 15,
+    "ENABLE_PMO_OPENING_HOUR_QUALITY_GATES": True,
+    "PMO_OPENING_GATE_START": "09:30",
+    "PMO_OPENING_GATE_END": "10:29",
+    "PMO_OPENING_REQUIRE_TWO_CLOSED_5M_BARS": True,
+    "PMO_OPENING_EARLIEST_ENTRY": "09:40",
+    "PMO_OPENING_RVOL_GATE_END": "09:59",
+    "PMO_OPENING_MIN_RVOL": 2.0,
+    "PMO_OPENING_REQUIRE_GAP_UP_HOLD": True,
+    "PMO_OPENING_REQUIRE_ORB_BREAKOUT": True,
+    "PMO_OPENING_ORB_GATE_END": "09:59",
+    "PMO_OPENING_BLOCK_ON_MISSING_EDGE": True,
     "PMO_RS_ENABLED": True,
     "PMO_RS_THRESHOLD_PCT": 0.5,
     "PMO_POC_ENABLED": True,
@@ -1105,6 +1121,11 @@ EDITABLE_SETTINGS: Dict[str, Dict[str, Any]] = {
     "PMO_PROOF_MIN_PF": {"type": "float", "min": 0, "max": 10},
     "PMO_PROOF_MIN_TRADES": {"type": "int", "min": 0, "max": 10000},
     "PMO_LIVE_READINESS_USE_CLEAN_PROOF": {"type": "bool"},
+    "ENABLE_PMO_POST_GATE_EQUITY_PROOF": {"type": "bool"},
+    "PMO_POST_GATE_EQUITY_PROOF_START": {"type": "text"},
+    "PMO_POST_GATE_EQUITY_MIN_CLOSED_TRADES": {"type": "int", "min": 0, "max": 10000},
+    "PMO_POST_GATE_EQUITY_MIN_WIN_RATE": {"type": "float", "min": 0, "max": 1},
+    "PMO_POST_GATE_EQUITY_MIN_PROFIT_FACTOR": {"type": "float", "min": 0, "max": 10},
     "PMO_REBUILT_SCORE_MODEL_ENABLED": {"type": "bool"},
     "PMO_REBUILT_SCORE_SUPPRESS_POSITIVE_LEARNING": {"type": "bool"},
     "PMO_REBUILT_SCORE_USE_PROOF_DIAGNOSIS": {"type": "bool"},
@@ -1287,6 +1308,17 @@ EDITABLE_SETTINGS: Dict[str, Dict[str, Any]] = {
     "PMO_EDGE_SCORE_INFLUENCE_ENABLED": {"type": "bool"},
     "PMO_ORB_ENABLED": {"type": "bool"},
     "PMO_ORB_MINUTES": {"type": "int", "min": 5, "max": 60},
+    "ENABLE_PMO_OPENING_HOUR_QUALITY_GATES": {"type": "bool"},
+    "PMO_OPENING_GATE_START": {"type": "text"},
+    "PMO_OPENING_GATE_END": {"type": "text"},
+    "PMO_OPENING_REQUIRE_TWO_CLOSED_5M_BARS": {"type": "bool"},
+    "PMO_OPENING_EARLIEST_ENTRY": {"type": "text"},
+    "PMO_OPENING_RVOL_GATE_END": {"type": "text"},
+    "PMO_OPENING_MIN_RVOL": {"type": "float", "min": 0, "max": 20},
+    "PMO_OPENING_REQUIRE_GAP_UP_HOLD": {"type": "bool"},
+    "PMO_OPENING_REQUIRE_ORB_BREAKOUT": {"type": "bool"},
+    "PMO_OPENING_ORB_GATE_END": {"type": "text"},
+    "PMO_OPENING_BLOCK_ON_MISSING_EDGE": {"type": "bool"},
     "PMO_RS_ENABLED": {"type": "bool"},
     "PMO_RS_THRESHOLD_PCT": {"type": "float", "min": 0, "max": 5},
     "PMO_POC_ENABLED": {"type": "bool"},
@@ -7413,6 +7445,19 @@ def pmo_paper_proof_snapshot(settings: Optional[Dict[str, Any]] = None, record: 
             "detail": "PMO needs ready stop/target plans attached to trade decisions.",
         },
     ]
+    post_gate_equity_proof = pmo_post_gate_equity_proof_snapshot(settings) if "pmo_post_gate_equity_proof_snapshot" in globals() else {"ready": False, "summary": {}, "next_action": "Post-gate equity proof unavailable."}
+    post_gate_summary = post_gate_equity_proof.get("summary", {}) if isinstance(post_gate_equity_proof.get("summary"), dict) else {}
+    checks.append({
+        "name": "Post-gate equity proof",
+        "ready": bool(post_gate_equity_proof.get("ready")),
+        "value": f"{int(safe_float(post_gate_summary.get('closed'), 0))}/{int(safe_float(post_gate_summary.get('minimum_closed_trades'), settings.get('PMO_POST_GATE_EQUITY_MIN_CLOSED_TRADES', 20)))}",
+        "detail": (
+            f"{post_gate_equity_proof.get('status', 'UNKNOWN')} | "
+            f"WR {safe_float(post_gate_summary.get('win_rate'), 0):.2%}; "
+            f"PF {safe_float(post_gate_summary.get('profit_factor'), 0):.2f}; "
+            f"{post_gate_equity_proof.get('next_action', '')}"
+        ),
+    })
     ready_count = sum(1 for row in checks if row["ready"])
     score = round((ready_count / len(checks)) * 100, 1) if checks else 0
     ready_to_unlock_live = all(row["ready"] for row in checks)
@@ -7456,6 +7501,8 @@ def pmo_paper_proof_snapshot(settings: Optional[Dict[str, Any]] = None, record: 
         next_actions.append("Keep v112 outcome review active; positive learning boosts remain paused until closed paper replay win rate improves.")
     if quality_breaker.get("active"):
         next_actions.append(quality_breaker.get("next_action") or "Stop new paper entries until proof quality recovers.")
+    if not post_gate_equity_proof.get("ready"):
+        next_actions.append(post_gate_equity_proof.get("next_action") or "Collect post-gate equity closed trades before live readiness can use equity proof.")
     if not next_actions:
         next_actions.append("Paper proof gates are green; live execution still requires manual live switches and owner confirmation.")
     snapshot = {
@@ -7476,6 +7523,7 @@ def pmo_paper_proof_snapshot(settings: Optional[Dict[str, Any]] = None, record: 
         "clean_proof_ready": clean_proof_ready,
         "clean_proof_score": clean_proof_score,
         "clean_metrics": clean_metrics,
+        "post_gate_equity_proof": post_gate_equity_proof,
         "raw_journal_summary": raw_journal_summary,
         "outcome_source": journal_summary.get("source_file", str(TRADE_JOURNAL_FILE)),
         "proof_gaps": proof_gaps,
@@ -7508,6 +7556,10 @@ def pmo_paper_proof_snapshot(settings: Optional[Dict[str, Any]] = None, record: 
             "clean_net_pnl": safe_float(clean_metrics.get("net_pnl"), 0),
             "clean_proof_score": clean_proof_score,
             "clean_proof_ready": clean_proof_ready,
+            "post_gate_equity_closed_trades": int(safe_float(post_gate_summary.get("closed"), 0)),
+            "post_gate_equity_win_rate": safe_float(post_gate_summary.get("win_rate"), 0),
+            "post_gate_equity_profit_factor": safe_float(post_gate_summary.get("profit_factor"), 0),
+            "post_gate_equity_ready": bool(post_gate_equity_proof.get("ready")),
             "raw_closed_trades": int(safe_float(raw_journal_summary.get("closed_trades"), 0)),
             "raw_win_rate": safe_float(raw_journal_summary.get("win_rate"), 0),
             "raw_profit_factor": safe_float(raw_journal_summary.get("profit_factor"), 0),
@@ -10476,6 +10528,140 @@ def pmo_clean_trade_proof_metrics(settings: Optional[Dict[str, Any]] = None) -> 
     }
 
 
+def pmo_post_gate_equity_proof_snapshot(settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    enabled = bool(settings.get("ENABLE_PMO_POST_GATE_EQUITY_PROOF", True))
+    min_closed = int(max(0, safe_float(settings.get("PMO_POST_GATE_EQUITY_MIN_CLOSED_TRADES", 20), 20)))
+    min_win_rate = safe_float(settings.get("PMO_POST_GATE_EQUITY_MIN_WIN_RATE", settings.get("PMO_PROOF_MIN_WIN_RATE", 0.52)), 0.52)
+    min_profit_factor = safe_float(settings.get("PMO_POST_GATE_EQUITY_MIN_PROFIT_FACTOR", settings.get("PMO_PROOF_MIN_PF", 1.25)), 1.25)
+    proof_start = parse_pmo_timestamp(settings.get("PMO_POST_GATE_EQUITY_PROOF_START")) or parse_pmo_timestamp("2026-06-16T00:00:00-04:00")
+    opening_start = pmo_opening_gate_time(settings.get("PMO_OPENING_GATE_START"), "09:30")
+    earliest_entry = pmo_opening_gate_time(settings.get("PMO_OPENING_EARLIEST_ENTRY"), "09:40")
+    clean_rows = pmo_closed_trade_rows_for_learning(settings, exclude_blocklist=True)
+
+    counted: List[Dict[str, Any]] = []
+    excluded = {
+        "non_equity": 0,
+        "pre_rollout": 0,
+        "pre_gate_opening_slot": 0,
+        "missing_timestamp": 0,
+    }
+    for row in clean_rows:
+        symbol = str(row.get("symbol") or row.get("ticker") or "").strip().upper()
+        if detect_market(symbol, "AUTO") != "STOCK":
+            excluded["non_equity"] += 1
+            continue
+        timestamp = None
+        for field in ("entry_timestamp", "filled_at", "submitted_at", "timestamp", "created_at", "closed_at", "exit_timestamp", "time"):
+            timestamp = parse_pmo_timestamp(row.get(field))
+            if timestamp:
+                break
+        if not timestamp:
+            excluded["missing_timestamp"] += 1
+            continue
+        if proof_start and timestamp < proof_start:
+            excluded["pre_rollout"] += 1
+            continue
+        if opening_start <= timestamp.time() < earliest_entry:
+            excluded["pre_gate_opening_slot"] += 1
+            continue
+        counted.append(row)
+
+    wins = 0
+    losses = 0
+    gross_profit = 0.0
+    gross_loss = 0.0
+    net_pnl = 0.0
+    latest_rows: List[Dict[str, Any]] = []
+    for row in counted:
+        pnl = pmo_trade_edge_pnl(row)
+        status = pmo_trade_edge_status(row)
+        is_win = "WIN" in status or pnl > 0
+        is_loss = "LOSS" in status or pnl < 0
+        if not (is_win or is_loss):
+            continue
+        net_pnl += pnl
+        if is_win:
+            wins += 1
+            gross_profit += max(0.0, pnl)
+        elif is_loss:
+            losses += 1
+            gross_loss += abs(min(0.0, pnl))
+        if len(latest_rows) < 12:
+            latest_rows.append({
+                "timestamp": str(row.get("timestamp") or row.get("entry_timestamp") or ""),
+                "symbol": str(row.get("symbol") or row.get("ticker") or "").strip().upper(),
+                "status": status,
+                "pnl": round(pnl, 4),
+                "score": row.get("score", ""),
+                "rvol": row.get("relative_volume") or row.get("rvol") or "",
+            })
+
+    closed = wins + losses
+    win_rate = round(wins / closed, 4) if closed else 0.0
+    profit_factor = round(gross_profit / gross_loss, 4) if gross_loss > 0 else (999.0 if gross_profit > 0 else 0.0)
+    ready = bool(enabled and closed >= min_closed and win_rate >= min_win_rate and profit_factor >= min_profit_factor)
+    checks = [
+        {
+            "name": "post-gate equity closed trades",
+            "ready": closed >= min_closed,
+            "value": closed,
+            "required": min_closed,
+            "detail": f"Collect {min_closed}+ closed STOCK/ETF outcomes after {earliest_entry.strftime('%H:%M')} ET and after {proof_start.isoformat() if proof_start else 'rollout'}.",
+        },
+        {
+            "name": "post-gate equity win rate",
+            "ready": win_rate >= min_win_rate and closed >= min_closed,
+            "value": win_rate,
+            "required": min_win_rate,
+            "detail": "Post-gate equity wins divided by post-gate equity wins plus losses.",
+        },
+        {
+            "name": "post-gate equity profit factor",
+            "ready": profit_factor >= min_profit_factor and closed >= min_closed,
+            "value": profit_factor,
+            "required": min_profit_factor,
+            "detail": "Post-gate equity gross wins divided by gross losses.",
+        },
+    ]
+    next_action = (
+        "Post-gate equity proof is validated."
+        if ready
+        else f"Collect {max(0, min_closed - closed)} more post-gate equity close(s) before live readiness can use equity proof."
+    )
+    if not enabled:
+        next_action = "Post-gate equity proof track is disabled."
+    return {
+        "ok": True,
+        "enabled": enabled,
+        "status": "VALIDATED" if ready else ("DISABLED" if not enabled else "REBUILDING"),
+        "ready": ready or not enabled,
+        "live_gate": "UNLOCKED" if ready or not enabled else "LOCKED",
+        "source": "REAL_TRADE_JOURNAL_POST_GATE_EQUITY",
+        "source_file": str(TRADE_JOURNAL_FILE),
+        "proof_start": proof_start.isoformat() if proof_start else "",
+        "earliest_entry": earliest_entry.strftime("%H:%M"),
+        "excluded_symbols": sorted(pmo_symbol_blocklist(settings)),
+        "excluded_counts": excluded,
+        "summary": {
+            "closed": closed,
+            "wins": wins,
+            "losses": losses,
+            "win_rate": win_rate,
+            "profit_factor": profit_factor,
+            "gross_profit": round(gross_profit, 4),
+            "gross_loss": round(gross_loss, 4),
+            "net_pnl": round(net_pnl, 4),
+            "minimum_closed_trades": min_closed,
+            "min_win_rate": min_win_rate,
+            "min_profit_factor": min_profit_factor,
+        },
+        "checks": checks,
+        "latest_rows": latest_rows,
+        "next_action": next_action,
+    }
+
+
 def pmo_trade_edge_status(row: Dict[str, Any]) -> str:
     return str(row.get("status") or row.get("result") or row.get("outcome") or "").strip().upper()
 
@@ -11325,6 +11511,140 @@ def pmo_symbol_loss_circuit_breaker(symbol: str, settings: Optional[Dict[str, An
     }
 
 
+def pmo_opening_gate_time(value: Any, default: str) -> datetime.time:
+    from datetime import time as datetime_time
+
+    text = str(value or default).strip()
+    try:
+        hour, minute = [int(part) for part in text.split(":", 1)]
+        return datetime_time(hour, minute)
+    except Exception:
+        hour, minute = [int(part) for part in default.split(":", 1)]
+        return datetime_time(hour, minute)
+
+
+def pmo_candidate_timestamp(row: Dict[str, Any]) -> datetime:
+    for field in ("timestamp", "entry_timestamp", "time", "timenow", "datetime", "created_at"):
+        parsed = parse_pmo_timestamp(row.get(field))
+        if parsed:
+            return parsed
+    return now_et()
+
+
+def pmo_opening_edge_report(symbol: str, side: Any, bias: Any, row: Dict[str, Any], settings: Dict[str, Any]) -> Dict[str, Any]:
+    edge = row.get("edge_engines") if isinstance(row.get("edge_engines"), dict) else {}
+    if not edge and (row.get("orb_signal") or row.get("gap_signal")):
+        edge = {
+            "edge_engine_status": row.get("edge_engine_status", "READY"),
+            "orb_signal": row.get("orb_signal", ""),
+            "orb_high": row.get("orb_high", ""),
+            "orb_low": row.get("orb_low", ""),
+            "gap_signal": row.get("gap_signal", ""),
+            "gap_pct": row.get("gap_pct", ""),
+        }
+    if edge:
+        return edge
+    try:
+        direction = "long" if pmo_signal_wants_long(side, bias, row.get("side"), row.get("direction"), row.get("prediction_bias")) else "short"
+        return pmo_analyze_edge_engines(symbol, direction, settings)
+    except Exception as exc:
+        return pmo_edge_engines_empty("ERROR", f"opening gate edge lookup error: {str(exc)[:120]}")
+
+
+def pmo_opening_hour_quality_gate(
+    symbol: str,
+    side: Any,
+    bias: Any,
+    row: Dict[str, Any],
+    settings: Dict[str, Any],
+    rvol: float,
+) -> Dict[str, Any]:
+    if not bool(settings.get("ENABLE_PMO_OPENING_HOUR_QUALITY_GATES", True)):
+        return {"enabled": False, "active": False, "allowed": True, "blockers": [], "warnings": [], "confirmations": []}
+
+    clean_symbol = str(symbol or row.get("symbol") or "").strip().upper()
+    market = detect_market(clean_symbol, "AUTO")
+    wants_long = pmo_signal_wants_long(side, bias, row.get("side"), row.get("direction"), row.get("prediction_bias"))
+    candidate_dt = pmo_candidate_timestamp(row)
+    candidate_time = candidate_dt.time()
+    start = pmo_opening_gate_time(settings.get("PMO_OPENING_GATE_START"), "09:30")
+    end = pmo_opening_gate_time(settings.get("PMO_OPENING_GATE_END"), "10:29")
+    active = bool(market == "STOCK" and wants_long and start <= candidate_time <= end)
+    if not active:
+        return {
+            "enabled": True,
+            "active": False,
+            "allowed": True,
+            "timestamp": candidate_dt.isoformat(),
+            "window": f"{start.strftime('%H:%M')}-{end.strftime('%H:%M')}",
+            "blockers": [],
+            "warnings": [],
+            "confirmations": ["opening-hour quality gate not active for this candidate"],
+        }
+
+    blockers: List[str] = []
+    warnings: List[str] = []
+    confirmations: List[str] = []
+    earliest = pmo_opening_gate_time(settings.get("PMO_OPENING_EARLIEST_ENTRY"), "09:40")
+    if bool(settings.get("PMO_OPENING_REQUIRE_TWO_CLOSED_5M_BARS", True)):
+        if candidate_time < earliest:
+            blockers.append(f"opening gate: wait until {earliest.strftime('%H:%M')} so two 5m bars are closed")
+        else:
+            confirmations.append(f"opening gate: two closed 5m bars confirmed by {candidate_time.strftime('%H:%M')}")
+
+    rvol_end = pmo_opening_gate_time(settings.get("PMO_OPENING_RVOL_GATE_END"), "09:59")
+    opening_min_rvol = safe_float(settings.get("PMO_OPENING_MIN_RVOL"), 2.0)
+    if candidate_time <= rvol_end:
+        if rvol >= opening_min_rvol:
+            confirmations.append(f"opening RVOL gate passed: {rvol:g} >= {opening_min_rvol:g}")
+        elif rvol > 0:
+            blockers.append(f"opening RVOL gate: {rvol:g} below {opening_min_rvol:g} before {rvol_end.strftime('%H:%M')}")
+        else:
+            blockers.append(f"opening RVOL gate: missing RVOL before {rvol_end.strftime('%H:%M')}; requires >= {opening_min_rvol:g}")
+
+    edge = pmo_opening_edge_report(clean_symbol, side, bias, row, settings)
+    edge_status = str(edge.get("edge_engine_status", "")).upper()
+    missing_edge = edge_status in {"", "DATA_REQUIRED", "UNAVAILABLE", "ERROR", "OFF"} and not (edge.get("orb_signal") or edge.get("gap_signal"))
+    if missing_edge:
+        detail = edge.get("edge_engine_note") or "edge engine data unavailable"
+        if bool(settings.get("PMO_OPENING_BLOCK_ON_MISSING_EDGE", True)):
+            blockers.append(f"opening edge gate: {detail}")
+        else:
+            warnings.append(f"opening edge gate warning: {detail}")
+
+    if bool(settings.get("PMO_OPENING_REQUIRE_GAP_UP_HOLD", True)):
+        gap_signal = str(edge.get("gap_signal") or "").upper()
+        if gap_signal == "GAP_UP_HOLD":
+            confirmations.append("opening gap gate passed: GAP_UP_HOLD")
+        elif not missing_edge:
+            blockers.append(f"opening gap gate: longs require GAP_UP_HOLD; got {gap_signal or 'UNKNOWN'}")
+
+    orb_end = pmo_opening_gate_time(settings.get("PMO_OPENING_ORB_GATE_END"), "09:59")
+    if bool(settings.get("PMO_OPENING_REQUIRE_ORB_BREAKOUT", True)) and candidate_time <= orb_end:
+        orb_signal = str(edge.get("orb_signal") or "").upper()
+        if orb_signal == "BULLISH":
+            confirmations.append("opening ORB gate passed: price above opening range high")
+        elif not missing_edge:
+            blockers.append(f"opening ORB gate: longs require ORB BULLISH before {orb_end.strftime('%H:%M')}; got {orb_signal or 'UNKNOWN'}")
+
+    return {
+        "enabled": True,
+        "active": True,
+        "allowed": not blockers,
+        "timestamp": candidate_dt.isoformat(),
+        "time": candidate_time.strftime("%H:%M"),
+        "window": f"{start.strftime('%H:%M')}-{end.strftime('%H:%M')}",
+        "rvol": rvol,
+        "min_opening_rvol": opening_min_rvol,
+        "edge_engines": edge,
+        "orb_signal": edge.get("orb_signal", ""),
+        "gap_signal": edge.get("gap_signal", ""),
+        "blockers": blockers,
+        "warnings": warnings,
+        "confirmations": confirmations,
+    }
+
+
 def pmo_entry_rebuild_guard(
     symbol: str,
     side: Any,
@@ -11394,6 +11714,11 @@ def pmo_entry_rebuild_guard(
     if loss_guard.get("loss_streak", 0) > 0 and not loss_guard.get("active"):
         warnings.append(f"symbol loss watch: {clean_symbol} has {loss_guard.get('loss_streak')} recent consecutive loss(es)")
 
+    opening_gate = pmo_opening_hour_quality_gate(clean_symbol, side, bias, row, settings, rvol)
+    blockers.extend(opening_gate.get("blockers", []))
+    warnings.extend(opening_gate.get("warnings", []))
+    confirmations.extend(opening_gate.get("confirmations", []))
+
     tod_gate = pmo_time_of_day_gate(settings, record=False)
     blockers.extend(tod_gate.get("blockers", []))
     warnings.extend(tod_gate.get("warnings", []))
@@ -11459,6 +11784,7 @@ def pmo_entry_rebuild_guard(
         "confirmations": confirmations,
         "score_gate": score_gate,
         "loss_guard": loss_guard,
+        "opening_hour_gate": opening_gate,
         "time_of_day_gate": tod_gate,
         "engine_confluence": confluence,
         "trade_similarity": similarity,
@@ -13171,6 +13497,9 @@ def live_readiness_snapshot(settings: Dict[str, Any], account: Dict[str, Any], h
         "source": clean_edge_summary.get("source", "REAL_TRADE_JOURNAL_CLEAN_BLOCKLIST"),
         "excluded_symbols": clean_edge_summary.get("excluded_symbols", []),
     }
+    post_gate_equity_proof = pmo_post_gate_equity_proof_snapshot(settings)
+    post_gate_equity_summary = post_gate_equity_proof.get("summary", {}) if isinstance(post_gate_equity_proof.get("summary"), dict) else {}
+    post_gate_equity_ready = bool(post_gate_equity_proof.get("ready"))
     proof_source = str(settings.get("PMO_PROOF_SOURCE", "REAL_TRADE_JOURNAL_CLEAN_BLOCKLIST")).strip().upper()
     legacy_clean_flag = bool(settings.get("PMO_LIVE_READINESS_USE_CLEAN_PROOF", True))
     edge_gate_source = "V112_REPLAY"
@@ -13214,7 +13543,8 @@ def live_readiness_snapshot(settings: Dict[str, Any], account: Dict[str, Any], h
             "source": "REAL_TRADE_JOURNAL",
         }
         edge_gate_source = "REAL_TRADE_JOURNAL"
-    edge_ready = bool(edge_gate.get("positive_allowed"))
+    base_edge_ready = bool(edge_gate.get("positive_allowed"))
+    edge_ready = base_edge_ready and post_gate_equity_ready
     account_equity = safe_float(account.get("equity") or account.get("portfolio_value"), 0)
     account_buying_power = safe_float(account.get("buying_power"), 0)
     paper_funding_ready = bool(account.get("ok")) and (account_equity > 0 or account_buying_power > 0)
@@ -13271,13 +13601,25 @@ def live_readiness_snapshot(settings: Dict[str, Any], account: Dict[str, Any], h
         },
         {
             "name": "Closed-paper edge proof",
-            "ready": edge_ready,
+            "ready": base_edge_ready,
             "detail": (
                 f"{edge_gate.get('reason', '')} | closed {edge_summary.get('closed_paper_trades', 0)}/"
                 f"{edge_summary.get('minimum_closed_trades_to_judge', edge_gate.get('min_rows', 0))}; "
                 f"win rate {safe_float(edge_summary.get('win_rate'), 0):.2%}; "
                 f"profit factor {safe_float(edge_summary.get('profit_factor'), 0):.2f}; "
                 f"expectancy {safe_float(edge_summary.get('expectancy_pct'), 0):.2f}%"
+            ),
+        },
+        {
+            "name": "Post-gate equity proof",
+            "ready": post_gate_equity_ready,
+            "detail": (
+                f"{post_gate_equity_proof.get('status', 'UNKNOWN')} | "
+                f"closed {int(safe_float(post_gate_equity_summary.get('closed'), 0))}/"
+                f"{int(safe_float(post_gate_equity_summary.get('minimum_closed_trades'), settings.get('PMO_POST_GATE_EQUITY_MIN_CLOSED_TRADES', 20)))}; "
+                f"WR {safe_float(post_gate_equity_summary.get('win_rate'), 0):.2%}; "
+                f"PF {safe_float(post_gate_equity_summary.get('profit_factor'), 0):.2f}; "
+                f"{post_gate_equity_proof.get('next_action', '')}"
             ),
         },
         {
@@ -13338,7 +13680,9 @@ def live_readiness_snapshot(settings: Dict[str, Any], account: Dict[str, Any], h
         mode = "BROKER FUNDING REQUIRED / PAPER SAFE"
     elif drawdown_governor.get("force_review_only"):
         mode = "REVIEW ONLY / PAPER SAFE"
-    elif not edge_ready:
+    elif not post_gate_equity_ready:
+        mode = "POST-GATE EQUITY PROOF REQUIRED / PAPER SAFE"
+    elif not base_edge_ready:
         mode = "PAPER EDGE PROOF REQUIRED / PAPER SAFE"
     elif drawdown_governor.get("level") == "BLOCK_NEW_ENTRIES":
         mode = "STOP NEW TRADES / PAPER SAFE"
@@ -13362,7 +13706,9 @@ def live_readiness_snapshot(settings: Dict[str, Any], account: Dict[str, Any], h
         recommendation = "Alpaca paper account is reachable but has $0.00 equity and $0.00 buying power. Reset or fund the paper account before collecting new paper-proof trades."
     elif drawdown_governor.get("force_review_only"):
         recommendation = "PMO is in review-only mode from day drawdown. Do not approve new entries until the loss is reviewed."
-    elif not edge_ready:
+    elif not post_gate_equity_ready:
+        recommendation = post_gate_equity_proof.get("next_action") or "Collect post-gate equity closed trades before live readiness can use equity proof."
+    elif not base_edge_ready:
         recommendation = f"PMO needs stronger closed-paper edge proof before live readiness. {edge_gate.get('reason', '')}"
     elif drawdown_governor.get("level") == "BLOCK_NEW_ENTRIES":
         recommendation = "PMO day drawdown has blocked all new entries. Keep reviewing and reconciling before any new signal approval."
@@ -13393,8 +13739,11 @@ def live_readiness_snapshot(settings: Dict[str, Any], account: Dict[str, Any], h
         "drawdown_governor": drawdown_governor,
         "edge_proof": {
             "gate": edge_gate,
+            "base_edge_ready": base_edge_ready,
+            "combined_edge_ready": edge_ready,
             "summary": edge_summary,
             "clean_summary": clean_edge_summary,
+            "post_gate_equity": post_gate_equity_proof,
             "gate_source": edge_gate_source,
             "proof_score": edge_proof.get("proof_score"),
             "status": edge_proof.get("status"),
@@ -21223,6 +21572,20 @@ RICH_CONTROL_TEMPLATE = """
                 <div><div class="setting-value">Paper Submissions</div><div class="metric blue" id="paperProofSubmissions">{{ paper_proof.metrics.paper_submissions if paper_proof.metrics else 0 }}</div></div>
                 <div><div class="setting-value">Ready Plans</div><div class="metric green" id="paperProofPlans">{{ paper_proof.metrics.ready_trade_plans if paper_proof.metrics else 0 }}</div></div>
             </div>
+            <h4 style="margin-top:14px;">Post-Gate Equity Proof Track</h4>
+            <div class="grid" style="margin-top:10px;">
+                <div><div class="setting-value">Equity Status</div><div class="metric {{ 'green' if paper_proof.post_gate_equity_proof.ready else 'yellow' }}" id="postGateEquityStatus">{{ paper_proof.post_gate_equity_proof.status }}</div></div>
+                <div><div class="setting-value">Closed Trades</div><div class="metric blue" id="postGateEquityClosed">{{ paper_proof.post_gate_equity_proof.summary.closed }}/{{ paper_proof.post_gate_equity_proof.summary.minimum_closed_trades }}</div></div>
+                <div><div class="setting-value">Win Rate</div><div class="metric {{ 'green' if paper_proof.post_gate_equity_proof.summary.win_rate >= paper_proof.post_gate_equity_proof.summary.min_win_rate and paper_proof.post_gate_equity_proof.ready else 'yellow' }}" id="postGateEquityWinRate">{{ "%.2f"|format((paper_proof.post_gate_equity_proof.summary.win_rate or 0) * 100) }}%</div></div>
+                <div><div class="setting-value">Profit Factor</div><div class="metric {{ 'green' if paper_proof.post_gate_equity_proof.summary.profit_factor >= paper_proof.post_gate_equity_proof.summary.min_profit_factor and paper_proof.post_gate_equity_proof.ready else 'yellow' }}" id="postGateEquityPF">{{ "%.2f"|format(paper_proof.post_gate_equity_proof.summary.profit_factor or 0) }}</div></div>
+            </div>
+            <div class="table-wrap" style="margin-top:10px;"><table id="postGateEquityProofTable">
+                <tr><th>Track Check</th><th>Status</th><th>Value</th><th>Required</th><th>Detail</th></tr>
+                {% for row in paper_proof.post_gate_equity_proof.checks %}
+                <tr><td>{{ row.name }}</td><td class="{{ 'green' if row.ready else 'yellow' }}">{{ 'READY' if row.ready else 'BUILDING' }}</td><td>{{ row.value }}</td><td>{{ row.required }}</td><td>{{ row.detail }}</td></tr>
+                {% endfor %}
+            </table></div>
+            <div class="setting-value" id="postGateEquityNextAction" style="margin-top:8px;">{{ paper_proof.post_gate_equity_proof.next_action }}</div>
             <div class="row" style="margin-top:10px;">
                 <button id="previewTradePlanButton">Preview Protective Trade Plan</button>
                 <button id="refreshPaperProofButton">Refresh Paper Proof Center</button>
@@ -22238,6 +22601,21 @@ function renderPaperProof(proof) {
     const checkRows = ['<tr><th>Proof Check</th><th>Status</th><th>Value</th><th>Detail</th></tr>'];
     (proof.checks || []).forEach(row => checkRows.push(`<tr><td>${escapeHtml(row.name)}</td><td class="${row.ready ? 'green' : 'red'}">${row.ready ? 'READY' : 'NEEDS PROOF'}</td><td>${escapeHtml(row.value)}</td><td>${escapeHtml(row.detail)}</td></tr>`));
     setHtml('paperProofTable', checkRows.join(''));
+    const postGate = proof.post_gate_equity_proof || {};
+    const postSummary = postGate.summary || {};
+    setText('postGateEquityStatus', postGate.status || 'REBUILDING');
+    setText('postGateEquityClosed', (postSummary.closed ?? 0) + '/' + (postSummary.minimum_closed_trades ?? 20));
+    setText('postGateEquityWinRate', (((postSummary.win_rate ?? 0) * 100).toFixed(2)) + '%');
+    setText('postGateEquityPF', Number(postSummary.profit_factor ?? 0).toFixed(2));
+    setText('postGateEquityNextAction', postGate.next_action || '');
+    const postStatusEl = byId('postGateEquityStatus');
+    if (postStatusEl) {
+        postStatusEl.classList.toggle('green', !!postGate.ready);
+        postStatusEl.classList.toggle('yellow', !postGate.ready);
+    }
+    const postRows = ['<tr><th>Track Check</th><th>Status</th><th>Value</th><th>Required</th><th>Detail</th></tr>'];
+    (postGate.checks || []).forEach(row => postRows.push(`<tr><td>${escapeHtml(row.name)}</td><td class="${row.ready ? 'green' : 'yellow'}">${row.ready ? 'READY' : 'BUILDING'}</td><td>${escapeHtml(row.value)}</td><td>${escapeHtml(row.required)}</td><td>${escapeHtml(row.detail)}</td></tr>`));
+    setHtml('postGateEquityProofTable', postRows.join(''));
     const planRows = ['<tr><th>Time</th><th>Grade</th><th>Symbol</th><th>Entry</th><th>Stop</th><th>Target</th><th>R:R</th><th>Status</th></tr>'];
     if ((proof.latest_plans || []).length) {
         proof.latest_plans.forEach(row => {

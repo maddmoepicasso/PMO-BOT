@@ -17,10 +17,15 @@ import random
 import sys
 import tempfile
 from collections import defaultdict
-from typing import Dict, Iterable, List
+from datetime import datetime, time
+from typing import Dict, Iterable, List, Optional
+from zoneinfo import ZoneInfo
 
 
 BLOCKLIST_DEFAULTS = ["HOOD", "PSQ", "RWM", "CVX"]
+MARKET_TZ = ZoneInfo("America/New_York")
+OPENING_DAMAGE_START = time(9, 30)
+OPENING_DAMAGE_END = time(9, 44, 59)
 
 
 def load_csv(path: str) -> List[Dict[str, str]]:
@@ -65,6 +70,40 @@ def _closed(rows: Iterable[Dict[str, str]]) -> List[Dict[str, str]]:
 
 def _ticker(row: Dict[str, str]) -> str:
     return (row.get("ticker") or row.get("symbol") or "?").strip().upper()
+
+
+def _first(row: Dict[str, str], *keys: str) -> str:
+    for key in keys:
+        value = row.get(key)
+        if value not in (None, ""):
+            return str(value).strip()
+    return ""
+
+
+def _timestamp_et(row: Dict[str, str]) -> Optional[datetime]:
+    raw = _first(row, "timestamp", "entry_timestamp", "entry_time", "filled_at", "time", "datetime", "created_at")
+    if not raw:
+        return None
+    text = raw.replace("Z", "+00:00")
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%m/%d/%Y %H:%M:%S", "%m/%d/%Y %H:%M"):
+        try:
+            return datetime.strptime(text, fmt)
+        except Exception:
+            pass
+    try:
+        parsed = datetime.fromisoformat(text)
+    except Exception:
+        return None
+    if parsed.tzinfo:
+        return parsed.astimezone(MARKET_TZ)
+    return parsed
+
+
+def _in_opening_damage_slot(row: Dict[str, str]) -> bool:
+    timestamp = _timestamp_et(row)
+    if not timestamp:
+        return False
+    return OPENING_DAMAGE_START <= timestamp.time() <= OPENING_DAMAGE_END
 
 
 def _median(values: List[float]) -> float:
@@ -243,9 +282,15 @@ def analyze(path: str) -> None:
 
     blocked = [row for row in closed if _ticker(row) in BLOCKLIST_DEFAULTS]
     clean = [row for row in closed if _ticker(row) not in BLOCKLIST_DEFAULTS]
+    opening_damage = [row for row in closed if _in_opening_damage_slot(row)]
+    clean_opening_damage = [row for row in clean if _in_opening_damage_slot(row)]
+    clean_without_opening_damage = [row for row in clean if not _in_opening_damage_slot(row)]
     stats_block(closed, f"FULL dataset ({len(closed)} trades)")
     stats_block(blocked, f"BLOCKED symbols only ({len(blocked)} trades)")
     stats_block(clean, f"CLEAN dataset ex-blocklist ({len(clean)} trades)")
+    stats_block(opening_damage, f"09:30-09:44 ET slot ({len(opening_damage)} trades)")
+    stats_block(clean_opening_damage, f"CLEAN overlap inside 09:30-09:44 ET ({len(clean_opening_damage)} trades)")
+    stats_block(clean_without_opening_damage, f"CLEAN ex-blocklist and ex-09:30-09:44 ET ({len(clean_without_opening_damage)} trades)")
 
     print("\n  Score bands (CLEAN dataset only):")
     print(f"  {'Band':<10} {'N':>4} {'W':>4} {'L':>4} {'WR%':>6} {'PF':>6} {'Expect':>8}")
