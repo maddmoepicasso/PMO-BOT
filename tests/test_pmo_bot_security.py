@@ -90,6 +90,18 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         )
         self.assertEqual(bad.status_code, 403)
 
+    def test_tradingview_webhook_secret_prefers_env_value(self):
+        original = os.environ.get("TRADINGVIEW_WEBHOOK_SECRET")
+        try:
+            os.environ["TRADINGVIEW_WEBHOOK_SECRET"] = "unit-test-webhook-secret"
+            settings = self.mod.load_settings()
+        finally:
+            if original is None:
+                os.environ.pop("TRADINGVIEW_WEBHOOK_SECRET", None)
+            else:
+                os.environ["TRADINGVIEW_WEBHOOK_SECRET"] = original
+        self.assertEqual(settings["TRADINGVIEW_WEBHOOK_SECRET"], "unit-test-webhook-secret")
+
     def test_csv_append_mirrors_to_sqlite_event_log(self):
         csv_path = self.mod.CSV_DIR / "pmo_test_storage_events.csv"
         csv_path.unlink(missing_ok=True)

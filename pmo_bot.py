@@ -2435,6 +2435,9 @@ def load_settings() -> Dict[str, Any]:
         except Exception as exc:
             settings["PMO_SETTINGS_ERROR"] = str(exc)
 
+    env_webhook_secret = first_env("TRADINGVIEW_WEBHOOK_SECRET", "PMO_TRADINGVIEW_WEBHOOK_SECRET")
+    if env_webhook_secret:
+        settings["TRADINGVIEW_WEBHOOK_SECRET"] = env_webhook_secret
     settings["ALPACA_PAPER"] = env_bool("ALPACA_PAPER", bool(settings.get("ALPACA_PAPER", True)))
     sync_setting_aliases(settings, "ALPACA_PAPER")
     return settings
@@ -29250,11 +29253,20 @@ def api_deck_snapshot():
     if not isinstance(auto_symbols, list):
         auto_symbols = []
     configured_symbols = settings.get("PMO_WATCHLIST") or []
-    micro_symbols = settings.get("PMO_MICRO_SAFE_WATCHLIST") or []
+    micro_symbols = (settings.get("PMO_MICRO_SAFE_WATCHLIST") or []) if bool(settings.get("ENABLE_PMO_MICRO_ACCOUNT_MODE", False)) else []
     watchlist_symbols = [
         str(symbol).upper().strip()
         for symbol in dict.fromkeys(list(configured_symbols) + list(micro_symbols) + list(auto_symbols))
         if str(symbol).strip()
+    ]
+    scan_only_symbols = {
+        str(row.get("symbol") or "").upper().strip()
+        for row in pmo_international_quality_rows(settings)
+        if "SCAN_ONLY" in str(row.get("execution_mode") or "").upper()
+    }
+    backtest_required_symbols = [
+        symbol for symbol in watchlist_symbols
+        if detect_market(symbol, "AUTO") == "STOCK" and symbol not in scan_only_symbols
     ]
 
     backtest_dirs = [CSV_DIR / "backtest_daily_bars", PMO_DIR / "pmo_backtest_data"]
@@ -29271,7 +29283,7 @@ def api_deck_snapshot():
                 intraday_available = True
                 stem = stem.rsplit("_", 1)[0]
             backtest_symbols.add(stem)
-    missing_symbols = [symbol for symbol in watchlist_symbols if symbol.upper() not in backtest_symbols]
+    missing_symbols = [symbol for symbol in backtest_required_symbols if symbol.upper() not in backtest_symbols]
 
     md_status = getattr(bot, "market_data_status", {}) or {}
     md_age_seconds: Optional[float] = None
