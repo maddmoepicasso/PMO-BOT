@@ -877,6 +877,7 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_INTRADAY_REFRESH_ENABLED": True,
     "PMO_INTRADAY_REFRESH_INTERVAL_SECONDS": 600,
     "PMO_INTRADAY_BARS_LOOKBACK": 78,
+    "PMO_INTRADAY_REFRESH_MAX_SYMBOLS": 40,
     "ENABLE_PMO_V112_PAPER_REPLAY_JOURNAL": True,
     "PMO_V112_MAX_REPLAY_LOGS_PER_RUN": 10,
     "PMO_V112_OUTCOME_REVIEW_HOURS": 24,
@@ -1589,6 +1590,7 @@ EDITABLE_SETTINGS: Dict[str, Dict[str, Any]] = {
     "PMO_INTRADAY_REFRESH_ENABLED": {"type": "bool"},
     "PMO_INTRADAY_REFRESH_INTERVAL_SECONDS": {"type": "int", "min": 60, "max": 3600},
     "PMO_INTRADAY_BARS_LOOKBACK": {"type": "int", "min": 20, "max": 200},
+    "PMO_INTRADAY_REFRESH_MAX_SYMBOLS": {"type": "int", "min": 1, "max": 150},
     "ENABLE_PMO_V112_PAPER_REPLAY_JOURNAL": {"type": "bool"},
     "PMO_V112_MAX_REPLAY_LOGS_PER_RUN": {"type": "int", "min": 1, "max": 100},
     "PMO_V112_OUTCOME_REVIEW_HOURS": {"type": "int", "min": 1, "max": 720},
@@ -1991,6 +1993,7 @@ SWITCHBOARD_GROUPS = {
         "PMO_FINANCE_DATASET_DEFAULT_SAMPLE_ROWS", "PMO_FINANCE_DATASET_MAX_GENERATE_ROWS",
         "PMO_INTRADAY_REFRESH_ENABLED",
         "PMO_INTRADAY_REFRESH_INTERVAL_SECONDS", "PMO_INTRADAY_BARS_LOOKBACK",
+        "PMO_INTRADAY_REFRESH_MAX_SYMBOLS",
         "ENABLE_PMO_V112_PAPER_REPLAY_JOURNAL", "PMO_V112_MAX_REPLAY_LOGS_PER_RUN",
         "PMO_V112_OUTCOME_REVIEW_HOURS", "PMO_V112_MIN_PROOF_WIN_RATE",
         "PMO_V112_MIN_PROOF_PROFIT_FACTOR", "PMO_V112_BLOCKED_QUALITY_MIN",
@@ -30568,7 +30571,8 @@ def pmo_refresh_intraday_watchlist(settings: Optional[Dict[str, Any]] = None, fo
         selected_symbols,
         settings.get("PMO_AUTO_WATCHLIST_UNIVERSE", []),
     )
-    stock_symbols = [sym for sym in symbols if detect_market(str(sym), "AUTO") == "STOCK"][:40]
+    max_symbols = int(max(1, min(150, safe_float(settings.get("PMO_INTRADAY_REFRESH_MAX_SYMBOLS", 40), 40))))
+    stock_symbols = [sym for sym in symbols if detect_market(str(sym), "AUTO") == "STOCK"][:max_symbols]
     if not stock_symbols:
         return {"ok": True, "skipped": True, "reason": "empty stock watchlist", "fetched": 0}
 

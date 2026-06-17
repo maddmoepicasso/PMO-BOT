@@ -527,6 +527,34 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
             self.mod.pmo_market_universe = original_market_universe
             self.mod.pmo_crypto_symbols = original_crypto_symbols
 
+    def test_intraday_refresh_uses_configurable_symbol_cap(self):
+        original_fetch = self.mod.pmo_fetch_intraday_bars
+        original_load_auto = self.mod.load_auto_watchlist
+        original_last_refresh = self.mod._intraday_last_refresh
+        attempted = []
+        try:
+            self.mod._intraday_last_refresh = None
+            self.mod.load_auto_watchlist = lambda: {"symbols": [], "selected": []}
+            self.mod.pmo_fetch_intraday_bars = lambda symbol, lookback_bars=78, settings=None: attempted.append(symbol) or {
+                "ok": True,
+                "rows": 12,
+            }
+            settings = dict(self.mod.DEFAULT_SETTINGS)
+            settings.update({
+                "PMO_INTRADAY_REFRESH_ENABLED": True,
+                "PMO_INTRADAY_REFRESH_MAX_SYMBOLS": 55,
+                "PMO_WATCHLIST": [f"TST{i:03d}" for i in range(70)],
+                "PMO_AUTO_WATCHLIST_UNIVERSE": [],
+            })
+            result = self.mod.pmo_refresh_intraday_watchlist(settings, force=True)
+        finally:
+            self.mod.pmo_fetch_intraday_bars = original_fetch
+            self.mod.load_auto_watchlist = original_load_auto
+            self.mod._intraday_last_refresh = original_last_refresh
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["symbols_attempted"], 55)
+        self.assertEqual(len(attempted), 55)
+
     def test_edge_library_defines_all_requested_edges(self):
         definitions = self.mod.pmo_edge_library_definitions()
         self.assertEqual(len(definitions), 16)
