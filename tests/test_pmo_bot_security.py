@@ -284,6 +284,61 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertFalse(payload["settings_changed_by_endpoint"])
         self.assertGreaterEqual(len(payload["rows"]), 20)
 
+    def test_paper_proof_diagnosis_excludes_v112_replays_from_current_proof(self):
+        original_trade_journal = self.mod.TRADE_JOURNAL_FILE
+        original_v112_journal = self.mod.PMO_V112_REPLAY_JOURNAL_FILE
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                self.mod.TRADE_JOURNAL_FILE = Path(tmp) / "pmo_bot_trade_journal.csv"
+                self.mod.PMO_V112_REPLAY_JOURNAL_FILE = Path(tmp) / "pmo_v112_paper_replay_journal.csv"
+                self.mod.csv_append(self.mod.TRADE_JOURNAL_FILE, {
+                    "timestamp": "2026-06-17T10:00:00-04:00",
+                    "status": "CLOSED_WIN",
+                    "symbol": "SPY",
+                    "side": "LONG",
+                    "entry_price": "100",
+                    "exit_price": "104",
+                    "pnl": "4",
+                    "pnl_pct": "4",
+                    "source_order_id": "broker-1",
+                })
+                self.mod.csv_append(self.mod.PMO_V112_REPLAY_JOURNAL_FILE, {
+                    "timestamp": "2026-06-17T10:05:00-04:00",
+                    "status": "TARGET_HIT",
+                    "quality": "WIN",
+                    "symbol": "QQQ",
+                    "side": "BUY_LONG",
+                    "entry_price": "200",
+                    "exit_price": "210",
+                    "profit_loss_usd": "10",
+                    "profit_loss_pct": "5",
+                    "executor_source_order_id": "replay-1",
+                })
+                self.mod.csv_append(self.mod.PMO_V112_REPLAY_JOURNAL_FILE, {
+                    "timestamp": "2026-06-17T10:10:00-04:00",
+                    "status": "STOP_HIT",
+                    "quality": "LOSS",
+                    "symbol": "IWM",
+                    "side": "BUY_LONG",
+                    "entry_price": "100",
+                    "exit_price": "96",
+                    "profit_loss_usd": "-4",
+                    "profit_loss_pct": "-4",
+                    "executor_source_order_id": "replay-2",
+                })
+
+                result = self.mod.pmo_paper_proof_diagnosis(dict(self.mod.DEFAULT_SETTINGS), record=False, limit=100)
+                self.assertEqual(result["closed_outcomes"], 1)
+                self.assertEqual(result["wins"], 1)
+                self.assertEqual(result["losses"], 0)
+                self.assertEqual(result["source_counts"]["closed_by_source"]["trade_journal"], 1)
+                self.assertEqual(result["source_counts"]["v112_excluded_from_current_proof"], 2)
+                self.assertTrue(result["v112_replay_exclusion"]["excluded_from_current_proof"])
+                self.assertFalse(next(row for row in result["source_inventory"] if row["source"] == "v112_replay")["counts_as_closed_proof"])
+        finally:
+            self.mod.TRADE_JOURNAL_FILE = original_trade_journal
+            self.mod.PMO_V112_REPLAY_JOURNAL_FILE = original_v112_journal
+
     def test_sqlite_paper_outcome_upsert_populates_legacy_created_at(self):
         with tempfile.TemporaryDirectory() as tmp:
             db_path = Path(tmp) / "pmo_storage.sqlite3"
@@ -1408,6 +1463,65 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertFalse(report["orders_placed"])
         self.assertFalse(report["live_unlocked"])
         self.assertEqual(report["signals"]["three_thirty_effect"]["status"], "BLOCK")
+
+    def test_deep_intelligence_detects_drift_asymmetry_and_crowding(self):
+        deep_mod = load_local_module("pmo_deep_intelligence")
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        settings.update({
+            "PMO_CONCEPT_DRIFT_ROLLING_WINDOW": 5,
+            "PMO_CONCEPT_DRIFT_ALERT_DROP": 0.15,
+            "PMO_CAUSAL_MIN_ROWS": 10,
+        })
+        trades = []
+        for idx in range(10):
+            trades.append({"timestamp": f"2026-06-01T10:{idx:02d}:00-04:00", "symbol": "SPY", "status": "CLOSED_WIN", "pnl": "1", "relative_volume": "2.5"})
+        for idx in range(5):
+            trades.append({"timestamp": f"2026-06-02T10:{idx:02d}:00-04:00", "symbol": "SPY", "status": "CLOSED_LOSS", "pnl": "-1", "relative_volume": "0.8"})
+        bars = [
+            {"timestamp": "2026-06-17T10:00:00-04:00", "open": 100, "high": 101, "low": 99, "close": 100, "relative_volume": 1.0},
+            {"timestamp": "2026-06-17T10:05:00-04:00", "open": 100, "high": 105, "low": 99.5, "close": 104, "relative_volume": 4.2},
+            {"timestamp": "2026-06-17T10:10:00-04:00", "open": 104, "high": 104.5, "low": 100, "close": 100.5, "relative_volume": 0.7},
+            {"timestamp": "2026-06-17T10:15:00-04:00", "open": 100.5, "high": 101, "low": 99, "close": 99.5, "relative_volume": 0.9},
+        ]
+        report = deep_mod.analyze_deep_intelligence(
+            "SPY",
+            settings,
+            trades=trades,
+            bars=bars,
+            candidate={"symbol": "SPY", "relative_volume": 4.1, "change_pct": 3.4},
+            news_rows=[],
+            earnings_rows=[],
+            market_rows=[{"timestamp": "2026-06-16T16:00:00-04:00", "regime": "DEFENSIVE", "change_pct": "-0.8"}],
+            now_value="2026-06-17T10:20:00-04:00",
+        )
+        self.assertTrue(report["ok"])
+        self.assertTrue(report["read_only"])
+        self.assertFalse(report["orders_placed"])
+        self.assertFalse(report["live_unlocked"])
+        self.assertEqual(report["signals"]["concept_drift"]["status"], "ALERT")
+        self.assertEqual(report["signals"]["information_asymmetry"]["status"], "DETECTED")
+        self.assertEqual(report["signals"]["adversarial_examples"]["status"], "ALERT")
+        self.assertIn(report["signals"]["emergent_behavior"]["status"], {"CROWDING_DETECTED", "CLEAR"})
+        self.assertLess(report["recommended_position_size_multiplier"], 1.0)
+
+    def test_deep_intelligence_endpoint_is_read_only(self):
+        response = self.client.post(
+            "/api/deep-intelligence",
+            json={
+                "symbol": "SPY",
+                "trades": [{"timestamp": "2026-06-17T10:00:00-04:00", "symbol": "SPY", "status": "CLOSED_WIN", "pnl": "1"}],
+                "bars": [{"timestamp": "2026-06-17T10:05:00-04:00", "open": 100, "high": 101, "low": 99, "close": 100, "relative_volume": 1}],
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        report = response.get_json()["deep_intelligence"]
+        self.assertTrue(report["ok"])
+        self.assertTrue(report["read_only"])
+        self.assertFalse(report["orders_placed"])
+        self.assertFalse(report["live_unlocked"])
+        self.assertFalse(report["settings_changed"])
+        self.assertIn("concept_drift", report["signals"])
+        self.assertIn("bayesian_edge", report["signals"])
 
     def test_trade_discipline_blocks_trend_entry_after_three_thirty(self):
         settings = dict(self.mod.DEFAULT_SETTINGS)

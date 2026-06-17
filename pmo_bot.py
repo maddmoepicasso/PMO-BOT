@@ -162,6 +162,16 @@ except Exception as exc:  # pragma: no cover - institutional signals must not bl
     PMO_INSTITUTIONAL_SIGNALS_ERROR = str(exc)
 
 try:
+    from pmo_deep_intelligence import analyze_deep_intelligence as pmo_deep_intelligence_analyze
+
+    PMO_DEEP_INTELLIGENCE_AVAILABLE = True
+    PMO_DEEP_INTELLIGENCE_ERROR = ""
+except Exception as exc:  # pragma: no cover - deep intelligence must not block startup
+    pmo_deep_intelligence_analyze = None
+    PMO_DEEP_INTELLIGENCE_AVAILABLE = False
+    PMO_DEEP_INTELLIGENCE_ERROR = str(exc)
+
+try:
     from pmo_claude_codex import (
         CLAUDE_CODEX_ROLES,
         SYSTEM_PROMPTS as PMO_CLAUDE_CODEX_SYSTEM_PROMPTS,
@@ -782,6 +792,26 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_ASK_PRINT_MIN_STREAK": 3,
     "PMO_PEAD_WINDOW_DAYS": 11,
     "PMO_VRP_MIN_IV_RANK": 50,
+    "ENABLE_PMO_DEEP_INTELLIGENCE": True,
+    "PMO_DEEP_INTELLIGENCE_SCORE_INFLUENCE": False,
+    "PMO_COUNTERFACTUAL_HORIZON_MINUTES": 30,
+    "PMO_COUNTERFACTUAL_MISSED_UPSIDE_PCT": 3.0,
+    "PMO_COUNTERFACTUAL_STOP_SAVED_PCT": 3.0,
+    "PMO_CONCEPT_DRIFT_ROLLING_WINDOW": 15,
+    "PMO_CONCEPT_DRIFT_ALERT_DROP": 0.15,
+    "PMO_CONCEPT_DRIFT_SIZE_MULTIPLIER": 0.65,
+    "PMO_BAYESIAN_ALPHA_PRIOR": 1.0,
+    "PMO_BAYESIAN_BETA_PRIOR": 1.0,
+    "PMO_CAUSAL_MIN_ROWS": 30,
+    "PMO_CAUSAL_RVOL_THRESHOLD": 2.0,
+    "PMO_ATTENTION_LOOKBACK_BARS": 30,
+    "PMO_ADVERSARIAL_RVOL_SPIKE": 3.0,
+    "PMO_INFO_ASYM_MIN_RVOL": 3.0,
+    "PMO_INFO_ASYM_MIN_MOVE_PCT": 3.0,
+    "PMO_INFO_ASYM_NO_NEWS_HOURS": 4.0,
+    "PMO_INFO_ASYM_NO_EARNINGS_DAYS": 7,
+    "PMO_EMERGENT_CROWD_RVOL": 3.0,
+    "PMO_META_LEARNING_FAST_WINDOW": 5,
     "PMO_ORB_ENABLED": True,
     "PMO_ORB_MINUTES": 15,
     "ENABLE_PMO_OPENING_HOUR_QUALITY_GATES": True,
@@ -1483,6 +1513,26 @@ EDITABLE_SETTINGS: Dict[str, Dict[str, Any]] = {
     "PMO_ASK_PRINT_MIN_STREAK": {"type": "int", "min": 2, "max": 20},
     "PMO_PEAD_WINDOW_DAYS": {"type": "int", "min": 1, "max": 60},
     "PMO_VRP_MIN_IV_RANK": {"type": "float", "min": 0, "max": 100},
+    "ENABLE_PMO_DEEP_INTELLIGENCE": {"type": "bool"},
+    "PMO_DEEP_INTELLIGENCE_SCORE_INFLUENCE": {"type": "bool"},
+    "PMO_COUNTERFACTUAL_HORIZON_MINUTES": {"type": "int", "min": 5, "max": 240},
+    "PMO_COUNTERFACTUAL_MISSED_UPSIDE_PCT": {"type": "float", "min": 0, "max": 50},
+    "PMO_COUNTERFACTUAL_STOP_SAVED_PCT": {"type": "float", "min": 0, "max": 50},
+    "PMO_CONCEPT_DRIFT_ROLLING_WINDOW": {"type": "int", "min": 3, "max": 200},
+    "PMO_CONCEPT_DRIFT_ALERT_DROP": {"type": "float", "min": 0, "max": 1},
+    "PMO_CONCEPT_DRIFT_SIZE_MULTIPLIER": {"type": "float", "min": 0, "max": 1},
+    "PMO_BAYESIAN_ALPHA_PRIOR": {"type": "float", "min": 0.1, "max": 100},
+    "PMO_BAYESIAN_BETA_PRIOR": {"type": "float", "min": 0.1, "max": 100},
+    "PMO_CAUSAL_MIN_ROWS": {"type": "int", "min": 10, "max": 10000},
+    "PMO_CAUSAL_RVOL_THRESHOLD": {"type": "float", "min": 0.1, "max": 20},
+    "PMO_ATTENTION_LOOKBACK_BARS": {"type": "int", "min": 5, "max": 300},
+    "PMO_ADVERSARIAL_RVOL_SPIKE": {"type": "float", "min": 0.5, "max": 50},
+    "PMO_INFO_ASYM_MIN_RVOL": {"type": "float", "min": 0.5, "max": 50},
+    "PMO_INFO_ASYM_MIN_MOVE_PCT": {"type": "float", "min": 0.1, "max": 50},
+    "PMO_INFO_ASYM_NO_NEWS_HOURS": {"type": "float", "min": 0, "max": 72},
+    "PMO_INFO_ASYM_NO_EARNINGS_DAYS": {"type": "int", "min": 0, "max": 60},
+    "PMO_EMERGENT_CROWD_RVOL": {"type": "float", "min": 0.5, "max": 50},
+    "PMO_META_LEARNING_FAST_WINDOW": {"type": "int", "min": 3, "max": 100},
     "PMO_ORB_ENABLED": {"type": "bool"},
     "PMO_ORB_MINUTES": {"type": "int", "min": 5, "max": 60},
     "ENABLE_PMO_OPENING_HOUR_QUALITY_GATES": {"type": "bool"},
@@ -1883,6 +1933,9 @@ SWITCHBOARD_GROUPS = {
         "PMO_AI_SYSTEM_REVIEW_ENABLED", "PMO_AI_PRE_SESSION_CONTEXT_ENABLED",
         "PMO_AI_REGIME_ADVISOR_ENABLED", "PMO_AI_OVERNIGHT_RESEARCH_ENABLED",
         "PMO_AI_CHAT_ENABLED", "PMO_AI_CHAT_MAX_QUESTION_LEN",
+        "ENABLE_PMO_DEEP_INTELLIGENCE", "PMO_DEEP_INTELLIGENCE_SCORE_INFLUENCE",
+        "PMO_COUNTERFACTUAL_HORIZON_MINUTES", "PMO_CONCEPT_DRIFT_ROLLING_WINDOW",
+        "PMO_CONCEPT_DRIFT_ALERT_DROP", "PMO_INFO_ASYM_MIN_RVOL",
         "PMO_CLAUDE_CODEX_ENABLED", "PMO_CLAUDE_CODEX_REQUIRE_ADMIN",
         "PMO_CLAUDE_CODEX_MODEL", "PMO_CLAUDE_CODEX_MAX_TOKENS",
         "PMO_CODEX_MAX_TOKENS", "PMO_CLAUDE_CODEX_CONTEXT_MAX_CHARS",
@@ -2019,9 +2072,12 @@ PMO_ELITE_SIGNALS_REPORT_FILE = REPORT_DIR / "pmo_elite_signals_latest.json"
 PMO_WALK_FORWARD_REPORT_FILE = REPORT_DIR / "pmo_walk_forward_validation_latest.json"
 PMO_ALPHA_DECAY_REPORT_FILE = REPORT_DIR / "pmo_alpha_decay_latest.json"
 PMO_INSTITUTIONAL_SIGNALS_REPORT_FILE = REPORT_DIR / "pmo_institutional_signals_latest.json"
+PMO_DEEP_INTELLIGENCE_REPORT_FILE = REPORT_DIR / "pmo_deep_intelligence_latest.json"
 PMO_EARNINGS_EVENTS_FILE = CSV_DIR / "pmo_earnings_events.csv"
 PMO_IV_CONTEXT_FILE = CSV_DIR / "pmo_iv_context.csv"
 PMO_QUOTE_PRINTS_FILE = CSV_DIR / "pmo_quote_prints.csv"
+PMO_NEWS_EVENTS_FILE = CSV_DIR / "pmo_news_events.csv"
+PMO_SILENCE_CONTEXT_FILE = CSV_DIR / "pmo_silence_context.csv"
 PMO_EDGE_LIBRARY_REPORT_FILE = REPORT_DIR / "pmo_edge_library_latest.json"
 PMO_COBR_RESEARCH_REPORT_FILE = REPORT_DIR / "pmo_cobr_research_latest.json"
 PMO_EXECUTION_FIREWALL_REPORT_FILE = REPORT_DIR / "pmo_execution_firewall_latest.json"
@@ -16446,6 +16502,14 @@ def pmo_paper_proof_diagnosis(
     trade_rows = recent_csv_rows(TRADE_JOURNAL_FILE, limit)
     exec_rows = recent_csv_rows(PMO_ORDER_EXECUTION_FILE, limit)
     v112_rows = recent_csv_rows(PMO_V112_REPLAY_JOURNAL_FILE, limit)
+    plan_rows = recent_csv_rows(PMO_TRADE_PLAN_FILE, limit)
+    approval_rows = recent_csv_rows(PMO_DASHBOARD_TRADE_APPROVAL_FILE, limit)
+    backtest_trade_rows = 0
+    try:
+        for path in (REPORT_DIR / "backtests").rglob("*trades.csv"):
+            backtest_trade_rows += len(recent_csv_rows(path, limit))
+    except Exception:
+        backtest_trade_rows = 0
     open_statuses = {"TARGET_REACHED_OPEN", "STOP_REACHED_OPEN", "OPEN_FILLED", "CLOSE_SUBMITTED", "MAX_HOLD_EXIT_DUE_OPEN"}
     system_statuses = {"JOURNAL_READY", "SYSTEM", "INIT", "INITIALIZED"}
     win_words = ("WIN", "PROFIT", "TAKE_PROFIT", "TARGET_HIT")
@@ -16496,14 +16560,19 @@ def pmo_paper_proof_diagnosis(
         return "UNKNOWN"
 
     def normalize_trade_row(row: Dict[str, Any], source: str) -> Optional[Dict[str, Any]]:
-        status = text_value(row, "status", "result", "outcome", "quality").strip().upper()
+        status = text_value(row, "status", "result", "outcome", "quality", "win_loss_result").strip().upper()
         symbol = text_value(row, "symbol", "ticker").strip().upper()
         if not symbol or symbol == "SYSTEM" or status in system_statuses or status in open_statuses or status.endswith("_OPEN"):
             return None
-        pnl = numeric_value(row, "pnl", "pnl_usd", "profit_loss", "realized_pnl", "net_pnl", default=None)
-        quality = text_value(row, "quality", "result", "outcome").strip().upper()
+        pnl = numeric_value(row, "pnl", "pnl_usd", "profit_loss", "profit_loss_usd", "realized_pnl", "net_pnl", default=None)
+        quality = text_value(row, "quality", "result", "outcome", "win_loss_result").strip().upper()
         is_win = any(word in status for word in win_words) or any(word in quality for word in win_words) or (pnl is not None and pnl > 0)
-        is_loss = any(word in status for word in loss_words) or any(word in quality for word in loss_words) or (pnl is not None and pnl < 0)
+        is_loss = (
+            any(word in status for word in loss_words)
+            or "STOP_HIT" in status
+            or any(word in quality for word in loss_words)
+            or (pnl is not None and pnl < 0)
+        )
         is_closed = (
             status.startswith("CLOSED")
             or status in {"WIN", "LOSS", "COMPLETE", "COMPLETED"}
@@ -16515,16 +16584,25 @@ def pmo_paper_proof_diagnosis(
             return None
         entry = numeric_value(row, "entry_price", "filled_price", "avg_fill_price", "entry", default=0.0) or 0.0
         exit_price = numeric_value(row, "exit_price", "close_price", "exit", "last_price", default=0.0) or 0.0
-        pnl_pct = numeric_value(row, "pnl_pct", "return_pct", default=None)
+        pnl_pct = numeric_value(row, "pnl_pct", "return_pct", "profit_loss_pct", default=None)
         if pnl_pct is None and entry and exit_price:
             pnl_pct = ((exit_price - entry) / entry) * 100.0
         score = numeric_value(row, "score", "pmo_score", "signal_score", default=0.0) or 0.0
+        if pnl is None and pnl_pct is not None:
+            pnl = pnl_pct
         pnl = pnl if pnl is not None else 0.0
         market = text_value(row, "market", "asset_class") or detect_market(symbol, "AUTO")
         exit_reason = normalize_exit_reason(row, status, pnl)
+        source_order_id = text_value(row, "source_order_id", "executor_source_order_id", "order_id")
+        client_order_id = text_value(row, "client_order_id", "executor_client_order_id")
+        trade_plan_id = text_value(row, "trade_plan_id", "plan_id")
         return {
             "source": source,
+            "source_order_id": source_order_id,
+            "client_order_id": client_order_id,
+            "trade_plan_id": trade_plan_id,
             "timestamp": text_value(row, "timestamp", "time", "submitted_at", "filled_at", "created_at"),
+            "closed_at": text_value(row, "closed_at", "exit_timestamp", "reviewed_at"),
             "symbol": symbol,
             "side": text_value(row, "side", "order_side", "direction").upper(),
             "market": market,
@@ -16545,14 +16623,17 @@ def pmo_paper_proof_diagnosis(
         }
 
     closed_trades: List[Dict[str, Any]] = []
+    v112_excluded_trades: List[Dict[str, Any]] = []
+    closed_by_source: Dict[str, int] = {}
     seen_keys = set()
     for source_name, rows in (("trade_journal", trade_rows),):
         for row in rows:
             trade = normalize_trade_row(row, source_name)
             if not trade:
                 continue
+            identity = trade.get("source_order_id") or trade.get("client_order_id") or trade.get("trade_plan_id")
             key = (
-                trade["timestamp"],
+                identity or trade.get("timestamp") or trade.get("closed_at"),
                 trade["symbol"],
                 trade["side"],
                 trade["entry_price"],
@@ -16562,17 +16643,24 @@ def pmo_paper_proof_diagnosis(
             if key in seen_keys:
                 continue
             seen_keys.add(key)
+            closed_by_source[source_name] = closed_by_source.get(source_name, 0) + 1
             closed_trades.append(trade)
 
-    if not closed_trades:
-        for row in v112_rows:
-            trade = normalize_trade_row(row, "v112_replay")
-            if trade:
-                closed_trades.append(trade)
+    for row in v112_rows:
+        trade = normalize_trade_row(row, "v112_replay")
+        if trade:
+            v112_excluded_trades.append(trade)
 
     total = len(closed_trades)
     wins = [row for row in closed_trades if row["win"]]
     losses = [row for row in closed_trades if not row["win"]]
+    v112_wins = [row for row in v112_excluded_trades if row["win"]]
+    v112_losses = [row for row in v112_excluded_trades if not row["win"]]
+    v112_total = len(v112_excluded_trades)
+    v112_gross_profit = sum(max(0.0, safe_float(row.get("pnl"), 0)) for row in v112_wins)
+    v112_gross_loss = sum(abs(min(0.0, safe_float(row.get("pnl"), 0))) for row in v112_losses)
+    v112_win_rate = round(len(v112_wins) / v112_total, 4) if v112_total else 0.0
+    v112_profit_factor = round(v112_gross_profit / v112_gross_loss, 4) if v112_gross_loss else (round(v112_gross_profit, 4) if v112_gross_profit else 0.0)
     n_wins = len(wins)
     n_losses = len(losses)
     gross_profit = sum(max(0.0, safe_float(row.get("pnl"), 0)) for row in wins)
@@ -16841,8 +16929,37 @@ def pmo_paper_proof_diagnosis(
             "trade_journal_rows": len(trade_rows),
             "order_execution_rows": len(exec_rows),
             "v112_rows": len(v112_rows),
+            "trade_plan_rows": len(plan_rows),
+            "dashboard_approval_rows": len(approval_rows),
+            "backtest_trade_rows": backtest_trade_rows,
+            "dashboard_blocked_or_order_rows": sum(1 for row in exec_rows if str(row.get("status", "")).upper() in {"BLOCKED", "SUBMITTED"}),
+            "closed_by_source": closed_by_source,
+            "v112_excluded_from_current_proof": v112_total,
             "closed_used": total,
         },
+        "v112_replay_exclusion": {
+            "excluded_from_current_proof": True,
+            "visible_in_inventory": True,
+            "rows": len(v112_rows),
+            "closed_outcomes": v112_total,
+            "wins": len(v112_wins),
+            "losses": len(v112_losses),
+            "win_rate": v112_win_rate,
+            "profit_factor": v112_profit_factor,
+            "reason": (
+                "V112 replay is pre-gate historical simulation generated before the blocklist, "
+                "opening-slot gate, score model rebuild, and RVOL open-window gate. It remains "
+                "visible for transparency but is excluded from current proof."
+            ),
+        },
+        "source_inventory": [
+            {"source": "trade_journal", "rows": len(trade_rows), "counts_as_closed_proof": True, "note": "Broker-synced CLOSED_WIN/CLOSED_LOSS outcomes."},
+            {"source": "v112_replay", "rows": len(v112_rows), "counts_as_closed_proof": False, "note": "Pre-gate historical replay; visible for diagnosis, excluded from current proof."},
+            {"source": "order_execution", "rows": len(exec_rows), "counts_as_closed_proof": False, "note": "Executor attempts; mostly BLOCKED/SUBMITTED, not realized outcomes."},
+            {"source": "trade_plans", "rows": len(plan_rows), "counts_as_closed_proof": False, "note": "Generated plans/signals; useful for activity audit, not proof."},
+            {"source": "dashboard_approvals", "rows": len(approval_rows), "counts_as_closed_proof": False, "note": "Manual approval attempts; blocked/submitted status only."},
+            {"source": "backtest_trades", "rows": backtest_trade_rows, "counts_as_closed_proof": False, "note": "Historical simulator trades; analyze separately from paper/live proof."},
+        ],
         "worst_symbols": worst_symbols,
         "best_symbols": best_symbols,
         "score_bucket_results": score_bucket_results,
@@ -20114,6 +20231,82 @@ def pmo_institutional_signals_report(
         return payload
     except Exception as exc:
         payload = pmo_institutional_signals_empty("ERROR", f"institutional signal error: {str(exc)[:160]}")
+        payload.update({"enabled": True, "symbol": clean_symbol, "updated": now_et().isoformat(), "error": str(exc)[:200]})
+        return payload
+
+
+def pmo_deep_intelligence_empty(status: str = "UNAVAILABLE", note: str = "") -> Dict[str, Any]:
+    return {
+        "ok": False,
+        "enabled": False,
+        "available": PMO_DEEP_INTELLIGENCE_AVAILABLE,
+        "status": status,
+        "note": note,
+        "read_only": True,
+        "score_influence": False,
+        "live_unlocked": False,
+        "orders_placed": False,
+        "settings_changed": False,
+        "error": "" if PMO_DEEP_INTELLIGENCE_AVAILABLE else PMO_DEEP_INTELLIGENCE_ERROR,
+        "signals": {},
+        "journal": {},
+    }
+
+
+def pmo_deep_intelligence_report(
+    symbol: str = "SPY",
+    settings: Optional[Dict[str, Any]] = None,
+    *,
+    candidate: Optional[Dict[str, Any]] = None,
+    bars: Optional[List[Dict[str, Any]]] = None,
+    trades: Optional[List[Dict[str, Any]]] = None,
+    news_rows: Optional[List[Dict[str, Any]]] = None,
+    earnings_rows: Optional[List[Dict[str, Any]]] = None,
+    market_rows: Optional[List[Dict[str, Any]]] = None,
+    now_value: Any = None,
+    record: bool = False,
+) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    if not bool(settings.get("ENABLE_PMO_DEEP_INTELLIGENCE", True)):
+        return pmo_deep_intelligence_empty("OFF", "ENABLE_PMO_DEEP_INTELLIGENCE is false.")
+    if not PMO_DEEP_INTELLIGENCE_AVAILABLE or pmo_deep_intelligence_analyze is None:
+        return pmo_deep_intelligence_empty("UNAVAILABLE", PMO_DEEP_INTELLIGENCE_ERROR or "deep intelligence unavailable.")
+    clean_symbol = str(symbol or "SPY").strip().upper()
+    try:
+        trade_rows = trades if isinstance(trades, list) else pmo_closed_trade_rows_for_learning(settings, exclude_blocklist=True, limit=1000)
+        bar_rows = bars if isinstance(bars, list) else pmo_edge_load_ohlcv_rows(clean_symbol, intraday=True, limit=max(60, int(safe_float(settings.get("PMO_ATTENTION_LOOKBACK_BARS", 30), 30)) + 20))
+        news_data = news_rows if isinstance(news_rows, list) else pmo_filter_symbol_rows(recent_csv_rows(PMO_NEWS_EVENTS_FILE, 500), clean_symbol)
+        earnings_data = earnings_rows if isinstance(earnings_rows, list) else pmo_filter_symbol_rows(recent_csv_rows(PMO_EARNINGS_EVENTS_FILE, 500), clean_symbol)
+        silence_data = market_rows if isinstance(market_rows, list) else recent_csv_rows(PMO_SILENCE_CONTEXT_FILE, 500)
+        payload = pmo_deep_intelligence_analyze(
+            clean_symbol,
+            settings,
+            trades=trade_rows,
+            bars=bar_rows,
+            bars_by_symbol={clean_symbol: bar_rows},
+            candidate=candidate or {},
+            news_rows=news_data,
+            earnings_rows=earnings_data,
+            market_rows=silence_data,
+            now_value=now_value,
+        )
+        payload.update({
+            "updated": now_et().isoformat(),
+            "available": True,
+            "data_sources": {
+                "closed_trades": str(TRADE_JOURNAL_FILE),
+                "intraday_bars": "pmo_backtest_data or Alpaca chart cache",
+                "news_events": str(PMO_NEWS_EVENTS_FILE),
+                "earnings_events": str(PMO_EARNINGS_EVENTS_FILE),
+                "silence_context": str(PMO_SILENCE_CONTEXT_FILE),
+            },
+            "report_file": str(PMO_DEEP_INTELLIGENCE_REPORT_FILE),
+        })
+        if record:
+            write_json_file(PMO_DEEP_INTELLIGENCE_REPORT_FILE, payload)
+        return payload
+    except Exception as exc:
+        payload = pmo_deep_intelligence_empty("ERROR", f"deep intelligence error: {str(exc)[:160]}")
         payload.update({"enabled": True, "symbol": clean_symbol, "updated": now_et().isoformat(), "error": str(exc)[:200]})
         return payload
 
@@ -26727,6 +26920,34 @@ def api_institutional_signals():
         record=bool(payload.get("record", False)),
     )
     return jsonify({"ok": bool(report.get("ok")), "institutional_signals": report})
+
+
+@app.route("/api/deep-intelligence", methods=["GET", "POST"])
+@app.route("/api/ai/deep-intelligence", methods=["GET", "POST"])
+def api_deep_intelligence():
+    payload = request.get_json(force=True, silent=True) or {} if request.method == "POST" else {}
+    settings = load_settings()
+    symbol = str(payload.get("symbol") or request.args.get("symbol") or "SPY").strip().upper()
+    candidate = payload.get("candidate") if isinstance(payload.get("candidate"), dict) else {}
+    bars = payload.get("bars") if isinstance(payload.get("bars"), list) else None
+    trades = payload.get("trades") if isinstance(payload.get("trades"), list) else None
+    news_rows = payload.get("news_rows") if isinstance(payload.get("news_rows"), list) else None
+    earnings_rows = payload.get("earnings_rows") if isinstance(payload.get("earnings_rows"), list) else None
+    market_rows = payload.get("market_rows") if isinstance(payload.get("market_rows"), list) else None
+    now_value = payload.get("now") or payload.get("timestamp") or request.args.get("now") or request.args.get("timestamp")
+    report = pmo_deep_intelligence_report(
+        symbol,
+        settings,
+        candidate=candidate,
+        bars=bars,
+        trades=trades,
+        news_rows=news_rows,
+        earnings_rows=earnings_rows,
+        market_rows=market_rows,
+        now_value=now_value,
+        record=bool(payload.get("record", False)),
+    )
+    return jsonify({"ok": bool(report.get("ok")), "deep_intelligence": report})
 
 
 @app.route("/api/alpha-decay/summary", methods=["GET", "POST"])
