@@ -58,6 +58,79 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.get_json()["ok"])
 
+    def test_data_collection_routes_require_admin_and_fail_closed(self):
+        locked = self.client.post("/api/data-collection/enable", json={"timeout_minutes": 15, "max_trades": 5})
+        self.assertEqual(locked.status_code, 403)
+        self.assertTrue(locked.get_json()["locked"])
+
+        status = self.client.get("/api/data-collection/status")
+        self.assertEqual(status.status_code, 200)
+        body = status.get_json()
+        self.assertTrue(body["ok"])
+        self.assertFalse(body["data_collection"]["active"])
+        self.assertFalse(body["live_unlocked"])
+        self.assertFalse(body["orders_placed"])
+
+    def test_data_collection_overlay_relaxes_paper_gates_only(self):
+        token = self.mod.first_env("PMO_BOT_ADMIN_TOKEN")
+        try:
+            response = self.client.post(
+                "/api/data-collection/enable",
+                json={"timeout_minutes": 15, "max_trades": 5},
+                headers={"X-Admin-Token": token},
+            )
+            self.assertEqual(response.status_code, 200)
+            enabled = response.get_json()
+            self.assertTrue(enabled["ok"])
+            self.assertTrue(enabled["status"]["active"])
+
+            effective = self.mod.pmo_data_collection_effective_settings(dict(self.mod.DEFAULT_SETTINGS))
+            self.assertTrue(effective["DATA_COLLECTION_ACTIVE"])
+            self.assertEqual(effective["PMO_REBUILD_ENTRY_SCORE_MIN"], 60.0)
+            self.assertEqual(effective["PMO_REBUILD_ENTRY_SCORE_MAX"], 100.0)
+            self.assertEqual(effective["PMO_WHY_NOT_MIN_RVOL"], 1.2)
+            self.assertEqual(effective["PMO_OPENING_EARLIEST_ENTRY"], "09:35")
+            self.assertEqual(effective["PMO_ORDER_NOTIONAL_USD"], 40.0)
+            self.assertEqual(effective["PMO_MAX_ORDER_NOTIONAL_USD"], 40.0)
+            self.assertIn("GAP_UP", effective["PMO_OPENING_ALLOWED_GAP_SIGNALS"])
+            self.assertIn("MIXED", effective["PMO_REGIME_LONG_ALLOWED_VALUES"])
+            self.assertTrue(effective["ALPACA_PAPER"])
+            self.assertFalse(effective["PMO_ALLOW_LIVE_TRADING"])
+            self.assertFalse(effective["PMO_LIVE_TRADING_ENABLED"])
+
+            gap_down = self.mod.pmo_opening_hour_quality_gate(
+                "NVDA",
+                "LONG",
+                "CALL_BIAS",
+                {
+                    "symbol": "NVDA",
+                    "timestamp": "2026-06-17T09:36:00-04:00",
+                    "edge_engines": {
+                        "edge_engine_status": "READY",
+                        "gap_signal": "GAP_DOWN",
+                        "orb_signal": "BEARISH",
+                    },
+                },
+                effective,
+                rvol=1.5,
+            )
+            self.assertFalse(gap_down["allowed"])
+            self.assertIn("GAP_UP or FLAT only", " | ".join(gap_down["blockers"]))
+
+            fields = self.mod.pmo_data_collection_journal_fields("NVDA")
+            self.assertTrue(fields["data_collection_mode"])
+            self.assertIn("DATA_COLLECTION_", fields["data_collection_tag"])
+        finally:
+            self.client.post(
+                "/api/data-collection/disable",
+                json={},
+                headers={"X-Admin-Token": token},
+            )
+
+        normal = self.mod.pmo_data_collection_effective_settings(dict(self.mod.DEFAULT_SETTINGS))
+        self.assertFalse(normal["DATA_COLLECTION_ACTIVE"])
+        self.assertEqual(normal["PMO_REBUILD_ENTRY_SCORE_MIN"], self.mod.DEFAULT_SETTINGS["PMO_REBUILD_ENTRY_SCORE_MIN"])
+
     def test_reports_route_blocks_env_and_source_files(self):
         blocked_paths = [
             self.mod.PMO_DIR / ".env",
@@ -1578,6 +1651,79 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertIn("operational_guidance", report)
         self.assertFalse(report["operational_guidance"]["score_mod_applied"])
 
+    def test_frontier_intelligence_covers_all_requested_layers(self):
+        frontier_mod = load_local_module("pmo_frontier_intelligence")
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        settings.update({
+            "PMO_FRONTIER_MONTE_CARLO_PATHS": 200,
+            "PMO_FRONTIER_SELF_MOD_WINDOW_TRADES": 10,
+        })
+        bars = []
+        price = 100.0
+        for idx in range(14):
+            price += 0.9
+            bars.append({"timestamp": f"2026-06-17T10:{idx:02d}:00-04:00", "open": price - 0.4, "high": price + 0.7, "low": price - 0.6, "close": price, "volume": 1000 + idx * 80})
+        trades = []
+        for idx in range(6):
+            trades.append({"timestamp": f"2026-06-01T10:{idx:02d}:00-04:00", "symbol": "SPY", "status": "CLOSED_LOSS", "pnl": "-1", "max_drawdown_pct": "2.8", "hold_minutes": "18"})
+        for idx in range(4):
+            trades.append({"timestamp": f"2026-06-02T10:{idx:02d}:00-04:00", "symbol": "SPY", "status": "CLOSED_WIN", "pnl": "1", "hold_minutes": "12"})
+        report = frontier_mod.analyze_frontier_intelligence(
+            "SPY",
+            settings,
+            candidate={"symbol": "SPY", "side": "LONG", "score": 76, "relative_volume": 3.0, "edge_score": 20, "intel_score": 82},
+            bars=bars,
+            trades=trades,
+            macro_rows=[{"breadth_pct": 66, "credit_spread_bps": 260, "yield_curve_10y2y_bps": 35, "dxy_change_pct": -0.5, "cftc_net_position_z": 1.1, "vix_change_pct": -6}],
+            narrative_rows=[{"symbol": "SPY", "theme": "AI infrastructure spending", "mentions": 180, "baseline_mentions": 30, "sentiment": 0.4}],
+            news_rows=[{"symbol": "SPY", "headline": "AI guidance upgrade raises spending outlook"}],
+            engine_history_rows=[
+                {"score": 70, "relative_volume": 2.0, "edge_score": 65, "intel_score": 68},
+                {"score": 72, "relative_volume": 2.1, "edge_score": 66, "intel_score": 69},
+                {"score": 74, "relative_volume": 2.2, "edge_score": 67, "intel_score": 70},
+                {"score": 76, "relative_volume": 2.3, "edge_score": 68, "intel_score": 71},
+            ],
+            fingerprints=[{"label": "June 2022 relief", "breadth_pct": 65, "vix_change_pct": -5, "credit_spread_bps": 270, "yield_curve_10y2y_bps": 30, "forward_20d_pct": 4.2}],
+            now_value="2026-06-17T10:30:00-04:00",
+        )
+        self.assertTrue(report["ok"])
+        self.assertTrue(report["read_only"])
+        self.assertFalse(report["orders_placed"])
+        self.assertFalse(report["live_unlocked"])
+        self.assertFalse(report["settings_changed"])
+        for key in {"market_consciousness", "narrative_momentum", "reflexivity", "engine_divergence", "temporal_memory", "monte_carlo", "self_modification"}:
+            self.assertIn(key, report["signals"])
+        self.assertEqual(report["signals"]["market_consciousness"]["direction"], "RISK_ON")
+        self.assertEqual(report["signals"]["narrative_momentum"]["status"], "READY")
+        self.assertIn(report["signals"]["monte_carlo"]["status"], {"FAVORABLE", "LOW_CONFIDENCE", "TAIL_RISK"})
+        self.assertEqual(report["signals"]["self_modification"]["status"], "PROPOSAL_READY")
+        self.assertFalse(report["operational_guidance"]["score_mod_applied"])
+
+    def test_frontier_intelligence_endpoint_is_read_only(self):
+        response = self.client.post(
+            "/api/frontier-intelligence",
+            json={
+                "symbol": "SPY",
+                "candidate": {"symbol": "SPY", "side": "LONG", "score": 70},
+                "bars": [{"timestamp": "2026-06-17T10:05:00-04:00", "close": 100, "volume": 1000}],
+                "trades": [],
+                "macro_rows": [],
+                "narrative_rows": [],
+                "engine_history_rows": [],
+                "fingerprints": [],
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        report = response.get_json()["frontier_intelligence"]
+        self.assertTrue(report["ok"])
+        self.assertTrue(report["read_only"])
+        self.assertFalse(report["orders_placed"])
+        self.assertFalse(report["live_unlocked"])
+        self.assertFalse(report["settings_changed"])
+        self.assertIn("market_consciousness", report["signals"])
+        self.assertIn("monte_carlo", report["signals"])
+        self.assertIn("operational_guidance", report)
+
     def test_trade_journal_quality_fields_auto_logs_deep_exit_policy(self):
         original_report = self.mod.pmo_deep_intelligence_report
         try:
@@ -1629,13 +1775,20 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertIn("deepIntelligencePanel", updated)
         self.assertIn("PMO Deep Intelligence", updated)
         self.assertIn("cn-deep", updated)
+        self.assertIn("cn-frontier", updated)
         self.assertIn("cn-ensemble", updated)
         self.assertIn("engineMap.deep", updated)
-        self.assertIn("Number(constellation.total):16", updated)
+        self.assertIn("engineMap.frontier", updated)
+        self.assertIn("frontierIntelligencePanel", updated)
+        self.assertIn("Number(constellation.total):17", updated)
         self.assertEqual(updated.count("deepIntelligencePanel"), 1)
         self.assertEqual(updated.count("cn-deep"), 1)
+        self.assertEqual(updated.count("frontierIntelligencePanel"), 1)
+        self.assertEqual(updated.count("cn-frontier"), 1)
         self.assertEqual(self.mod.pmo_deep_intelligence_deck_html(updated).count("deepIntelligencePanel"), 1)
         self.assertEqual(self.mod.pmo_deep_intelligence_deck_html(updated).count("cn-deep"), 1)
+        self.assertEqual(self.mod.pmo_deep_intelligence_deck_html(updated).count("frontierIntelligencePanel"), 1)
+        self.assertEqual(self.mod.pmo_deep_intelligence_deck_html(updated).count("cn-frontier"), 1)
 
     def test_trade_discipline_blocks_trend_entry_after_three_thirty(self):
         settings = dict(self.mod.DEFAULT_SETTINGS)
@@ -1752,6 +1905,7 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
             "PMO_ALPHA_DECAY_ENABLED": True,
             "ENABLE_PMO_INSTITUTIONAL_SIGNALS": True,
             "ENABLE_PMO_DEEP_INTELLIGENCE": True,
+            "ENABLE_PMO_FRONTIER_INTELLIGENCE": True,
             "PMO_CRYPTO_PROFILE_ENABLED": True,
             "ENABLE_PMO_POST_GATE_EQUITY_PROOF": True,
             "ENABLE_PMO_ARCHITECTURE_PLANNER": True,
@@ -1760,9 +1914,9 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         })
         result = self.mod.pmo_learning_constellation_status(settings)
         engine_ids = {row["id"] for row in result["engines"]}
-        self.assertEqual(result["total"], 16)
+        self.assertEqual(result["total"], 17)
         self.assertGreaterEqual(result["active_count"], 10)
-        self.assertTrue({"ensemble", "alpha", "institutional", "deep", "crypto", "postgate"}.issubset(engine_ids))
+        self.assertTrue({"ensemble", "alpha", "institutional", "deep", "frontier", "crypto", "postgate"}.issubset(engine_ids))
         self.assertTrue(result["live_influence_locked"])
         self.assertFalse(result["passive_provider_calls"])
 
