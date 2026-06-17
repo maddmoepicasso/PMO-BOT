@@ -1209,6 +1209,78 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertEqual(proof["excluded_counts"]["non_equity"], 1)
         self.assertTrue(proof["ready"])
 
+    def test_elite_signals_ensemble_normalizes_options_social_and_carry_votes(self):
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        settings.update({
+            "PMO_ENSEMBLE_MIN_BULL_VOTES": 6,
+            "PMO_ENSEMBLE_MIN_AGREE_RATIO": 0.6,
+        })
+        candidate = {
+            "pattern_direction": "long",
+            "fvg_signal": "BULLISH",
+            "edge_signal": "BULLISH",
+            "intel_signal": "BULLISH",
+            "ml_signal": "BULLISH",
+            "vwap_score_status": "PASS",
+            "relative_volume": 2.5,
+        }
+        report = self.mod.pmo_analyze_elite_signals(
+            "SPY",
+            "long",
+            settings,
+            candidate=candidate,
+            options_events=[{"symbol": "SPY", "option_type": "CALL", "contracts": 1500, "premium": 250000, "dte": 3, "minutes_ago": 12}],
+            social_samples=[{"symbol": "SPY", "mentions": 300, "baseline_mentions": 30}],
+            usdjpy_bars=[{"close": 150.0}, {"close": 149.4}],
+        )
+        self.assertTrue(report["ok"])
+        self.assertEqual(report["options_flow"]["vote"]["side"], "BULL")
+        self.assertEqual(report["social_velocity"]["vote"]["side"], "BULL")
+        self.assertEqual(report["usdjpy_carry"]["vote"]["side"], "BEAR")
+        self.assertEqual(report["ensemble"]["status"], "BULLISH_ENSEMBLE")
+        self.assertFalse(report["orders_placed"])
+        self.assertFalse(report["live_unlocked"])
+
+    def test_walk_forward_validation_uses_later_unseen_rows(self):
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        settings.update({
+            "PMO_WALK_FORWARD_MIN_TRAIN_ROWS": 2,
+            "PMO_WALK_FORWARD_MIN_TEST_ROWS": 2,
+            "PMO_WALK_FORWARD_MIN_TEST_WIN_RATE": 0.5,
+        })
+        rows = [
+            {"timestamp": "2026-06-01T10:00:00-04:00", "symbol": "AAPL", "status": "CLOSED_WIN", "pnl": "1", "edge_signal": "BULLISH"},
+            {"timestamp": "2026-06-02T10:00:00-04:00", "symbol": "AAPL", "status": "CLOSED_LOSS", "pnl": "-1", "edge_signal": "BULLISH"},
+            {"timestamp": "2026-06-03T10:00:00-04:00", "symbol": "AAPL", "status": "CLOSED_WIN", "pnl": "1", "edge_signal": "BULLISH"},
+            {"timestamp": "2026-06-04T10:00:00-04:00", "symbol": "AAPL", "status": "CLOSED_LOSS", "pnl": "-1", "edge_signal": "BULLISH"},
+        ]
+        original_rows = self.mod.pmo_closed_trade_rows_for_learning
+        try:
+            self.mod.pmo_closed_trade_rows_for_learning = lambda *args, **kwargs: rows
+            report = self.mod.pmo_walk_forward_validation_report(settings, record=False)
+        finally:
+            self.mod.pmo_closed_trade_rows_for_learning = original_rows
+        wf = report["report"]
+        self.assertEqual(wf["train_rows"], 2)
+        self.assertEqual(wf["test_rows"], 2)
+        edge_validation = next(row for row in wf["validations"] if row["field"] == "edge_signal")
+        self.assertTrue(edge_validation["validated"])
+
+    def test_elite_signals_api_is_read_only(self):
+        response = self.client.post(
+            "/api/elite-signals",
+            json={
+                "symbol": "SPY",
+                "direction": "long",
+                "candidate": {"edge_signal": "BULLISH", "relative_volume": 2.1},
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()["elite_signals"]
+        self.assertTrue(payload["read_only"])
+        self.assertFalse(payload["orders_placed"])
+        self.assertFalse(payload["live_unlocked"])
+
     def test_ratio_context_filter_is_not_a_trade_verdict(self):
         settings = dict(self.mod.DEFAULT_SETTINGS)
         settings.update({

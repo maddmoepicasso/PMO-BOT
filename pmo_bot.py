@@ -117,6 +117,28 @@ except Exception as exc:  # pragma: no cover - read-only intelligence must not b
     PMO_INTELLIGENCE_BUNDLE_ERROR = str(exc)
 
 try:
+    from pmo_elite_signals import (
+        analyze_options_flow as pmo_elite_analyze_options_flow,
+        analyze_social_velocity as pmo_elite_analyze_social_velocity,
+        analyze_usdjpy_carry as pmo_elite_analyze_usdjpy_carry,
+        build_votes_from_candidate as pmo_elite_votes_from_candidate,
+        ensemble_vote as pmo_elite_ensemble_vote,
+        walk_forward_validation as pmo_elite_walk_forward_validation,
+    )
+
+    PMO_ELITE_SIGNALS_AVAILABLE = True
+    PMO_ELITE_SIGNALS_ERROR = ""
+except Exception as exc:  # pragma: no cover - elite signals are read-only and optional
+    pmo_elite_analyze_options_flow = None
+    pmo_elite_analyze_social_velocity = None
+    pmo_elite_analyze_usdjpy_carry = None
+    pmo_elite_votes_from_candidate = None
+    pmo_elite_ensemble_vote = None
+    pmo_elite_walk_forward_validation = None
+    PMO_ELITE_SIGNALS_AVAILABLE = False
+    PMO_ELITE_SIGNALS_ERROR = str(exc)
+
+try:
     from pmo_claude_codex import (
         CLAUDE_CODEX_ROLES,
         SYSTEM_PROMPTS as PMO_CLAUDE_CODEX_SYSTEM_PROMPTS,
@@ -689,6 +711,35 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_EDGE_ENGINES_ENABLED": True,
     "PMO_EDGE_READ_ONLY": True,
     "PMO_EDGE_SCORE_INFLUENCE_ENABLED": False,
+    "ENABLE_PMO_ELITE_SIGNALS": True,
+    "PMO_ELITE_SIGNALS_READ_ONLY": True,
+    "ENABLE_PMO_OPTIONS_FLOW_SIGNAL": True,
+    "PMO_OPTIONS_FLOW_LOOKBACK_MINUTES": 30,
+    "PMO_OPTIONS_FLOW_MIN_CONTRACTS": 1000,
+    "PMO_OPTIONS_FLOW_MIN_PREMIUM_USD": 100000,
+    "PMO_OPTIONS_FLOW_MAX_DTE": 7,
+    "PMO_OPTIONS_FLOW_VOTE_WEIGHT": 1.4,
+    "ENABLE_PMO_SOCIAL_VELOCITY_SIGNAL": True,
+    "PMO_SOCIAL_VELOCITY_MIN_RATIO": 5.0,
+    "PMO_SOCIAL_VELOCITY_MIN_MENTIONS": 25,
+    "PMO_SOCIAL_VELOCITY_VOTE_WEIGHT": 0.8,
+    "ENABLE_PMO_USDJPY_CARRY_SIGNAL": True,
+    "PMO_USDJPY_CARRY_DROP_5M_PCT": 0.3,
+    "PMO_USDJPY_CARRY_VOTE_WEIGHT": 1.2,
+    "ENABLE_PMO_ENSEMBLE_VOTING": True,
+    "PMO_ENSEMBLE_MIN_BULL_VOTES": 6,
+    "PMO_ENSEMBLE_MIN_AGREE_RATIO": 0.60,
+    "PMO_ENSEMBLE_PATTERN_WEIGHT": 1.0,
+    "PMO_ENSEMBLE_FVG_WEIGHT": 1.0,
+    "PMO_ENSEMBLE_EDGE_WEIGHT": 1.2,
+    "PMO_ENSEMBLE_INTEL_WEIGHT": 1.0,
+    "PMO_ENSEMBLE_ML_WEIGHT": 0.8,
+    "PMO_ENSEMBLE_VWAP_WEIGHT": 0.8,
+    "PMO_ENSEMBLE_RVOL_WEIGHT": 1.0,
+    "ENABLE_PMO_WALK_FORWARD_VALIDATION": True,
+    "PMO_WALK_FORWARD_MIN_TRAIN_ROWS": 40,
+    "PMO_WALK_FORWARD_MIN_TEST_ROWS": 10,
+    "PMO_WALK_FORWARD_MIN_TEST_WIN_RATE": 0.52,
     "PMO_ORB_ENABLED": True,
     "PMO_ORB_MINUTES": 15,
     "ENABLE_PMO_OPENING_HOUR_QUALITY_GATES": True,
@@ -1306,6 +1357,35 @@ EDITABLE_SETTINGS: Dict[str, Dict[str, Any]] = {
     "PMO_EDGE_ENGINES_ENABLED": {"type": "bool"},
     "PMO_EDGE_READ_ONLY": {"type": "bool"},
     "PMO_EDGE_SCORE_INFLUENCE_ENABLED": {"type": "bool"},
+    "ENABLE_PMO_ELITE_SIGNALS": {"type": "bool"},
+    "PMO_ELITE_SIGNALS_READ_ONLY": {"type": "bool"},
+    "ENABLE_PMO_OPTIONS_FLOW_SIGNAL": {"type": "bool"},
+    "PMO_OPTIONS_FLOW_LOOKBACK_MINUTES": {"type": "int", "min": 1, "max": 390},
+    "PMO_OPTIONS_FLOW_MIN_CONTRACTS": {"type": "int", "min": 1, "max": 1000000},
+    "PMO_OPTIONS_FLOW_MIN_PREMIUM_USD": {"type": "float", "min": 0, "max": 100000000},
+    "PMO_OPTIONS_FLOW_MAX_DTE": {"type": "int", "min": 0, "max": 365},
+    "PMO_OPTIONS_FLOW_VOTE_WEIGHT": {"type": "float", "min": 0, "max": 5},
+    "ENABLE_PMO_SOCIAL_VELOCITY_SIGNAL": {"type": "bool"},
+    "PMO_SOCIAL_VELOCITY_MIN_RATIO": {"type": "float", "min": 0, "max": 100},
+    "PMO_SOCIAL_VELOCITY_MIN_MENTIONS": {"type": "int", "min": 0, "max": 1000000},
+    "PMO_SOCIAL_VELOCITY_VOTE_WEIGHT": {"type": "float", "min": 0, "max": 5},
+    "ENABLE_PMO_USDJPY_CARRY_SIGNAL": {"type": "bool"},
+    "PMO_USDJPY_CARRY_DROP_5M_PCT": {"type": "float", "min": 0, "max": 10},
+    "PMO_USDJPY_CARRY_VOTE_WEIGHT": {"type": "float", "min": 0, "max": 5},
+    "ENABLE_PMO_ENSEMBLE_VOTING": {"type": "bool"},
+    "PMO_ENSEMBLE_MIN_BULL_VOTES": {"type": "int", "min": 1, "max": 50},
+    "PMO_ENSEMBLE_MIN_AGREE_RATIO": {"type": "float", "min": 0, "max": 1},
+    "PMO_ENSEMBLE_PATTERN_WEIGHT": {"type": "float", "min": 0, "max": 5},
+    "PMO_ENSEMBLE_FVG_WEIGHT": {"type": "float", "min": 0, "max": 5},
+    "PMO_ENSEMBLE_EDGE_WEIGHT": {"type": "float", "min": 0, "max": 5},
+    "PMO_ENSEMBLE_INTEL_WEIGHT": {"type": "float", "min": 0, "max": 5},
+    "PMO_ENSEMBLE_ML_WEIGHT": {"type": "float", "min": 0, "max": 5},
+    "PMO_ENSEMBLE_VWAP_WEIGHT": {"type": "float", "min": 0, "max": 5},
+    "PMO_ENSEMBLE_RVOL_WEIGHT": {"type": "float", "min": 0, "max": 5},
+    "ENABLE_PMO_WALK_FORWARD_VALIDATION": {"type": "bool"},
+    "PMO_WALK_FORWARD_MIN_TRAIN_ROWS": {"type": "int", "min": 1, "max": 10000},
+    "PMO_WALK_FORWARD_MIN_TEST_ROWS": {"type": "int", "min": 1, "max": 10000},
+    "PMO_WALK_FORWARD_MIN_TEST_WIN_RATE": {"type": "float", "min": 0, "max": 1},
     "PMO_ORB_ENABLED": {"type": "bool"},
     "PMO_ORB_MINUTES": {"type": "int", "min": 5, "max": 60},
     "ENABLE_PMO_OPENING_HOUR_QUALITY_GATES": {"type": "bool"},
@@ -1832,6 +1912,11 @@ PMO_CRYPTO_PROOF_REPORT_FILE = REPORT_DIR / "pmo_crypto_proof_report.json"
 PMO_INTELLIGENCE_EVENTS_FILE = CSV_DIR / "pmo_intelligence_events.csv"
 PMO_V207_WATCHLIST_INTELLIGENCE_FILE = REPORT_DIR / "pmo_v207_watchlist_intelligence.json"
 PMO_V207_WATCHLIST_INTELLIGENCE_CSV = CSV_DIR / "pmo_v207_watchlist_intelligence.csv"
+PMO_OPTIONS_FLOW_FILE = CSV_DIR / "pmo_options_flow_events.csv"
+PMO_SOCIAL_VELOCITY_FILE = CSV_DIR / "pmo_social_velocity_events.csv"
+PMO_USDJPY_CARRY_FILE = CSV_DIR / "pmo_usdjpy_carry_bars.csv"
+PMO_ELITE_SIGNALS_REPORT_FILE = REPORT_DIR / "pmo_elite_signals_latest.json"
+PMO_WALK_FORWARD_REPORT_FILE = REPORT_DIR / "pmo_walk_forward_validation_latest.json"
 PMO_EDGE_LIBRARY_REPORT_FILE = REPORT_DIR / "pmo_edge_library_latest.json"
 PMO_COBR_RESEARCH_REPORT_FILE = REPORT_DIR / "pmo_cobr_research_latest.json"
 PMO_EXECUTION_FIREWALL_REPORT_FILE = REPORT_DIR / "pmo_execution_firewall_latest.json"
@@ -5070,6 +5155,12 @@ class PMOBot:
             "vwap_score_status": vwap_check.get("status", ""),
             "relative_volume": relative_volume,
         }
+        try:
+            elite_signals_report = pmo_analyze_elite_signals(symbol, pattern_direction, self.settings, candidate=edge_six_context)
+        except Exception as exc:
+            elite_signals_report = pmo_elite_signals_empty("ERROR", f"elite signal score check error: {str(exc)[:80]}")
+        edge_six_context["elite_signals"] = elite_signals_report
+        edge_six_context["elite_signal"] = (elite_signals_report.get("ensemble", {}) or {}).get("status", "BUILDING")
         tod_gate_report = pmo_time_of_day_gate(self.settings, record=False)
         edge_six_context["time_of_day_gate"] = tod_gate_report
         engine_confluence_report = pmo_engine_confluence_report(edge_six_context, self.settings)
@@ -5085,6 +5176,9 @@ class PMOBot:
         clean_score_rebuild = pmo_clean_score_rebuild_model(self.settings, record=False)
         if engine_confluence_report.get("enabled"):
             reasons.append(f"engine confluence {engine_confluence_report.get('status')} bull {engine_confluence_report.get('bull_count')} / bear {engine_confluence_report.get('bear_count')}")
+        if elite_signals_report.get("enabled"):
+            ensemble = elite_signals_report.get("ensemble", {}) if isinstance(elite_signals_report.get("ensemble"), dict) else {}
+            reasons.append(f"elite ensemble {ensemble.get('status', 'BUILDING')} bull {ensemble.get('bull_votes', 0)} / bear {ensemble.get('bear_votes', 0)}")
         if trade_similarity_report.get("enabled"):
             reasons.append(f"similarity {trade_similarity_report.get('status')} from {trade_similarity_report.get('similar_count', 0)} clean match(es)")
         if tick_timing_report.get("enabled"):
@@ -5117,6 +5211,12 @@ class PMOBot:
             "intel_caution_flags": (intelligence_bundle_report.get("journal", {}) or {}).get("intel_caution_flags", ""),
             "intel_read_only": True,
             "intel_score_influence": False,
+            "elite_signals": elite_signals_report,
+            "elite_signal": (elite_signals_report.get("journal", {}) or {}).get("elite_signal", ""),
+            "elite_bull_votes": (elite_signals_report.get("journal", {}) or {}).get("elite_bull_votes", 0),
+            "elite_bear_votes": (elite_signals_report.get("journal", {}) or {}).get("elite_bear_votes", 0),
+            "elite_agree_ratio": (elite_signals_report.get("journal", {}) or {}).get("elite_agree_ratio", 0),
+            "elite_blockers": (elite_signals_report.get("journal", {}) or {}).get("elite_blockers", ""),
             "fvg": fvg_report,
             "fvg_found": fvg_report.get("fvg_found", False),
             "fvg_signal": fvg_report.get("fvg_signal", "NONE"),
@@ -5624,6 +5724,7 @@ class PMOBot:
         fvg = decision.get("fvg") if isinstance(decision.get("fvg"), dict) else {}
         edge_engines = decision.get("edge_engines") if isinstance(decision.get("edge_engines"), dict) else {}
         intelligence_bundle = decision.get("intelligence_bundle") if isinstance(decision.get("intelligence_bundle"), dict) else {}
+        elite_signals = decision.get("elite_signals") if isinstance(decision.get("elite_signals"), dict) else {}
         sentiment = decision.get("sentiment") if isinstance(decision.get("sentiment"), dict) else {}
         ml = decision.get("ml") if isinstance(decision.get("ml"), dict) else {}
         confluence = decision.get("engine_confluence") if isinstance(decision.get("engine_confluence"), dict) else entry_guard.get("engine_confluence") if isinstance(entry_guard.get("engine_confluence"), dict) else {}
@@ -5636,6 +5737,7 @@ class PMOBot:
         partial_exit = trade_plan.get("partial_exit_plan") if isinstance(trade_plan.get("partial_exit_plan"), dict) else {}
         crypto_profile = decision.get("crypto_profile") if isinstance(decision.get("crypto_profile"), dict) else trade_plan.get("crypto_profile") if isinstance(trade_plan.get("crypto_profile"), dict) else {}
         intelligence_journal = intelligence_bundle.get("journal") if isinstance(intelligence_bundle.get("journal"), dict) else {}
+        elite_journal = elite_signals.get("journal") if isinstance(elite_signals.get("journal"), dict) else {}
         sentiment_journal = sentiment.get("journal") if isinstance(sentiment.get("journal"), dict) else {}
         ml_journal = ml.get("journal") if isinstance(ml.get("journal"), dict) else {}
         quality_fields: Dict[str, Any] = {}
@@ -5693,6 +5795,13 @@ class PMOBot:
             **intelligence_journal,
             "intel_read_only": True,
             "intel_score_influence": False,
+            "elite_signal": elite_journal.get("elite_signal", decision.get("elite_signal", "")),
+            "elite_bull_votes": elite_journal.get("elite_bull_votes", decision.get("elite_bull_votes", "")),
+            "elite_bear_votes": elite_journal.get("elite_bear_votes", decision.get("elite_bear_votes", "")),
+            "elite_agree_ratio": elite_journal.get("elite_agree_ratio", decision.get("elite_agree_ratio", "")),
+            "elite_blockers": elite_journal.get("elite_blockers", decision.get("elite_blockers", "")),
+            "elite_read_only": True,
+            "elite_score_influence": False,
             "sentiment_fng": sentiment_journal.get("sentiment_fng", ""),
             "sentiment_fng_label": sentiment_journal.get("sentiment_fng_label", ""),
             "sentiment_vix": sentiment_journal.get("sentiment_vix", ""),
@@ -10797,7 +10906,7 @@ def pmo_time_of_day_gate(settings: Optional[Dict[str, Any]] = None, when: Option
 def pmo_engine_signal_side(value: Any) -> str:
     text = str(value or "").upper()
     bullish_tokens = ("BULL", "LONG", "CALL", "BUY", "FAVORABLE", "POSITIVE", "PASS", "UP")
-    bearish_tokens = ("BEAR", "SHORT", "PUT", "SELL", "UNFAVORABLE", "NEGATIVE", "BLOCK", "DOWN")
+    bearish_tokens = ("BEAR", "SHORT", "PUT", "SELL", "UNFAVORABLE", "NEGATIVE", "BLOCK", "DOWN", "CONFLICT", "RISK", "UNWIND")
     if any(token in text for token in bullish_tokens):
         return "BULL"
     if any(token in text for token in bearish_tokens):
@@ -10816,6 +10925,7 @@ def pmo_engine_confluence_report(candidate: Dict[str, Any], settings: Optional[D
         ("sentiment", candidate.get("sentiment_signal") or (candidate.get("sentiment") or {}).get("signal")),
         ("ml", candidate.get("ml_signal") or (candidate.get("ml") or {}).get("signal")),
         ("intelligence", candidate.get("intel_signal") or (candidate.get("intelligence_bundle") or {}).get("signal")),
+        ("elite_ensemble", candidate.get("elite_signal") or ((candidate.get("elite_signals") or {}).get("ensemble") or {}).get("status")),
         ("regime", candidate.get("score_regime") or candidate.get("market_regime") or candidate.get("regime")),
         ("vwap", candidate.get("vwap_score_status") or candidate.get("vwap_status")),
         ("rvol", "PASS" if safe_float(candidate.get("relative_volume") or candidate.get("rvol"), 0) >= safe_float(settings.get("PMO_WHY_NOT_MIN_RVOL", 1.5), 1.5) else "LOW"),
@@ -19422,6 +19532,125 @@ def pmo_latest_intelligence_bundle_snapshot(settings: Optional[Dict[str, Any]] =
     return payload
 
 
+def pmo_elite_signals_empty(status: str = "WAITING", note: str = "") -> Dict[str, Any]:
+    return {
+        "ok": True,
+        "enabled": False,
+        "available": PMO_ELITE_SIGNALS_AVAILABLE,
+        "status": status,
+        "note": note,
+        "read_only": True,
+        "votes": [],
+        "options_flow": {},
+        "social_velocity": {},
+        "usdjpy_carry": {},
+        "ensemble": {"enabled": False, "status": status, "votes": [], "blockers": []},
+        "score_influence": False,
+        "live_unlocked": False,
+        "orders_placed": False,
+        "settings_changed": False,
+        "error": "" if PMO_ELITE_SIGNALS_AVAILABLE else PMO_ELITE_SIGNALS_ERROR,
+    }
+
+
+def pmo_analyze_elite_signals(
+    symbol: str,
+    trade_direction: str,
+    settings: Optional[Dict[str, Any]] = None,
+    *,
+    candidate: Optional[Dict[str, Any]] = None,
+    options_events: Optional[List[Dict[str, Any]]] = None,
+    social_samples: Optional[List[Dict[str, Any]]] = None,
+    usdjpy_bars: Optional[List[Dict[str, Any]]] = None,
+    record: bool = False,
+) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    if not bool(settings.get("ENABLE_PMO_ELITE_SIGNALS", True)):
+        return pmo_elite_signals_empty("OFF", "ENABLE_PMO_ELITE_SIGNALS is false.")
+    if not bool(settings.get("PMO_ELITE_SIGNALS_READ_ONLY", True)):
+        return pmo_elite_signals_empty("LOCKED", "PMO_ELITE_SIGNALS_READ_ONLY must stay true.")
+    if not PMO_ELITE_SIGNALS_AVAILABLE:
+        return pmo_elite_signals_empty("UNAVAILABLE", PMO_ELITE_SIGNALS_ERROR or "elite signals unavailable.")
+    clean_symbol = str(symbol or "").strip().upper()
+    base_candidate = dict(candidate or {})
+    base_candidate.setdefault("symbol", clean_symbol)
+    base_candidate.setdefault("direction", trade_direction)
+    try:
+        option_rows = options_events if options_events is not None else recent_csv_rows(PMO_OPTIONS_FLOW_FILE, 5000)
+        social_rows = social_samples if social_samples is not None else recent_csv_rows(PMO_SOCIAL_VELOCITY_FILE, 5000)
+        carry_rows = usdjpy_bars if usdjpy_bars is not None else recent_csv_rows(PMO_USDJPY_CARRY_FILE, 20)
+        options_report = pmo_elite_analyze_options_flow(clean_symbol, option_rows or [], settings)
+        social_report = pmo_elite_analyze_social_velocity(clean_symbol, social_rows or [], settings)
+        carry_report = pmo_elite_analyze_usdjpy_carry(carry_rows or [], settings)
+        external_votes = [
+            options_report.get("vote", {}),
+            social_report.get("vote", {}),
+            carry_report.get("vote", {}),
+        ]
+        base_candidate["elite_signals"] = {"votes": [row for row in external_votes if isinstance(row, dict)]}
+        votes = pmo_elite_votes_from_candidate(base_candidate, settings)
+        ensemble = pmo_elite_ensemble_vote(votes, settings)
+        payload = {
+            "ok": True,
+            "enabled": True,
+            "available": True,
+            "status": "READY",
+            "symbol": clean_symbol,
+            "direction": str(trade_direction or "").lower(),
+            "updated": now_et().isoformat(),
+            "read_only": True,
+            "score_influence": False,
+            "live_unlocked": False,
+            "orders_placed": False,
+            "settings_changed": False,
+            "votes": votes,
+            "options_flow": options_report,
+            "social_velocity": social_report,
+            "usdjpy_carry": carry_report,
+            "ensemble": ensemble,
+            "data_sources": {
+                "options_flow": str(PMO_OPTIONS_FLOW_FILE),
+                "social_velocity": str(PMO_SOCIAL_VELOCITY_FILE),
+                "usdjpy_carry": str(PMO_USDJPY_CARRY_FILE),
+            },
+            "journal": {
+                "elite_signal": ensemble.get("status", "BUILDING"),
+                "elite_bull_votes": ensemble.get("bull_votes", 0),
+                "elite_bear_votes": ensemble.get("bear_votes", 0),
+                "elite_agree_ratio": ensemble.get("agree_ratio", 0),
+                "elite_blockers": " | ".join(ensemble.get("blockers", []) or []),
+            },
+            "error": "",
+        }
+        if record:
+            write_json_file(PMO_ELITE_SIGNALS_REPORT_FILE, payload)
+        return payload
+    except Exception as exc:
+        payload = pmo_elite_signals_empty("ERROR", f"elite signal error: {str(exc)[:160]}")
+        payload.update({"enabled": True, "symbol": clean_symbol, "updated": now_et().isoformat(), "error": str(exc)[:200]})
+        return payload
+
+
+def pmo_walk_forward_validation_report(settings: Optional[Dict[str, Any]] = None, record: bool = False) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    if not PMO_ELITE_SIGNALS_AVAILABLE:
+        return {"ok": False, "enabled": False, "status": "UNAVAILABLE", "error": PMO_ELITE_SIGNALS_ERROR}
+    rows = pmo_closed_trade_rows_for_learning(settings, exclude_blocklist=False, limit=10000)
+    report = pmo_elite_walk_forward_validation(rows, settings)
+    payload = {
+        "ok": True,
+        "updated": now_et().isoformat(),
+        "source_file": str(TRADE_JOURNAL_FILE),
+        "report": report,
+        "live_unlocked": False,
+        "orders_placed": False,
+        "settings_changed": False,
+    }
+    if record:
+        write_json_file(PMO_WALK_FORWARD_REPORT_FILE, payload)
+    return payload
+
+
 def pmo_barchart_index_context(settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     settings = settings or load_settings()
     enabled = bool(settings.get("ENABLE_PMO_BARCHART_INDEX_CONTEXT", True))
@@ -25975,6 +26204,33 @@ def api_edge_engines():
         "orders_placed": False,
         "settings_changed": False,
     })
+
+
+@app.route("/api/elite-signals", methods=["GET", "POST"])
+def api_elite_signals():
+    payload = request.get_json(force=True, silent=True) or {} if request.method == "POST" else {}
+    settings = load_settings()
+    symbol = str(payload.get("symbol") or request.args.get("symbol") or "SPY").strip().upper()
+    direction = str(payload.get("direction") or request.args.get("direction") or "long").strip().lower()
+    candidate = payload.get("candidate") if isinstance(payload.get("candidate"), dict) else {}
+    report = pmo_analyze_elite_signals(
+        symbol,
+        direction,
+        settings,
+        candidate=candidate,
+        options_events=payload.get("options_events") if isinstance(payload.get("options_events"), list) else None,
+        social_samples=payload.get("social_samples") if isinstance(payload.get("social_samples"), list) else None,
+        usdjpy_bars=payload.get("usdjpy_bars") if isinstance(payload.get("usdjpy_bars"), list) else None,
+        record=bool(payload.get("record", False)),
+    )
+    return jsonify({"ok": True, "elite_signals": report})
+
+
+@app.route("/api/elite-signals/walk-forward", methods=["GET", "POST"])
+def api_elite_walk_forward():
+    payload = request.get_json(force=True, silent=True) or {} if request.method == "POST" else {}
+    settings = load_settings()
+    return jsonify({"ok": True, "walk_forward": pmo_walk_forward_validation_report(settings, record=bool(payload.get("record", False)))})
 
 
 @app.route("/api/crypto/status", methods=["GET"])
