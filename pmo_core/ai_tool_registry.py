@@ -31,6 +31,8 @@ DEFAULT_ALLOWED_COMMANDS = [
     "sync_journal",
     "apply_paper_safe_baseline",
     "enable_paper_executor_collection",
+    "get_data_collection_status",
+    "enable_data_collection",
     "return_crypto_research_only",
     "review_code",
     "make_patch_plan",
@@ -98,9 +100,11 @@ def build_tool_manifest() -> List[Dict[str, Any]]:
         _tool("explain_what_is_missing", "What Is Missing", READ_ONLY, "Summarize blockers, proof gaps, and next steps."),
         _tool("open_dashboard_section", "Open Dashboard Section", FRONTEND_ONLY, "Ask the dashboard to scroll to a PMO section.", frontend_action="scroll"),
         _tool("stop_voice", "Stop Voice", FRONTEND_ONLY, "Stop browser voice capture/speech.", frontend_action="stop_voice"),
+        _tool("get_data_collection_status", "Data Collection Status", READ_ONLY, "Read paper-only data collection progress and target state.", "/api/data-collection/status", "GET"),
         _tool("sync_journal", "Sync Journal", ADMIN_REQUIRED, "Sync broker paper fills and optionally close paper target/stop hits.", "/api/trade-journal/sync", owner_confirm_required=True),
         _tool("apply_paper_safe_baseline", "Apply Paper Safe", ADMIN_REQUIRED, "Apply PMO PAPER SAFE baseline only.", "/api/safety/paper-safe", owner_confirm_required=True),
         _tool("enable_paper_executor_collection", "Enable Paper Executor", ADMIN_REQUIRED, "Enable paper-only executor collection mode.", "/api/safety/stock-paper-executor", owner_confirm_required=True),
+        _tool("enable_data_collection", "Enable Data Collection", ADMIN_REQUIRED, "Enable paper-only data collection until the configured trade target is reached.", "/api/data-collection/enable", owner_confirm_required=True),
         _tool("return_crypto_research_only", "Crypto Research Only", ADMIN_REQUIRED, "Return crypto to research-only mode.", "/api/crypto/research-only", owner_confirm_required=True),
         _tool("review_code", "Code Review", ADMIN_REQUIRED, "Run local read-only PMO code review.", "/api/ai/code-review", owner_confirm_required=True, voice_allowed=False),
         _tool("make_patch_plan", "Patch Plan", ADMIN_REQUIRED, "Create a local patch plan without editing files.", "/api/ai/code-review", owner_confirm_required=True, voice_allowed=False),
@@ -120,4 +124,3 @@ def find_tool(name: str, manifest: Optional[List[Dict[str, Any]]] = None) -> Opt
         if str(tool.get("name", "")).lower() == clean:
             return tool
     return None
-

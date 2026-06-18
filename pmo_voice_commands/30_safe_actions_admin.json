@@ -73,6 +73,43 @@
       }
     },
     {
+      "id": "data_collection_status",
+      "label": "Data Collection Status",
+      "tool": "get_data_collection_status",
+      "intent": "tool",
+      "confidence": 0.9,
+      "phrases": [
+        "data collection status",
+        "collection status",
+        "how many collection trades",
+        "how many trades collected",
+        "show 150 trade target"
+      ],
+      "examples": ["data collection status"],
+      "arguments": {}
+    },
+    {
+      "id": "enable_data_collection_150",
+      "label": "Enable Data Collection To 150",
+      "tool": "enable_data_collection",
+      "intent": "tool",
+      "confidence": 0.9,
+      "phrases": [
+        "start data collection until 150 trades",
+        "continue data collection until 150 trades",
+        "continue collecting data until 150 trades",
+        "keep collecting data until 150 trades",
+        "resume data collection until 150 trades",
+        "enable data collection to 150 trades",
+        "turn on collection mode for 150 trades"
+      ],
+      "examples": ["continue data collection until 150 trades"],
+      "arguments": {
+        "max_trades": 150,
+        "timeout_minutes": 10080
+      }
+    },
+    {
       "id": "stop_voice",
       "label": "Stop Voice",
       "tool": "stop_voice",

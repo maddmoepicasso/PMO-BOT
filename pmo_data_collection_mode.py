@@ -8,8 +8,10 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger("pmo.data_collection")
 
-DEFAULT_TIMEOUT_MINUTES = 120
-DEFAULT_MAX_TRADES = 20
+DEFAULT_TIMEOUT_MINUTES = 10080
+DEFAULT_MAX_TRADES = 150
+MAX_TIMEOUT_MINUTES = 10080
+MAX_COLLECTION_TRADES = 150
 
 NORMAL_GATE_LABELS = {
     "min_score": 65.0,
@@ -19,6 +21,7 @@ NORMAL_GATE_LABELS = {
     "orb_required": True,
     "regime_allowed": "BULL",
     "max_trades_day": 10,
+    "collection_target_trades": DEFAULT_MAX_TRADES,
 }
 
 DATA_COLLECTION_GATES = {
@@ -103,6 +106,7 @@ class DataCollectionState:
             "minutes_remaining": round(remaining, 1) if remaining is not None else None,
             "timeout_minutes": self.timeout_minutes,
             "max_trades": self.max_trades,
+            "target_trades": self.max_trades,
             "session_id": self.session_id,
             "auto_disabled_at": self.auto_disabled_at,
             "auto_disable_reason": self.auto_disable_reason,
@@ -131,8 +135,8 @@ class DataCollectionManager:
         max_trades: int = DEFAULT_MAX_TRADES,
         enabled_by: str = "owner",
     ) -> Dict[str, Any]:
-        timeout_minutes = int(max(15, min(240, timeout_minutes)))
-        max_trades = int(max(5, min(50, max_trades)))
+        timeout_minutes = int(max(15, min(MAX_TIMEOUT_MINUTES, timeout_minutes)))
+        max_trades = int(max(5, min(MAX_COLLECTION_TRADES, max_trades)))
         self._state = DataCollectionState(
             enabled=True,
             enabled_at=time.time(),
@@ -153,8 +157,8 @@ class DataCollectionManager:
             "enabled": True,
             "session_id": self._state.session_id,
             "message": (
-                f"Data collection mode ON for up to {max_trades} paper trades "
-                f"or {timeout_minutes} minutes. Live trading stays locked."
+                f"Data collection mode ON until {max_trades} paper trades are collected "
+                f"or {timeout_minutes} minutes elapse. Live trading stays locked."
             ),
             "status": self.get_status()["data_collection"],
         }
@@ -244,7 +248,8 @@ class DataCollectionManager:
                     "gap_allowed": "GAP_UP/GAP_UP_HOLD/FLAT",
                     "orb_required": False,
                     "regime_allowed": "BULL/BULLISH/MIXED",
-                    "max_trades_day": self._state.max_trades,
+                    "max_trades_day": DATA_COLLECTION_GATES["PMO_PAPER_MAX_DAILY_TRADES"],
+                    "target_trades": self._state.max_trades,
                 },
             },
             "current_gates": active_gates if self.is_active else {"DATA_COLLECTION_ACTIVE": False},

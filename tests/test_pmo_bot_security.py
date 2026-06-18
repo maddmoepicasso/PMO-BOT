@@ -131,6 +131,89 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertFalse(normal["DATA_COLLECTION_ACTIVE"])
         self.assertEqual(normal["PMO_REBUILD_ENTRY_SCORE_MIN"], self.mod.DEFAULT_SETTINGS["PMO_REBUILD_ENTRY_SCORE_MIN"])
 
+    def test_data_collection_accepts_150_trade_target(self):
+        token = self.mod.first_env("PMO_BOT_ADMIN_TOKEN")
+        try:
+            response = self.client.post(
+                "/api/data-collection/enable",
+                json={"timeout_minutes": 10080, "max_trades": 150},
+                headers={"X-Admin-Token": token},
+            )
+            self.assertEqual(response.status_code, 200)
+            body = response.get_json()
+            self.assertTrue(body["ok"])
+            self.assertTrue(body["status"]["active"])
+            self.assertEqual(body["status"]["max_trades"], 150)
+            self.assertEqual(body["status"]["target_trades"], 150)
+            self.assertEqual(body["status"]["timeout_minutes"], 10080)
+            self.assertIn("150 paper trades", body["message"])
+        finally:
+            self.client.post(
+                "/api/data-collection/disable",
+                json={},
+                headers={"X-Admin-Token": token},
+            )
+
+    def test_voice_command_maps_data_collection_to_150_trade_target(self):
+        parsed = self.mod.parse_ai_command("continue data collection until 150 trades", input_type="voice")
+        self.assertTrue(parsed["ok"])
+        self.assertEqual(parsed["tool"], "enable_data_collection")
+        self.assertEqual(parsed["arguments"]["max_trades"], 150)
+        self.assertEqual(parsed["arguments"]["timeout_minutes"], 10080)
+
+        status = self.mod.parse_ai_command("data collection status", input_type="voice")
+        self.assertTrue(status["ok"])
+        self.assertEqual(status["tool"], "get_data_collection_status")
+
+    def test_ai_tool_manifest_includes_data_collection_tools(self):
+        tools = {tool["name"]: tool for tool in self.mod.build_tool_manifest()}
+        self.assertIn("get_data_collection_status", tools)
+        self.assertEqual(tools["get_data_collection_status"]["permission"], "READ_ONLY")
+        self.assertIn("enable_data_collection", tools)
+        self.assertEqual(tools["enable_data_collection"]["permission"], "ADMIN_REQUIRED")
+
+    def test_profit_tracker_snapshot_is_read_only(self):
+        snapshot = self.mod.pmo_profit_tracker_snapshot(
+            dict(self.mod.DEFAULT_SETTINGS),
+            {
+                "ok": True,
+                "paper": True,
+                "status": "ACTIVE",
+                "equity": 1000,
+                "last_equity": 990,
+                "day_pnl": 10,
+                "day_pnl_percent": 0.01,
+                "buying_power": 1000,
+            },
+        )
+        self.assertTrue(snapshot["ok"])
+        self.assertEqual(snapshot["mode"], "READ_ONLY_PROFIT_TRACKER")
+        self.assertFalse(snapshot["orders_placed"])
+        self.assertFalse(snapshot["live_unlocked"])
+        self.assertFalse(snapshot["money_movement"])
+        self.assertIn("alpaca_gains", snapshot)
+        self.assertIn("crypto_gains", snapshot)
+        self.assertIn("net", snapshot)
+        self.assertEqual(snapshot["summary"]["day_pnl"], 10)
+
+    def test_profit_tracker_route_is_read_only(self):
+        response = self.client.get("/api/profit-tracker")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertFalse(payload["orders_placed"])
+        self.assertFalse(payload["live_unlocked"])
+        self.assertFalse(payload["money_movement"])
+
+    def test_control_deck_uses_profit_tracker_not_payment_receiving_panel(self):
+        response = self.client.get("/control")
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn("PMO Profit Tracker", html)
+        self.assertIn("/api/profit-tracker", html)
+        self.assertNotIn("Payment + Profit Receiving", html)
+        self.assertNotIn("panelPaymentHub", html)
+
     def test_reports_route_blocks_env_and_source_files(self):
         blocked_paths = [
             self.mod.PMO_DIR / ".env",

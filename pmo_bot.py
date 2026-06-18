@@ -479,8 +479,8 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_BACKGROUND_PAPER_MAX_SUBMISSIONS_PER_CYCLE": 1,
     "PMO_BACKGROUND_PAPER_MIN_SCORE": 65,
     "PMO_DATA_COLLECTION_ENABLED": False,
-    "PMO_DATA_COLLECTION_MAX_TRADES": 20,
-    "PMO_DATA_COLLECTION_TIMEOUT_MINUTES": 120,
+    "PMO_DATA_COLLECTION_MAX_TRADES": 150,
+    "PMO_DATA_COLLECTION_TIMEOUT_MINUTES": 10080,
     "PMO_DATA_COLLECTION_MIN_SCORE": 60.0,
     "PMO_DATA_COLLECTION_MIN_RVOL": 1.2,
     "PMO_DATA_COLLECTION_ALLOW_MIXED": True,
@@ -716,7 +716,8 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
         "run_cobr_sim", "run_firewall_check", "run_pre_session_checklist",
         "explain_what_is_missing", "open_dashboard_section", "sync_journal",
         "apply_paper_safe_baseline", "enable_paper_executor_collection",
-        "return_crypto_research_only", "review_code", "make_patch_plan", "stop_voice",
+        "return_crypto_research_only", "get_data_collection_status", "enable_data_collection",
+        "review_code", "make_patch_plan", "stop_voice",
     ],
     "PMO_AI_BLOCKED_COMMANDS": [
         "enable_live_trading", "arm_live_master", "place_live_order", "place_order",
@@ -1251,8 +1252,8 @@ EDITABLE_SETTINGS: Dict[str, Dict[str, Any]] = {
     "PMO_BACKGROUND_PAPER_MAX_SUBMISSIONS_PER_CYCLE": {"type": "int", "min": 1, "max": 10},
     "PMO_BACKGROUND_PAPER_MIN_SCORE": {"type": "int", "min": 1, "max": 100},
     "PMO_DATA_COLLECTION_ENABLED": {"type": "bool"},
-    "PMO_DATA_COLLECTION_MAX_TRADES": {"type": "int", "min": 5, "max": 50},
-    "PMO_DATA_COLLECTION_TIMEOUT_MINUTES": {"type": "int", "min": 15, "max": 240},
+    "PMO_DATA_COLLECTION_MAX_TRADES": {"type": "int", "min": 5, "max": 150},
+    "PMO_DATA_COLLECTION_TIMEOUT_MINUTES": {"type": "int", "min": 15, "max": 10080},
     "PMO_DATA_COLLECTION_MIN_SCORE": {"type": "float", "min": 50, "max": 100},
     "PMO_DATA_COLLECTION_MIN_RVOL": {"type": "float", "min": 0, "max": 10},
     "PMO_DATA_COLLECTION_ALLOW_MIXED": {"type": "bool"},
@@ -11298,6 +11299,99 @@ def pmo_trade_edge_status(row: Dict[str, Any]) -> str:
 
 def pmo_trade_edge_pnl(row: Dict[str, Any]) -> float:
     return safe_float(row.get("pnl") or row.get("pnl_usd") or row.get("profit_loss") or row.get("realized_pnl") or row.get("net_pnl"), 0)
+
+
+def pmo_profit_tracker_bucket(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    wins = losses = flats = 0
+    gross_profit = gross_loss = net_pnl = 0.0
+    latest: List[Dict[str, Any]] = []
+    for row in rows:
+        pnl = pmo_trade_edge_pnl(row)
+        status = pmo_trade_edge_status(row)
+        is_win = "WIN" in status or pnl > 0
+        is_loss = "LOSS" in status or pnl < 0
+        if is_win:
+            wins += 1
+            gross_profit += max(0.0, pnl)
+        elif is_loss:
+            losses += 1
+            gross_loss += abs(min(0.0, pnl))
+        else:
+            flats += 1
+        net_pnl += pnl
+        symbol = str(row.get("symbol") or row.get("ticker") or "").strip().upper()
+        latest.append({
+            "timestamp": row.get("timestamp") or row.get("closed_at") or row.get("time") or "",
+            "symbol": symbol,
+            "market": row.get("market") or detect_market(symbol, "AUTO"),
+            "status": status,
+            "pnl": round(pnl, 4),
+        })
+    closed = wins + losses + flats
+    decisive = wins + losses
+    return {
+        "closed": closed,
+        "wins": wins,
+        "losses": losses,
+        "flats": flats,
+        "win_rate": round(wins / decisive, 4) if decisive else 0.0,
+        "gross_profit": round(gross_profit, 4),
+        "gross_loss": round(gross_loss, 4),
+        "net_pnl": round(net_pnl, 4),
+        "profit_factor": round(gross_profit / gross_loss, 4) if gross_loss else (999.0 if gross_profit > 0 else 0.0),
+        "latest": latest[-8:],
+    }
+
+
+def pmo_profit_tracker_snapshot(settings: Optional[Dict[str, Any]] = None, account: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    account = account or bot.account_snapshot()
+    rows = pmo_closed_trade_rows_for_learning(settings, exclude_blocklist=False, limit=10000)
+    crypto_rows: List[Dict[str, Any]] = []
+    alpaca_rows: List[Dict[str, Any]] = []
+    for row in rows:
+        symbol = str(row.get("symbol") or row.get("ticker") or "").strip().upper()
+        market = str(row.get("market") or detect_market(symbol, "AUTO")).upper()
+        if market == "CRYPTO":
+            crypto_rows.append(row)
+        else:
+            alpaca_rows.append(row)
+    alpaca = pmo_profit_tracker_bucket(alpaca_rows)
+    crypto = pmo_profit_tracker_bucket(crypto_rows)
+    total = pmo_profit_tracker_bucket([*alpaca_rows, *crypto_rows])
+    broker_context = {
+        "ok": bool(account.get("ok")),
+        "paper": bool(account.get("paper", settings.get("ALPACA_PAPER", True))),
+        "status": account.get("status") or account.get("error", ""),
+        "equity": round(safe_float(account.get("equity"), 0), 2),
+        "last_equity": round(safe_float(account.get("last_equity"), 0), 2),
+        "day_pnl": round(safe_float(account.get("day_pnl"), 0), 4),
+        "day_pnl_percent": round(safe_float(account.get("day_pnl_percent"), 0), 4),
+        "buying_power": round(safe_float(account.get("buying_power"), 0), 2),
+    }
+    return {
+        "ok": True,
+        "updated": now_et().isoformat(),
+        "mode": "READ_ONLY_PROFIT_TRACKER",
+        "source": "pmo_bot_trade_journal.csv + Alpaca account snapshot",
+        "source_file": str(TRADE_JOURNAL_FILE),
+        "orders_placed": False,
+        "live_unlocked": False,
+        "money_movement": False,
+        "broker_context": broker_context,
+        "alpaca_gains": alpaca,
+        "crypto_gains": crypto,
+        "net": total,
+        "summary": {
+            "alpaca_net_pnl": alpaca["net_pnl"],
+            "crypto_net_pnl": crypto["net_pnl"],
+            "total_net_pnl": total["net_pnl"],
+            "closed_trades": total["closed"],
+            "day_pnl": broker_context["day_pnl"],
+            "day_pnl_percent": broker_context["day_pnl_percent"],
+        },
+        "note": "Read-only tracker. No payment links, receiving accounts, withdrawals, or money movement controls.",
+    }
 
 
 def pmo_trade_edge_is_win(row: Dict[str, Any]) -> bool:
@@ -26380,6 +26474,13 @@ def api_stability():
     return jsonify({"ok": True, "stability": stability, "health": health, "log_health": log_health, "report_log_bar": report_log_bar})
 
 
+@app.route("/api/profit-tracker", methods=["GET"])
+def api_profit_tracker():
+    settings = load_settings()
+    account = bot.account_snapshot()
+    return jsonify(pmo_profit_tracker_snapshot(settings, account))
+
+
 @app.route("/api/admin/status", methods=["GET"])
 def api_admin_status():
     return jsonify({"ok": True, "admin": pmo_admin_security_state()})
@@ -26420,8 +26521,8 @@ def api_data_collection_enable():
         return jsonify({"ok": False, "error": "Data collection mode requires ALPACA_PAPER=True."}), 400
     if settings_snapshot.get("PMO_ALLOW_LIVE_TRADING") or settings_snapshot.get("PMO_LIVE_TRADING_ENABLED"):
         return jsonify({"ok": False, "error": "Data collection mode cannot enable while live trading switches are ON."}), 400
-    timeout = int(max(15, min(240, safe_float(payload.get("timeout_minutes") or settings_snapshot.get("PMO_DATA_COLLECTION_TIMEOUT_MINUTES", 120), 120))))
-    max_trades = int(max(5, min(50, safe_float(payload.get("max_trades") or settings_snapshot.get("PMO_DATA_COLLECTION_MAX_TRADES", 20), 20))))
+    timeout = int(max(15, min(10080, safe_float(payload.get("timeout_minutes") or settings_snapshot.get("PMO_DATA_COLLECTION_TIMEOUT_MINUTES", 10080), 10080))))
+    max_trades = int(max(5, min(150, safe_float(payload.get("max_trades") or settings_snapshot.get("PMO_DATA_COLLECTION_MAX_TRADES", 150), 150))))
     result = _DATA_COLLECTION.enable(timeout_minutes=timeout, max_trades=max_trades, enabled_by="owner")
     csv_append(PMO_BOT_OWNER_COMMANDS_FILE, {
         "timestamp": now_et().isoformat(),
@@ -29182,6 +29283,38 @@ def pmo_ai_run_tool(tool_name: str, payload: Dict[str, Any], settings: Dict[str,
         return {"status": "FRONTEND_ACTION", "action": "scroll", "section_id": args.get("section_id") or payload.get("section_id") or "panelDeskCommanderAI"}
     if tool_name == "stop_voice":
         return {"status": "FRONTEND_ACTION", "action": "stop_voice"}
+    if tool_name == "get_data_collection_status":
+        status = (
+            _DATA_COLLECTION.get_status()
+            if PMO_DATA_COLLECTION_AVAILABLE and _DATA_COLLECTION is not None
+            else {
+                "ok": False,
+                "available": False,
+                "error": PMO_DATA_COLLECTION_ERROR or "Data collection manager unavailable.",
+                "live_unlocked": False,
+                "orders_placed": False,
+            }
+        )
+        return {"status": "COMPLETE", "data_collection": status}
+    if tool_name == "enable_data_collection":
+        if not (PMO_DATA_COLLECTION_AVAILABLE and _DATA_COLLECTION is not None):
+            return {"status": "ERROR", "error": PMO_DATA_COLLECTION_ERROR or "Data collection manager unavailable."}
+        if not bool(settings.get("ALPACA_PAPER", True)):
+            return {"status": "BLOCKED", "error": "Data collection mode requires ALPACA_PAPER=True."}
+        if settings.get("PMO_ALLOW_LIVE_TRADING") or settings.get("PMO_LIVE_TRADING_ENABLED"):
+            return {"status": "BLOCKED", "error": "Data collection mode cannot enable while live trading switches are ON."}
+        timeout = int(max(15, min(10080, safe_float(args.get("timeout_minutes") or payload.get("timeout_minutes") or settings.get("PMO_DATA_COLLECTION_TIMEOUT_MINUTES", 10080), 10080))))
+        max_trades = int(max(5, min(150, safe_float(args.get("max_trades") or payload.get("max_trades") or settings.get("PMO_DATA_COLLECTION_MAX_TRADES", 150), 150))))
+        result = _DATA_COLLECTION.enable(timeout_minutes=timeout, max_trades=max_trades, enabled_by="desk_commander")
+        csv_append(PMO_BOT_OWNER_COMMANDS_FILE, {
+            "timestamp": now_et().isoformat(),
+            "action": "desk_commander_data_collection_enable",
+            "target": result.get("session_id", ""),
+            "notes": f"timeout={timeout} max_trades={max_trades}",
+            "status": "ENABLED",
+            "safe_note": "Live trading remains locked; runtime settings only.",
+        })
+        return {"status": "COMPLETE", "data_collection": result}
     if tool_name == "sync_journal":
         result = pmo_sync_trade_journal_from_broker(
             settings,
