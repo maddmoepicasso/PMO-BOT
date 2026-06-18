@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import logging
+import json
 import time
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger("pmo.data_collection")
 
+PMO_DIR = Path(__file__).resolve().parent
+DEFAULT_STATE_FILE = PMO_DIR / "pmo_csv" / "pmo_data_collection_state.json"
 DEFAULT_TIMEOUT_MINUTES = 10080
 DEFAULT_MAX_TRADES = 200
 MAX_TIMEOUT_MINUTES = 10080
@@ -133,10 +137,49 @@ class DataCollectionState:
             "auto_disable_reason": self.auto_disable_reason,
         }
 
+    @classmethod
+    def from_dict(cls, payload: Dict[str, Any]) -> "DataCollectionState":
+        return cls(
+            enabled=bool(payload.get("enabled", False)),
+            enabled_at=payload.get("enabled_at"),
+            enabled_by=str(payload.get("enabled_by", "")),
+            timeout_minutes=int(payload.get("timeout_minutes") or DEFAULT_TIMEOUT_MINUTES),
+            max_trades=int(payload.get("max_trades") or payload.get("target_trades") or DEFAULT_MAX_TRADES),
+            trades_collected=int(payload.get("trades_collected") or 0),
+            auto_disabled_at=payload.get("auto_disabled_at"),
+            auto_disable_reason=str(payload.get("auto_disable_reason", "")),
+            session_id=str(payload.get("session_id", "")),
+        )
+
 
 class DataCollectionManager:
-    def __init__(self) -> None:
+    def __init__(self, state_file: Optional[Path] = DEFAULT_STATE_FILE) -> None:
+        self._state_file = Path(state_file) if state_file else None
         self._state = DataCollectionState()
+        self._load_state()
+
+    def _load_state(self) -> None:
+        if not self._state_file or not self._state_file.exists():
+            return
+        try:
+            payload = json.loads(self._state_file.read_text(encoding="utf-8"))
+            self._state = DataCollectionState.from_dict(payload if isinstance(payload, dict) else {})
+            if self._state.enabled and not self._state.is_active:
+                self._auto_disable()
+        except Exception as exc:
+            logger.warning("DATA COLLECTION STATE LOAD FAILED | file=%s error=%s", self._state_file, exc)
+            self._state = DataCollectionState()
+
+    def _persist_state(self) -> None:
+        if not self._state_file:
+            return
+        try:
+            self._state_file.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self._state_file.with_suffix(self._state_file.suffix + ".tmp")
+            tmp.write_text(json.dumps(self._state.as_dict(), indent=2, sort_keys=True), encoding="utf-8")
+            tmp.replace(self._state_file)
+        except Exception as exc:
+            logger.warning("DATA COLLECTION STATE SAVE FAILED | file=%s error=%s", self._state_file, exc)
 
     @property
     def is_active(self) -> bool:
@@ -167,6 +210,7 @@ class DataCollectionManager:
             trades_collected=0,
             session_id=uuid.uuid4().hex[:8].upper(),
         )
+        self._persist_state()
         logger.warning(
             "DATA COLLECTION MODE ENABLED | session=%s timeout=%dm max=%d trades",
             self._state.session_id,
@@ -188,6 +232,7 @@ class DataCollectionManager:
         collected = self._state.trades_collected
         session = self._state.session_id
         self._state.enabled = False
+        self._persist_state()
         logger.warning(
             "DATA COLLECTION MODE DISABLED | reason=%s session=%s collected=%d",
             reason,
@@ -215,12 +260,14 @@ class DataCollectionManager:
         self._state.enabled = False
         self._state.auto_disabled_at = time.time()
         self._state.auto_disable_reason = reason
+        self._persist_state()
         logger.warning("DATA COLLECTION MODE AUTO-DISABLED | reason=%s", reason)
 
     def record_trade(self, ticker: str = "") -> int:
         if not self._state.enabled:
             return self._state.trades_collected
         self._state.trades_collected += 1
+        self._persist_state()
         logger.info(
             "DataCollection: trade #%d recorded (%s) | %d remaining",
             self._state.trades_collected,

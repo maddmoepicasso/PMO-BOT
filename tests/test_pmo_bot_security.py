@@ -158,6 +158,22 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
                 headers={"X-Admin-Token": token},
             )
 
+    def test_data_collection_state_persists_across_manager_restart(self):
+        module = load_local_module("pmo_data_collection_mode")
+        with tempfile.TemporaryDirectory() as tmp:
+            state_file = Path(tmp) / "data_collection_state.json"
+            manager = module.DataCollectionManager(state_file=state_file)
+            enabled = manager.enable(timeout_minutes=10080, max_trades=200, enabled_by="test")
+            self.assertTrue(enabled["status"]["active"])
+            self.assertEqual(manager.record_trade("NVDA"), 1)
+
+            restarted = module.DataCollectionManager(state_file=state_file)
+            status = restarted.get_status()["data_collection"]
+            self.assertTrue(status["active"])
+            self.assertEqual(status["target_trades"], 200)
+            self.assertEqual(status["trades_collected"], 1)
+            self.assertEqual(status["trades_remaining"], 199)
+
     def test_voice_command_maps_data_collection_to_200_trade_target(self):
         parsed = self.mod.parse_ai_command("continue data collection until 200 trades", input_type="voice")
         self.assertTrue(parsed["ok"])

@@ -214,7 +214,7 @@ except Exception as exc:  # pragma: no cover - vault intelligence must stay opti
 try:
     from pmo_data_collection_mode import DataCollectionManager
 
-    _DATA_COLLECTION = DataCollectionManager()
+    _DATA_COLLECTION = DataCollectionManager(state_file=None) if str(__name__).endswith("_under_test") else DataCollectionManager()
     PMO_DATA_COLLECTION_AVAILABLE = True
     PMO_DATA_COLLECTION_ERROR = ""
 except Exception as exc:  # pragma: no cover - data collection controls must fail closed
@@ -6204,7 +6204,7 @@ class PMOBot:
         checks.append({"name": "PMO Access Source Hub", "direction": "outgoing", "online": bool(self.settings.get("ENABLE_PMO_ACCESS_SOURCE_HUB")), "detail": f"{access['online']}/{access['total']} sources online"})
         receiving_accounts = load_receiving_accounts()
         payment_hub = payment_hub_snapshot(receiving_accounts, self.settings)
-        checks.append({"name": "PMO Payments Hub", "direction": "incoming/outgoing", "online": bool(payment_hub["summary"]["saved_destinations"] or payment_hub["summary"]["paypal_ready"] or payment_hub["summary"]["plaid_ready"]), "detail": f"{payment_hub['summary']['saved_destinations']} saved destination(s) | events {PAYMENT_EVENTS_FILE}"})
+        checks.append({"name": "Business Checkout Setup", "direction": "business-only", "online": bool(payment_hub["summary"]["saved_destinations"] or payment_hub["summary"]["paypal_ready"] or payment_hub["summary"]["plaid_ready"]), "detail": f"{payment_hub['summary']['saved_destinations']} saved destination(s) | events {PAYMENT_EVENTS_FILE}"})
         checks.append({"name": "PayPal Checkout", "direction": "incoming/outgoing", "online": bool(payment_hub["summary"]["paypal_ready"]), "detail": "API or saved PayPal link ready" if payment_hub["summary"]["paypal_ready"] else "add PAYPAL_CLIENT_ID/PAYPAL_CLIENT_SECRET or saved PayPal link"})
         checks.append({"name": "Plaid Bank Link", "direction": "outgoing/incoming", "online": bool(payment_hub["summary"]["plaid_ready"]), "detail": "Plaid keys ready" if payment_hub["summary"]["plaid_ready"] else "add PLAID_CLIENT_ID/PLAID_SECRET for bank-link setup"})
         checks.append({"name": "PMO Customer Installer", "direction": "outgoing/customer", "online": True, "detail": "/api/install/windows | user-run transparent installer"})
@@ -10742,7 +10742,7 @@ def log_pmo_donation(payload: Dict[str, Any]) -> Dict[str, Any]:
         "email": str(payload.get("email", "")).strip(),
         "amount": f"{amount:.2f}",
         "message": str(payload.get("message", "")).strip()[:300],
-        "payment_route": str(payload.get("payment_route", "PMO Payments Hub")).strip(),
+        "payment_route": str(payload.get("payment_route", "PMO request form")).strip(),
         "status": "NEW_DONATION_PLEDGE",
         "source": str(payload.get("source", "pmo_bot_payment_panel")).strip(),
     })
@@ -23607,69 +23607,22 @@ RICH_CONTROL_TEMPLATE = """
 
     {% if not (micro_mode.active and settings.PMO_MICRO_HIDE_BUSINESS_DASHBOARD) %}
     <section class="card">
-        <h3>PMO Payments Hub</h3>
-        <div class="setting-value">Receiving accounts, payment links, PayPal checkout, Plaid bank-link readiness, and provider callbacks. Store public handles, payment links, invoice destinations, or API keys in .env only. Do not store passwords, SSNs, card numbers, CVV codes, routing/account numbers, broker login data, seed phrases, or private keys.</div>
+        <h3>PMO Profit Tracker</h3>
+        <div class="setting-value">Read-only Alpaca, crypto, and net P&amp;L tracker. No payment links, receiving accounts, withdrawals, bank links, crypto wallets, or money movement controls are exposed here.</div>
         <div class="row" style="margin-top:10px;">
-            <span class="pill {{ 'ok' if payment_hub.summary.paypal_ready else 'bad' }}">PAYPAL {{ 'READY' if payment_hub.summary.paypal_ready else 'SETUP' }}</span>
-            <span class="pill {{ 'ok' if payment_hub.summary.plaid_ready else 'bad' }}">PLAID {{ 'READY' if payment_hub.summary.plaid_ready else 'SETUP' }}</span>
-            <span class="pill {{ 'ok' if payment_hub.summary.webhook_ready else 'bad' }}">PUBLIC CALLBACK {{ 'READY' if payment_hub.summary.webhook_ready else 'SETUP' }}</span>
-            <span class="pill">DESTINATIONS {{ payment_hub.summary.saved_destinations }}</span>
-            <button id="refreshPaymentStatusButton">Refresh Payment Status</button>
+            <span class="pill ok">{{ profit_tracker.mode }}</span>
+            <span class="pill {{ 'ok' if not profit_tracker.live_unlocked else 'bad' }}">LIVE {{ 'LOCKED' if not profit_tracker.live_unlocked else 'UNLOCKED' }}</span>
+            <span class="pill {{ 'ok' if not profit_tracker.money_movement else 'bad' }}">MONEY MOVEMENT {{ 'OFF' if not profit_tracker.money_movement else 'CHECK' }}</span>
+            <a class="pill mini-link" href="/api/profit-tracker" target="_blank" rel="noopener">Open JSON</a>
         </div>
         <div class="table-wrap" style="margin-top:10px;"><table>
-            <tr><th>Provider</th><th>Direction</th><th>Status</th><th>Detail</th><th>Action</th></tr>
-            {% for row in payment_hub.provider_rows %}
-            <tr><td>{{ row.provider }}</td><td>{{ row.direction }}</td><td class="{{ 'green' if row.status == 'READY' else 'yellow' if row.status in ['PARTIAL', 'OPTIONAL'] else 'red' }}">{{ row.status }}</td><td>{{ row.detail }}</td><td>{{ row.action }}</td></tr>
-            {% endfor %}
+            <tr><th>Bucket</th><th>Net P&amp;L</th><th>Closed</th><th>Win Rate</th><th>Profit Factor</th></tr>
+            <tr><td>Alpaca</td><td class="{{ 'green' if profit_tracker.alpaca_gains.net_pnl >= 0 else 'red' }}">${{ '%.2f'|format(profit_tracker.alpaca_gains.net_pnl) }}</td><td>{{ profit_tracker.alpaca_gains.closed }}</td><td>{{ '%.1f'|format(profit_tracker.alpaca_gains.win_rate * 100) }}%</td><td>{{ '%.2f'|format(profit_tracker.alpaca_gains.profit_factor) }}</td></tr>
+            <tr><td>Crypto</td><td class="{{ 'green' if profit_tracker.crypto_gains.net_pnl >= 0 else 'red' }}">${{ '%.2f'|format(profit_tracker.crypto_gains.net_pnl) }}</td><td>{{ profit_tracker.crypto_gains.closed }}</td><td>{{ '%.1f'|format(profit_tracker.crypto_gains.win_rate * 100) }}%</td><td>{{ '%.2f'|format(profit_tracker.crypto_gains.profit_factor) }}</td></tr>
+            <tr><td>Net</td><td class="{{ 'green' if profit_tracker.net.net_pnl >= 0 else 'red' }}">${{ '%.2f'|format(profit_tracker.net.net_pnl) }}</td><td>{{ profit_tracker.net.closed }}</td><td>{{ '%.1f'|format(profit_tracker.net.win_rate * 100) }}%</td><td>{{ '%.2f'|format(profit_tracker.net.profit_factor) }}</td></tr>
+            <tr><td>Broker Day</td><td class="{{ 'green' if profit_tracker.summary.day_pnl >= 0 else 'red' }}">${{ '%.2f'|format(profit_tracker.summary.day_pnl) }}</td><td colspan="3">Equity ${{ '%.2f'|format(profit_tracker.broker_context.equity) }} | Buying power ${{ '%.2f'|format(profit_tracker.broker_context.buying_power) }} | {{ profit_tracker.broker_context.status }}</td></tr>
         </table></div>
-
-        <h4 style="margin-top:14px;">PMO Receiving Accounts</h4>
-        <div class="form-grid" style="margin-top:10px;">
-            <select id="receiveType"><option>PayPal Payment Link</option><option>PayPal.Me</option><option>Stripe Payment Link</option><option>Cash App</option><option>Plaid Bank Link Ready</option><option>Bank Invoice</option><option>Crypto Wallet</option><option>Other</option></select>
-            <input id="receiveNickname" placeholder="Nickname">
-            <input id="receiveDestination" placeholder="Public payment handle, hosted link, or invoice destination">
-            <input id="receiveNotes" placeholder="Notes">
-            <input id="receivePriority" type="number" min="1" max="10" value="5" title="Priority">
-            <button id="addReceivingAccountButton">Add Receiving Account</button>
-        </div>
-        <div class="setting-value" style="margin-top:8px;">File: {{ receiving_accounts_file }}</div>
-        <div class="table-wrap"><table id="receivingAccountsTable">
-            <tr><th>Type</th><th>Nickname</th><th>Destination</th><th>Notes</th><th>Priority</th><th>Status</th><th>Action</th></tr>
-            {% for acct in receiving_accounts %}
-            {% set dest = acct.destination|string %}
-            <tr data-account-id="{{ acct.id }}"><td>{{ acct.account_type }}</td><td>{{ acct.nickname }}</td><td>{% if dest[:4] == "http" %}<a href="{{ dest }}" target="_blank" rel="noopener">{{ dest }}</a>{% else %}{{ dest }}{% endif %}</td><td>{{ acct.notes }}</td><td>{{ acct.get("priority", 5) }}</td><td class="green">{{ "ACTIVE" if acct.get("active", True) else "PAUSED" }}</td><td><button class="removeReceivingAccount">Remove Entry</button></td></tr>
-            {% else %}
-            <tr><td colspan="7">No receiving accounts saved yet.</td></tr>
-            {% endfor %}
-        </table></div>
-
-        <h4 style="margin-top:14px;">PayPal / Plaid Actions</h4>
-        <div class="form-grid" style="margin-top:10px;">
-            <input id="paypalAmount" type="number" min="1" step="0.01" placeholder="PayPal amount USD">
-            <input id="paypalMemo" placeholder="Payment memo">
-            <input id="paypalReference" placeholder="PMO reference / invoice id">
-            <button id="createPaypalOrderButton">Build PayPal Checkout</button>
-            <button id="createPlaidLinkButton">Create Plaid Link Token</button>
-        </div>
-        <pre id="paymentOut">PMO payment output will appear here. PayPal creates an approval URL when API keys are ready. Plaid creates a Link token when Plaid keys are ready.</pre>
-        <pre id="paymentStatusOut">Payment status refresh output will appear here.</pre>
-
-        <h4 style="margin-top:14px;">Provider Callback Routes</h4>
-        <div class="table-wrap"><table>
-            <tr><th>Provider</th><th>Local URL</th><th>Public URL</th><th>Purpose</th></tr>
-            {% for row in payment_hub.webhook_rows %}
-            <tr><td>{{ row.provider }}</td><td>{{ row.local_url }}</td><td>{{ row.public_url }}</td><td>{{ row.purpose }}</td></tr>
-            {% endfor %}
-        </table></div>
-        <div class="setting-value" style="margin-top:8px;">Payment events: {{ payment_hub.events_file }}</div>
-        <div class="table-wrap"><table>
-            <tr><th>Time</th><th>Provider</th><th>Event</th><th>Status</th><th>Amount</th><th>Reference</th><th>Verified</th></tr>
-            {% for event in payment_hub.latest_events %}
-            <tr><td>{{ event.timestamp }}</td><td>{{ event.provider }}</td><td>{{ event.event_type }}</td><td>{{ event.status }}</td><td>{{ event.amount }}</td><td>{{ event.reference }}</td><td>{{ event.verified }}</td></tr>
-            {% else %}
-            <tr><td colspan="7">No payment events logged yet.</td></tr>
-            {% endfor %}
-        </table></div>
+        <div class="setting-value" style="margin-top:8px;">{{ profit_tracker.note }}</div>
     </section>
 
     <section class="card">
@@ -26713,6 +26666,7 @@ def control():
     receiving_accounts = load_receiving_accounts()
     payment_hub = payment_hub_snapshot(receiving_accounts, bot.settings)
     subscription_hub = subscription_hub_snapshot()
+    profit_tracker = pmo_profit_tracker_snapshot(bot.settings, account)
     executor_status = bot.executor_status()
     learning_memory = load_pmo_learning_memory()
     paper_proof = pmo_paper_proof_snapshot(bot.settings, record=False)
@@ -26870,6 +26824,7 @@ def control():
         receiving_accounts_file=str(RECEIVING_ACCOUNTS_FILE),
         payment_hub=payment_hub,
         subscription_hub=subscription_hub,
+        profit_tracker=profit_tracker,
         executor_status=executor_status,
         learning_memory=learning_memory,
         paper_proof=paper_proof,

@@ -2940,7 +2940,14 @@ function setSegment(i,good,name,val){
 // RISK
 function updateRisk(){
   const s=liveSettings;
-  const dayLoss=0; // TODO: pull from account when available
+  const a=(liveData&&liveData.account)||{};
+  const p=(profitTrackerData&&profitTrackerData.summary)||{};
+  const broker=(profitTrackerData&&profitTrackerData.broker_context)||{};
+  const reportedDayPnl=numVal(a.day_pnl,a.daily_pnl,a.unrealized_intraday_pl,p.day_pnl,broker.day_pnl);
+  const equity=numVal(a.equity,a.portfolio_value,a.account_value);
+  const prevEquity=numVal(a.equity_previous_close,a.last_equity,a.previous_close_equity,broker.last_equity);
+  const dayPnl=reportedDayPnl!==null?reportedDayPnl:((equity!==null&&prevEquity!==null)?equity-prevEquity:0);
+  const dayLoss=Math.max(0,-dayPnl);
   const caut=parseFloat(s.PMO_MICRO_CAUTION_LOSS_USD||1.5);
   const def=parseFloat(s.PMO_MICRO_DEFENSIVE_LOSS_USD||2.5);
   const rev=parseFloat(s.PMO_MICRO_REVIEW_ONLY_LOSS_USD||4);
