@@ -34,8 +34,8 @@ COMMAND_PATTERNS = [
     (r"\b(what is missing|what's missing|why blocked|why not|next action|fix next)\b", "explain_what_is_missing", 0.9),
     (r"\b(sync journal|sync trades|sync paper|close hits|close target|close stop)\b", "sync_journal", 0.88),
     (r"\b(paper safe|safe baseline|return safe)\b", "apply_paper_safe_baseline", 0.85),
-    (r"\b(data collection status|collection status|how many collection trades|trades collected|150 trade target)\b", "get_data_collection_status", 0.9),
-    (r"\b(enable|start|resume|continue|turn on)\b.*\b(data collection|collection mode|collecting data|collect data|150 trades)\b", "enable_data_collection", 0.88),
+    (r"\b(data collection status|collection status|how many collection trades|trades collected|150 trade target|200 trade target)\b", "get_data_collection_status", 0.9),
+    (r"\b(enable|start|resume|continue|turn on)\b.*\b(data collection|collection mode|collecting data|collect data|150 trades|200 trades)\b", "enable_data_collection", 0.88),
     (r"\b(enable paper executor|paper executor collection|paper collection)\b", "enable_paper_executor_collection", 0.85),
     (r"\b(crypto research only|crypto safe|lock crypto)\b", "return_crypto_research_only", 0.85),
     (r"\b(code review|review code|scan code)\b", "review_code", 0.88),
@@ -257,8 +257,8 @@ def parse_ai_command(text: str, input_type: str = "text") -> Dict[str, Any]:
                 args = {"record": False}
             elif tool == "enable_data_collection":
                 trade_match = re.search(r"\b(?P<count>\d{2,3})\s*(?:trade|trades)\b", lowered)
-                max_trades = int(trade_match.group("count")) if trade_match else 150
-                args = {"max_trades": max(5, min(150, max_trades)), "timeout_minutes": 10080}
+                max_trades = int(trade_match.group("count")) if trade_match else 200
+                args = {"max_trades": max(5, min(200, max_trades)), "timeout_minutes": 10080}
             elif tool in {"apply_paper_safe_baseline", "enable_paper_executor_collection", "return_crypto_research_only"}:
                 args = {"apply": True}
             return {

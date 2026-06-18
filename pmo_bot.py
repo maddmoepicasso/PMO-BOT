@@ -182,6 +182,36 @@ except Exception as exc:  # pragma: no cover - frontier intelligence must not bl
     PMO_FRONTIER_INTELLIGENCE_ERROR = str(exc)
 
 try:
+    from pmo_advanced_ml_intelligence import analyze_advanced_ml_intelligence as pmo_advanced_ml_analyze
+
+    PMO_ADVANCED_ML_AVAILABLE = True
+    PMO_ADVANCED_ML_ERROR = ""
+except Exception as exc:  # pragma: no cover - advanced ML must stay optional/read-only
+    pmo_advanced_ml_analyze = None
+    PMO_ADVANCED_ML_AVAILABLE = False
+    PMO_ADVANCED_ML_ERROR = str(exc)
+
+try:
+    from pmo_meta_strategy_layer import analyze_meta_strategy_layer as pmo_meta_strategy_analyze
+
+    PMO_META_STRATEGY_AVAILABLE = True
+    PMO_META_STRATEGY_ERROR = ""
+except Exception as exc:  # pragma: no cover - meta strategy must stay optional/read-only
+    pmo_meta_strategy_analyze = None
+    PMO_META_STRATEGY_AVAILABLE = False
+    PMO_META_STRATEGY_ERROR = str(exc)
+
+try:
+    from pmo_vault_intelligence import analyze_vault_intelligence as pmo_vault_intelligence_analyze
+
+    PMO_VAULT_INTELLIGENCE_AVAILABLE = True
+    PMO_VAULT_INTELLIGENCE_ERROR = ""
+except Exception as exc:  # pragma: no cover - vault intelligence must stay optional/read-only
+    pmo_vault_intelligence_analyze = None
+    PMO_VAULT_INTELLIGENCE_AVAILABLE = False
+    PMO_VAULT_INTELLIGENCE_ERROR = str(exc)
+
+try:
     from pmo_data_collection_mode import DataCollectionManager
 
     _DATA_COLLECTION = DataCollectionManager()
@@ -479,12 +509,12 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_BACKGROUND_PAPER_MAX_SUBMISSIONS_PER_CYCLE": 1,
     "PMO_BACKGROUND_PAPER_MIN_SCORE": 65,
     "PMO_DATA_COLLECTION_ENABLED": False,
-    "PMO_DATA_COLLECTION_MAX_TRADES": 150,
+    "PMO_DATA_COLLECTION_MAX_TRADES": 200,
     "PMO_DATA_COLLECTION_TIMEOUT_MINUTES": 10080,
-    "PMO_DATA_COLLECTION_MIN_SCORE": 60.0,
-    "PMO_DATA_COLLECTION_MIN_RVOL": 1.2,
+    "PMO_DATA_COLLECTION_MIN_SCORE": 40.0,
+    "PMO_DATA_COLLECTION_MIN_RVOL": 0.0,
     "PMO_DATA_COLLECTION_ALLOW_MIXED": True,
-    "PMO_DATA_COLLECTION_OPEN_FROM": "09:35",
+    "PMO_DATA_COLLECTION_OPEN_FROM": "09:30",
     "ENABLE_PMO_BACKGROUND_PAPER_OPTIONS": False,
     "PMO_BACKGROUND_PAPER_OPTION_MIN_SCORE": 60,
     "PMO_PAPER_EXECUTION_PROFILES": [],
@@ -654,7 +684,7 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_PAPER_RELAXED_MIN_RISK_REWARD_RATIO": 0.5,
     "PMO_REQUIRE_PAPER_PROOF_FOR_LIVE_EXECUTOR": True,
     "PMO_PAPER_PROOF_DAYS": 30,
-    "PMO_MIN_PAPER_EXECUTOR_SUBMISSIONS": 10,
+    "PMO_MIN_PAPER_EXECUTOR_SUBMISSIONS": 100,
     "PMO_MAX_PAPER_FAILED_EXECUTIONS": 0,
     "PMO_MIN_PAPER_SIGNAL_APPROVAL_RATE": 0.55,
     "ENABLE_PMO_QUANTUM_LEARNING_MATRIX": True,
@@ -846,6 +876,17 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_META_LEARNING_FAST_WINDOW": 5,
     "ENABLE_PMO_FRONTIER_INTELLIGENCE": True,
     "PMO_FRONTIER_SCORE_INFLUENCE": False,
+    "ENABLE_PMO_ADVANCED_ML_INTELLIGENCE": True,
+    "PMO_ADVANCED_ML_SCORE_INFLUENCE": False,
+    "PMO_ADVANCED_ML_MAX_ROWS": 5000,
+    "PMO_ADVANCED_ML_SYNTHETIC_ROWS": 200,
+    "ENABLE_PMO_META_STRATEGY_LAYER": True,
+    "PMO_META_STRATEGY_SCORE_INFLUENCE": False,
+    "PMO_META_MAX_ROWS": 5000,
+    "PMO_META_SHADOW_EVENT_ROWS": 5000,
+    "ENABLE_PMO_VAULT_INTELLIGENCE": True,
+    "PMO_VAULT_SCORE_INFLUENCE": False,
+    "PMO_VAULT_MAX_ROWS": 5000,
     "PMO_FRONTIER_CREDIT_STRESS_BPS": 450.0,
     "PMO_FRONTIER_RECESSION_CURVE_BPS": -50.0,
     "PMO_FRONTIER_NARRATIVE_MIN_VELOCITY_RATIO": 2.5,
@@ -1252,7 +1293,7 @@ EDITABLE_SETTINGS: Dict[str, Dict[str, Any]] = {
     "PMO_BACKGROUND_PAPER_MAX_SUBMISSIONS_PER_CYCLE": {"type": "int", "min": 1, "max": 10},
     "PMO_BACKGROUND_PAPER_MIN_SCORE": {"type": "int", "min": 1, "max": 100},
     "PMO_DATA_COLLECTION_ENABLED": {"type": "bool"},
-    "PMO_DATA_COLLECTION_MAX_TRADES": {"type": "int", "min": 5, "max": 150},
+    "PMO_DATA_COLLECTION_MAX_TRADES": {"type": "int", "min": 5, "max": 200},
     "PMO_DATA_COLLECTION_TIMEOUT_MINUTES": {"type": "int", "min": 15, "max": 10080},
     "PMO_DATA_COLLECTION_MIN_SCORE": {"type": "float", "min": 50, "max": 100},
     "PMO_DATA_COLLECTION_MIN_RVOL": {"type": "float", "min": 0, "max": 10},
@@ -1594,6 +1635,17 @@ EDITABLE_SETTINGS: Dict[str, Dict[str, Any]] = {
     "PMO_META_LEARNING_FAST_WINDOW": {"type": "int", "min": 3, "max": 100},
     "ENABLE_PMO_FRONTIER_INTELLIGENCE": {"type": "bool"},
     "PMO_FRONTIER_SCORE_INFLUENCE": {"type": "bool"},
+    "ENABLE_PMO_ADVANCED_ML_INTELLIGENCE": {"type": "bool"},
+    "PMO_ADVANCED_ML_SCORE_INFLUENCE": {"type": "bool"},
+    "PMO_ADVANCED_ML_MAX_ROWS": {"type": "int", "min": 50, "max": 50000},
+    "PMO_ADVANCED_ML_SYNTHETIC_ROWS": {"type": "int", "min": 0, "max": 5000},
+    "ENABLE_PMO_META_STRATEGY_LAYER": {"type": "bool"},
+    "PMO_META_STRATEGY_SCORE_INFLUENCE": {"type": "bool"},
+    "PMO_META_MAX_ROWS": {"type": "int", "min": 50, "max": 50000},
+    "PMO_META_SHADOW_EVENT_ROWS": {"type": "int", "min": 0, "max": 50000},
+    "ENABLE_PMO_VAULT_INTELLIGENCE": {"type": "bool"},
+    "PMO_VAULT_SCORE_INFLUENCE": {"type": "bool"},
+    "PMO_VAULT_MAX_ROWS": {"type": "int", "min": 50, "max": 50000},
     "PMO_FRONTIER_CREDIT_STRESS_BPS": {"type": "float", "min": 50, "max": 3000},
     "PMO_FRONTIER_RECESSION_CURVE_BPS": {"type": "float", "min": -300, "max": 300},
     "PMO_FRONTIER_NARRATIVE_MIN_VELOCITY_RATIO": {"type": "float", "min": 0.1, "max": 100},
@@ -2155,6 +2207,9 @@ PMO_ALPHA_DECAY_REPORT_FILE = REPORT_DIR / "pmo_alpha_decay_latest.json"
 PMO_INSTITUTIONAL_SIGNALS_REPORT_FILE = REPORT_DIR / "pmo_institutional_signals_latest.json"
 PMO_DEEP_INTELLIGENCE_REPORT_FILE = REPORT_DIR / "pmo_deep_intelligence_latest.json"
 PMO_FRONTIER_INTELLIGENCE_REPORT_FILE = REPORT_DIR / "pmo_frontier_intelligence_latest.json"
+PMO_ADVANCED_ML_REPORT_FILE = REPORT_DIR / "pmo_advanced_ml_intelligence_latest.json"
+PMO_META_STRATEGY_REPORT_FILE = REPORT_DIR / "pmo_meta_strategy_latest.json"
+PMO_VAULT_INTELLIGENCE_REPORT_FILE = REPORT_DIR / "pmo_vault_intelligence_latest.json"
 PMO_EARNINGS_EVENTS_FILE = CSV_DIR / "pmo_earnings_events.csv"
 PMO_IV_CONTEXT_FILE = CSV_DIR / "pmo_iv_context.csv"
 PMO_QUOTE_PRINTS_FILE = CSV_DIR / "pmo_quote_prints.csv"
@@ -3369,6 +3424,62 @@ def pmo_ai_build_system_context(settings: Dict[str, Any]) -> str:
         },
     }
     return json.dumps(compact, indent=2, default=str)
+
+
+def pmo_ai_xml_block(tag: str, value: Any) -> str:
+    safe_tag = re.sub(r"[^A-Za-z0-9_-]", "", str(tag or "context")) or "context"
+    if isinstance(value, str):
+        text = value
+    else:
+        text = json.dumps(value, indent=2, default=str)
+    return f"<{safe_tag}>\n{html.escape(str(text), quote=False)}\n</{safe_tag}>"
+
+
+def pmo_ai_build_elite_system_prompt(settings: Dict[str, Any]) -> str:
+    state_json = pmo_ai_build_system_context(settings)
+    ground_truth = {
+        "current_bias": "Risk-first and proof-aware. Never let composite proof hide weak or missing equity proof.",
+        "known_score_issue": "Score inversion has been observed: 65-74 has outperformed higher bands; treat high scores as review-only unless current gates prove otherwise.",
+        "data_collection_target": 200,
+        "live_trading_policy": "Locked. AI chat cannot unlock live trading, place orders, change broker settings, or bypass PMO gates.",
+        "trade_advice_policy": "For any trade question, first find reasons to skip. Recommend TAKE only when specific PMO data points support it.",
+    }
+    output_contract = {
+        "default_style": "Under 150 words unless the user asks for detail.",
+        "decision_questions": {
+            "format": "Plain English is allowed, but include Decision, Top 3 Factors, Premortem Risk, Confidence.",
+            "decision_values": ["TAKE", "SKIP", "WAIT", "RESEARCH_ONLY"],
+        },
+        "machine_parseable_when_requested": {
+            "decision": "TAKE | SKIP | WAIT | RESEARCH_ONLY",
+            "confidence": "0-100",
+            "primary_reason": "specific PMO data point",
+            "risk_flag": "string or null",
+            "orders_placed": False,
+            "settings_changed": False,
+            "live_unlocked": False,
+        },
+    }
+    return (
+        "You are PMO Assistant, Maurice's risk-first quantitative trading analyst inside the PMO Bot dashboard.\n"
+        "You are precise, direct, and practical. You never give vague answers.\n"
+        "Always cite the specific PMO data point that drove your conclusion.\n"
+        "Before answering trade, gate, readiness, or audit questions, silently reason through the evidence; in the final answer list the 3 most important factors when useful.\n"
+        "Use pre-mortem thinking: if a trade could lose, identify what would most likely go wrong before recommending action.\n"
+        "You are allowed to explain, audit, summarize, and recommend. You are not allowed to place broker orders, change settings, unlock live trading, bypass risk guards, request secrets, or claim that safety gates changed.\n"
+        "If evidence is weak, conflicting, missing, or overfit-prone, say WAIT or RESEARCH_ONLY.\n\n"
+        + pmo_ai_xml_block("role_constraints", {
+            "role": "PMO risk officer and quantitative analyst",
+            "never_do": ["place orders", "unlock live trading", "change settings", "ask for secrets", "override PMO gates"],
+            "always_do": ["cite concrete PMO data", "prefer caution when proof is weak", "separate raw proof from clean proof", "name missing data"],
+        })
+        + "\n\n"
+        + pmo_ai_xml_block("ground_truth", ground_truth)
+        + "\n\n"
+        + pmo_ai_xml_block("output_contract", output_contract)
+        + "\n\n"
+        + pmo_ai_xml_block("live_pmo_state", state_json)
+    )
 
 
 _ai_sector_cache: Dict[str, str] = {}
@@ -7830,6 +7941,188 @@ def recent_window_rows(path: Path, days: int, limit: int = 5000) -> List[Dict[st
     return kept
 
 
+def pmo_dashboard_polish_snapshot(
+    settings: Dict[str, Any],
+    journal_summary: Dict[str, Any],
+    paper_proof: Dict[str, Any],
+    regime: Dict[str, Any],
+) -> Dict[str, Any]:
+    trade_rows = recent_csv_rows(TRADE_JOURNAL_FILE, 5000)
+    order_rows = recent_csv_rows(PMO_ORDER_EXECUTION_FILE, 5000)
+
+    closed_rows: List[Dict[str, Any]] = []
+    for row in trade_rows:
+        status = str(row.get("status") or row.get("result") or row.get("outcome") or "").upper()
+        pnl = safe_float(row.get("pnl") or row.get("pnl_usd") or row.get("realized_pnl"), 0)
+        if status.startswith("CLOSED") or status in {"WIN", "LOSS", "COMPLETE", "COMPLETED"} or pnl != 0:
+            if str(row.get("symbol") or "").upper() == "SYSTEM":
+                continue
+            closed_rows.append({**row, "_dt": parse_pmo_timestamp(row.get("timestamp") or row.get("time")) or now_et(), "_pnl": pnl})
+    closed_rows.sort(key=lambda item: item.get("_dt") or now_et())
+
+    cumulative = 0.0
+    equity_curve: List[Dict[str, Any]] = []
+    for idx, row in enumerate(closed_rows[-200:], start=max(1, len(closed_rows) - 199)):
+        cumulative += safe_float(row.get("_pnl"), 0)
+        equity_curve.append({
+            "n": idx,
+            "timestamp": (row.get("_dt") or now_et()).isoformat(),
+            "symbol": row.get("symbol", ""),
+            "pnl": round(safe_float(row.get("_pnl"), 0), 4),
+            "cumulative_pnl": round(cumulative, 4),
+        })
+
+    score_heatmap = []
+    for row in recent_csv_rows(PMO_PROOF_DIAGNOSIS_SCORE, 50):
+        closed = int(safe_float(row.get("closed"), 0))
+        win_rate = safe_float(row.get("win_rate"), 0)
+        pf = safe_float(row.get("profit_factor"), 0)
+        quality = (
+            "EDGE" if closed >= 10 and win_rate >= 0.60 and pf >= 1.25
+            else "MIXED" if closed >= 10 and win_rate >= 0.50 and pf >= 1.0
+            else "WEAK" if closed else "NO_DATA"
+        )
+        score_heatmap.append({
+            "bucket": row.get("score_bucket") or row.get("bucket") or "",
+            "closed": closed,
+            "wins": int(safe_float(row.get("wins"), 0)),
+            "losses": int(safe_float(row.get("losses"), 0)),
+            "win_rate": win_rate,
+            "profit_factor": pf,
+            "net_pnl": safe_float(row.get("net_pnl"), 0),
+            "quality": quality,
+            "conclusion": row.get("conclusion", ""),
+        })
+
+    clean = paper_proof.get("clean_metrics") if isinstance(paper_proof.get("clean_metrics"), dict) else {}
+    metrics = paper_proof.get("metrics") if isinstance(paper_proof.get("metrics"), dict) else {}
+    proof_closed = int(safe_float(clean.get("closed_paper_trades", clean.get("clean_closed_paper_trades", paper_proof.get("closed_trades", 0))), 0))
+    proof_target = int(safe_float(clean.get("minimum_closed_trades_to_judge", settings.get("PMO_PROOF_MIN_TRADES", 50)), 50))
+    proof_progress = {
+        "closed": proof_closed,
+        "target": proof_target,
+        "pct": round(min(1.0, proof_closed / max(1, proof_target)), 4),
+        "win_rate": safe_float(clean.get("win_rate", paper_proof.get("win_rate", 0)), 0),
+        "profit_factor": safe_float(clean.get("profit_factor", paper_proof.get("profit_factor", 0)), 0),
+        "ready": bool(clean.get("positive_allowed") or paper_proof.get("clean_proof_ready")),
+        "source": clean.get("source") or paper_proof.get("proof_source") or "UNKNOWN",
+        "paper_submissions": int(safe_float(metrics.get("paper_submissions"), 0)),
+        "paper_submission_target": int(safe_float(settings.get("PMO_MIN_PAPER_EXECUTOR_SUBMISSIONS", 100), 100)),
+    }
+
+    latest_why_not = read_json_file(PMO_WHY_NOT_FILE, {})
+    why_rows = latest_why_not.get("rows", []) if isinstance(latest_why_not, dict) and isinstance(latest_why_not.get("rows"), list) else []
+    why_text = " ".join(str(item.get("reason") or item.get("blocker") or item.get("detail") or item.get("top_blocker") or "") for item in why_rows[:25]).lower()
+    readiness_score = 100
+    readiness_hits: List[str] = []
+    for label, needle, penalty in [("RVOL", "rvol", 18), ("GAP", "gap", 18), ("ORB", "orb", 18), ("TIME", "09:", 12), ("REGIME", "regime", 18)]:
+        if needle in why_text:
+            readiness_score -= penalty
+            readiness_hits.append(label)
+    if not why_rows:
+        readiness_score -= 10
+        readiness_hits.append("NO_RECENT_WHY_NOT")
+    readiness_score = max(0, min(100, readiness_score))
+
+    regime_label = str(regime.get("regime") or "UNKNOWN").upper()
+    market_conditions = {
+        "regime": regime_label,
+        "spy": pmo_regime_cached_price(regime, "SPY"),
+        "qqq": pmo_regime_cached_price(regime, "QQQ"),
+        "vix_proxy_vxx": pmo_regime_cached_price(regime, "VXX"),
+        "breadth": regime.get("breadth", ""),
+        "risk_multiplier": regime.get("risk_multiplier", ""),
+        "reason": regime.get("reason", ""),
+        "status": "RISK_ON" if regime_label in {"BULL", "BULLISH"} else "CAUTION" if regime_label == "MIXED" else "DEFENSIVE",
+    }
+
+    def row_key(row: Dict[str, Any]) -> str:
+        for field in ("order_id", "source_order_id", "client_order_id", "trade_plan_id", "sync_key"):
+            value = str(row.get(field) or "").strip()
+            if value:
+                return value.split(":")[0].upper()
+        return "|".join(str(row.get(field) or "").strip().upper() for field in ("symbol", "side", "score"))
+
+    submitted_orders = [row for row in order_rows if str(row.get("status") or "").upper() in {"SUBMITTED", "FILLED", "PARTIAL_FILLED", "ACCEPTED"}]
+    order_keys = {row_key(row) for row in submitted_orders if row_key(row)}
+    journal_keys = {row_key(row) for row in trade_rows if row_key(row)}
+    orphan_order_keys = sorted(key for key in order_keys if key and key not in journal_keys)
+    orphan_journal_keys = sorted(key for key in journal_keys if key and key not in order_keys)[:20]
+
+    component_fields = [
+        "relative_volume", "vwap_distance_pct", "market_regime", "gap_signal", "orb_signal",
+        "pattern_name", "sentiment_signal", "ml_signal", "edge_signal", "confluence_status",
+        "data_collection_tag",
+    ]
+    score_audit = []
+    for row in reversed(order_rows[-80:]):
+        symbol = str(row.get("symbol") or "").upper()
+        if not symbol:
+            continue
+        score_audit.append({
+            "timestamp": row.get("timestamp", ""),
+            "symbol": symbol,
+            "status": row.get("status", ""),
+            "score": row.get("score", ""),
+            "mode": row.get("mode", ""),
+            "detail": row.get("detail", ""),
+            "components": {field: row.get(field, "") for field in component_fields if row.get(field, "") not in {"", None}},
+        })
+        if len(score_audit) >= 8:
+            break
+
+    build_rows = []
+    for row in recent_csv_rows(PMO_BOT_OWNER_COMMANDS_FILE, 12):
+        build_rows.append({
+            "timestamp": row.get("timestamp", ""),
+            "event": row.get("command") or row.get("action") or row.get("status") or "owner_command",
+            "detail": row.get("detail") or row.get("message") or row.get("reason") or "",
+            "source": "owner_commands",
+        })
+    for path in [PMO_PAPER_PROOF_FILE, PMO_WHY_NOT_FILE, PMO_LIVE_AI_STATUS_FILE, TRADE_JOURNAL_FILE, PMO_ORDER_EXECUTION_FILE]:
+        if path.exists():
+            build_rows.append({
+                "timestamp": datetime.fromtimestamp(path.stat().st_mtime, ET).isoformat(),
+                "event": path.name,
+                "detail": f"updated | {path.stat().st_size} bytes",
+                "source": "file_mtime",
+            })
+    build_rows = sorted(build_rows, key=lambda row: row.get("timestamp", ""), reverse=True)[:12]
+
+    return {
+        "ok": True,
+        "updated": now_et().isoformat(),
+        "equity_curve": equity_curve,
+        "score_heatmap": score_heatmap,
+        "proof_progress": proof_progress,
+        "market_conditions": market_conditions,
+        "session_readiness": {
+            "score": readiness_score,
+            "status": "GREEN" if readiness_score >= 75 else "YELLOW" if readiness_score >= 45 else "RED",
+            "blocking_factors": readiness_hits,
+            "why_not_rows": len(why_rows),
+            "note": "Read-only rollup from current Why-Not blockers and active gate context.",
+        },
+        "journal_reconciliation": {
+            "ok": len(orphan_order_keys) == 0,
+            "orders": len(submitted_orders),
+            "journal_rows": len([row for row in trade_rows if str(row.get("symbol") or "").upper() not in {"", "SYSTEM"}]),
+            "orphan_orders": len(orphan_order_keys),
+            "orphan_journal_rows": len(orphan_journal_keys),
+            "orphan_order_keys": orphan_order_keys[:20],
+            "orphan_journal_keys": orphan_journal_keys,
+            "note": "Compares submitted broker order IDs/client IDs/plan IDs against trade journal keys.",
+        },
+        "score_audit": score_audit,
+        "build_log": build_rows,
+        "source_files": {
+            "trade_journal": str(TRADE_JOURNAL_FILE),
+            "order_execution": str(PMO_ORDER_EXECUTION_FILE),
+            "score_buckets": str(PMO_PROOF_DIAGNOSIS_SCORE),
+        },
+    }
+
+
 def load_pmo_learning_memory() -> Dict[str, Any]:
     empty = {
         "ok": False,
@@ -8014,7 +8307,7 @@ def pmo_paper_proof_snapshot(settings: Optional[Dict[str, Any]] = None, record: 
     ready_plans = [row for row in plan_rows if csv_truth(row.get("ready"))]
     approved_alerts = [row for row in alert_rows if csv_truth(row.get("approved"))]
     signal_approval_rate = round(len(approved_alerts) / len(alert_rows), 3) if alert_rows else 0.0
-    min_submissions = int(settings.get("PMO_MIN_PAPER_EXECUTOR_SUBMISSIONS", 10))
+    min_submissions = int(settings.get("PMO_MIN_PAPER_EXECUTOR_SUBMISSIONS", 100))
     max_failures = int(settings.get("PMO_MAX_PAPER_FAILED_EXECUTIONS", 0))
     min_approval_rate = safe_float(settings.get("PMO_MIN_PAPER_SIGNAL_APPROVAL_RATE", 0.55), 0.55)
     checks = [
@@ -8991,6 +9284,46 @@ def pmo_recent_broker_orders_for_profile(profile: Any, limit: int = 100, days: i
     return {"ok": True, "orders": rows, "limit": limit, "days": days, "profile": profile_slug}
 
 
+def pmo_meta_trade_journal_fields(symbol: str, source_row: Dict[str, Any], plan: Dict[str, Any], regime_name: str = "", rvol: Any = "", vwap_distance: Any = "") -> Dict[str, Any]:
+    score = safe_float(source_row.get("score") or plan.get("score") or plan.get("pmo_score"), 0)
+    rvol_float = safe_float(rvol or source_row.get("relative_volume") or source_row.get("rvol") or plan.get("relative_volume") or plan.get("rvol"), 0)
+    vwap_float = safe_float(vwap_distance or source_row.get("vwap_distance") or source_row.get("entry_distance_vwap") or plan.get("vwap_distance") or plan.get("entry_distance_vwap"), 0)
+    size_mult = safe_float(source_row.get("deep_size_mult") or plan.get("deep_size_mult"), 1.0)
+    action = "TAKE_HALF" if size_mult and size_mult <= 0.55 else "WAIT_CONFIRMATION" if score and score < 55 else "TAKE_FULL"
+    entry = safe_float(source_row.get("entry_price") or plan.get("entry_price") or plan.get("entry"), 0)
+    exit_price = safe_float(source_row.get("exit_price") or plan.get("exit_price") or plan.get("close_price"), 0)
+    side = str(source_row.get("side") or plan.get("side") or "LONG").upper()
+    pnl = safe_float(source_row.get("pnl") or source_row.get("pnl_usd") or plan.get("pnl"), 0)
+    if not pnl and entry and exit_price:
+        pnl = (exit_price - entry) if side != "SHORT" else (entry - exit_price)
+    utilities = {
+        "TAKE_FULL": pnl,
+        "TAKE_HALF": pnl * 0.5,
+        "WAIT_CONFIRMATION": pnl * (0.68 if pnl > 0 else 0.42),
+        "SKIP": 0.0,
+    }
+    chosen = utilities.get(action, 0.0)
+    regret = {key: round(value - chosen, 4) for key, value in utilities.items()} if pnl else {}
+    attention_weight = max(0.01, rvol_float) * max(1.0, abs(vwap_float) + abs(pnl) / 10.0) * max(0.4, score / 70.0 if score else 0.4)
+    adversarial = "POTENTIAL_EXIT_LIQUIDITY" if rvol_float >= 2.0 and pnl < 0 else "PARTICIPATION_DETECTED" if rvol_float >= 2.0 else "LOW_INFORMATION"
+    return {
+        "meta_layer_status": "READ_ONLY_LOGGED",
+        "meta_cfr_state": "|".join([
+            str(regime_name or source_row.get("market_regime") or source_row.get("regime") or plan.get("regime") or "UNKNOWN").upper(),
+            "65_74" if 65 <= score < 75 else "75_77" if 75 <= score < 78 else "78_92" if 78 <= score < 93 else "LT65" if score < 65 else "93_PLUS",
+            "RVOL_HIGH" if rvol_float >= 2.0 else "RVOL_OK" if rvol_float >= 1.0 else "RVOL_LOW" if rvol_float > 0 else "RVOL_UNKNOWN",
+        ]),
+        "meta_cfr_action_taken": action,
+        "meta_cfr_alternatives": "TAKE_FULL|TAKE_HALF|WAIT_CONFIRMATION|SKIP",
+        "meta_cfr_regret": json.dumps(regret, sort_keys=True)[:500] if regret else "",
+        "meta_attention_weight": round(attention_weight, 4),
+        "meta_adversarial_frame": adversarial,
+        "meta_shadow_candidate": False,
+        "meta_confidence_calibration_needed": True,
+        "meta_prediction_error_question": "Was PMO more right here than usual?",
+    }
+
+
 def pmo_trade_journal_quality_fields(symbol: str, source_row: Optional[Dict[str, Any]] = None, plan: Optional[Dict[str, Any]] = None, use_live_context: bool = True) -> Dict[str, Any]:
     source_row = source_row or {}
     plan = plan or {}
@@ -9069,6 +9402,10 @@ def pmo_trade_journal_quality_fields(symbol: str, source_row: Optional[Dict[str,
             deep_journal = deep_report.get("journal", {}) if isinstance(deep_report.get("journal"), dict) else {}
         except Exception:
             deep_journal = {}
+    try:
+        meta_journal = pmo_meta_trade_journal_fields(symbol, source_row, plan, regime_name=regime_name, rvol=rvol, vwap_distance=vwap_distance)
+    except Exception:
+        meta_journal = {}
     return {
         "market": market,
         "asset_class": asset_class,
@@ -9143,6 +9480,16 @@ def pmo_trade_journal_quality_fields(symbol: str, source_row: Optional[Dict[str,
         "deep_bayesian_confidence": deep_journal.get("bayesian_confidence", source_row.get("deep_bayesian_confidence") or plan.get("deep_bayesian_confidence") or ""),
         "deep_causal_trust_mult": deep_journal.get("causal_trust_mult", source_row.get("deep_causal_trust_mult") or plan.get("deep_causal_trust_mult") or ""),
         "deep_meta_adaptation_mult": deep_journal.get("meta_adaptation_mult", source_row.get("deep_meta_adaptation_mult") or plan.get("deep_meta_adaptation_mult") or ""),
+        "meta_layer_status": meta_journal.get("meta_layer_status", source_row.get("meta_layer_status") or plan.get("meta_layer_status") or ""),
+        "meta_cfr_state": meta_journal.get("meta_cfr_state", source_row.get("meta_cfr_state") or plan.get("meta_cfr_state") or ""),
+        "meta_cfr_action_taken": meta_journal.get("meta_cfr_action_taken", source_row.get("meta_cfr_action_taken") or plan.get("meta_cfr_action_taken") or ""),
+        "meta_cfr_alternatives": meta_journal.get("meta_cfr_alternatives", source_row.get("meta_cfr_alternatives") or plan.get("meta_cfr_alternatives") or ""),
+        "meta_cfr_regret": meta_journal.get("meta_cfr_regret", source_row.get("meta_cfr_regret") or plan.get("meta_cfr_regret") or ""),
+        "meta_attention_weight": meta_journal.get("meta_attention_weight", source_row.get("meta_attention_weight") or plan.get("meta_attention_weight") or ""),
+        "meta_adversarial_frame": meta_journal.get("meta_adversarial_frame", source_row.get("meta_adversarial_frame") or plan.get("meta_adversarial_frame") or ""),
+        "meta_shadow_candidate": meta_journal.get("meta_shadow_candidate", source_row.get("meta_shadow_candidate") or plan.get("meta_shadow_candidate") or ""),
+        "meta_confidence_calibration_needed": meta_journal.get("meta_confidence_calibration_needed", source_row.get("meta_confidence_calibration_needed") or plan.get("meta_confidence_calibration_needed") or ""),
+        "meta_prediction_error_question": meta_journal.get("meta_prediction_error_question", source_row.get("meta_prediction_error_question") or plan.get("meta_prediction_error_question") or ""),
     }
 
 
@@ -12351,7 +12698,8 @@ def pmo_opening_hour_quality_gate(
         elif gap_signal in allowed_gap_signals:
             confirmations.append(f"data collection gap gate passed: {gap_signal}")
         elif not missing_edge:
-            blockers.append(f"data collection gap gate: relaxed mode allows GAP_UP or FLAT only; got {gap_signal or 'UNKNOWN'}")
+            allowed_label = "/".join(sorted(allowed_gap_signals)) or "configured gap signals"
+            blockers.append(f"data collection gap gate: relaxed mode allows {allowed_label}; got {gap_signal or 'UNKNOWN'}")
 
     orb_end = pmo_opening_gate_time(settings.get("PMO_OPENING_ORB_GATE_END"), "09:59")
     if bool(settings.get("PMO_OPENING_REQUIRE_ORB_BREAKOUT", True)) and candidate_time <= orb_end:
@@ -17609,7 +17957,7 @@ def pmo_pre_session_paper_checklist(
             "operations_score": operations.get("score"),
             "paper_proof_score": paper_proof.get("score"),
             "paper_submissions": proof_metrics.get("paper_submissions", 0),
-            "paper_submission_target": settings.get("PMO_MIN_PAPER_EXECUTOR_SUBMISSIONS", 10),
+            "paper_submission_target": settings.get("PMO_MIN_PAPER_EXECUTOR_SUBMISSIONS", 100),
             "signal_approval_rate": proof_metrics.get("signal_approval_rate", 0),
             "why_not_ready": why_summary.get("ready", 0),
             "why_not_blocked": why_summary.get("blocked", 0),
@@ -19843,6 +20191,27 @@ def pmo_learning_constellation_status(settings: Optional[Dict[str, Any]] = None)
             "influence": "belief/narrative/reflexivity/simulation guidance",
         },
         {
+            "id": "advanced_ml",
+            "name": "Advanced ML Intelligence",
+            "active": bool(settings.get("ENABLE_PMO_ADVANCED_ML_INTELLIGENCE", True)) and bool(PMO_ADVANCED_ML_AVAILABLE),
+            "mode": "READ_ONLY" if not settings.get("PMO_ADVANCED_ML_SCORE_INFLUENCE", False) else "SCORE_ASSIST",
+            "influence": "regime models/embeddings/uncertainty/stacking/MDL guidance",
+        },
+        {
+            "id": "meta_strategy",
+            "name": "Meta Strategy Layer",
+            "active": bool(settings.get("ENABLE_PMO_META_STRATEGY_LAYER", True)) and bool(PMO_META_STRATEGY_AVAILABLE),
+            "mode": "READ_ONLY" if not settings.get("PMO_META_STRATEGY_SCORE_INFLUENCE", False) else "SCORE_ASSIST",
+            "influence": "CFR regret/shadow trades/calibration/model switching guidance",
+        },
+        {
+            "id": "vault",
+            "name": "Vault Intelligence",
+            "active": bool(settings.get("ENABLE_PMO_VAULT_INTELLIGENCE", True)) and bool(PMO_VAULT_INTELLIGENCE_AVAILABLE),
+            "mode": "READ_ONLY" if not settings.get("PMO_VAULT_SCORE_INFLUENCE", False) else "SCORE_ASSIST",
+            "influence": "epigenetic/attractor/surprise/eigen/symmetry/MI/probe guidance",
+        },
+        {
             "id": "crypto",
             "name": "Crypto Profile",
             "active": bool(settings.get("PMO_CRYPTO_PROFILE_ENABLED", True)) and bool(PMO_CRYPTO_PROFILE_AVAILABLE),
@@ -19913,6 +20282,9 @@ def pmo_intelligence_status(settings: Optional[Dict[str, Any]] = None) -> Dict[s
         "alpha_decay": pmo_alpha_decay_snapshot(settings, record=False),
         "institutional_signals": read_json_file(PMO_INSTITUTIONAL_SIGNALS_REPORT_FILE, {"status": "WAITING", "read_only": True}),
         "frontier_intelligence": read_json_file(PMO_FRONTIER_INTELLIGENCE_REPORT_FILE, {"status": "WAITING", "read_only": True}),
+        "advanced_ml_intelligence": read_json_file(PMO_ADVANCED_ML_REPORT_FILE, {"status": "WAITING", "read_only": True}),
+        "meta_strategy": read_json_file(PMO_META_STRATEGY_REPORT_FILE, {"status": "WAITING", "read_only": True}),
+        "vault_intelligence": read_json_file(PMO_VAULT_INTELLIGENCE_REPORT_FILE, {"status": "WAITING", "read_only": True}),
         "next_action": "Premarket briefing is disabled until ENABLE_PMO_PREMARKET_BRIEFING is turned on." if not settings.get("ENABLE_PMO_PREMARKET_BRIEFING", False) else "Run the premarket briefing from Intelligence Ops.",
     }
 
@@ -20784,6 +21156,181 @@ def pmo_frontier_intelligence_report(
     except Exception as exc:
         payload = pmo_frontier_intelligence_empty("ERROR", f"frontier intelligence error: {str(exc)[:160]}")
         payload.update({"enabled": True, "symbol": clean_symbol, "updated": now_et().isoformat(), "error": str(exc)[:200]})
+        return payload
+
+
+def pmo_advanced_ml_intelligence_empty(status: str = "UNAVAILABLE", note: str = "") -> Dict[str, Any]:
+    return {
+        "ok": False,
+        "enabled": False,
+        "available": PMO_ADVANCED_ML_AVAILABLE,
+        "status": status,
+        "note": note,
+        "read_only": True,
+        "score_influence": False,
+        "live_unlocked": False,
+        "orders_placed": False,
+        "settings_changed": False,
+        "error": "" if PMO_ADVANCED_ML_AVAILABLE else PMO_ADVANCED_ML_ERROR,
+        "modules": {},
+        "journal": {},
+    }
+
+
+def pmo_advanced_ml_intelligence_report(
+    symbol: str = "",
+    settings: Optional[Dict[str, Any]] = None,
+    *,
+    record: bool = False,
+) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    if not bool(settings.get("ENABLE_PMO_ADVANCED_ML_INTELLIGENCE", True)):
+        return pmo_advanced_ml_intelligence_empty("OFF", "ENABLE_PMO_ADVANCED_ML_INTELLIGENCE is false.")
+    if not PMO_ADVANCED_ML_AVAILABLE or pmo_advanced_ml_analyze is None:
+        return pmo_advanced_ml_intelligence_empty("UNAVAILABLE", PMO_ADVANCED_ML_ERROR or "advanced ML intelligence unavailable.")
+    clean_symbol = str(symbol or "").strip().upper()
+    try:
+        payload = pmo_advanced_ml_analyze(
+            TRADE_JOURNAL_FILE,
+            PMO_ORDER_EXECUTION_FILE,
+            symbol=clean_symbol,
+            settings=settings,
+        )
+        payload.update({
+            "updated": now_et().isoformat(),
+            "available": True,
+            "enabled": True,
+            "score_influence": bool(settings.get("PMO_ADVANCED_ML_SCORE_INFLUENCE", False)),
+            "read_only": not bool(settings.get("PMO_ADVANCED_ML_SCORE_INFLUENCE", False)),
+            "report_file": str(PMO_ADVANCED_ML_REPORT_FILE),
+            "data_sources": {
+                "closed_trades": str(TRADE_JOURNAL_FILE),
+                "order_execution": str(PMO_ORDER_EXECUTION_FILE),
+                "mode": "read-only analytics; synthetic rows never count as proof",
+            },
+        })
+        if record:
+            write_json_file(PMO_ADVANCED_ML_REPORT_FILE, payload)
+        return payload
+    except Exception as exc:
+        payload = pmo_advanced_ml_intelligence_empty("ERROR", f"advanced ML intelligence error: {str(exc)[:160]}")
+        payload.update({"enabled": True, "symbol": clean_symbol or "ALL", "updated": now_et().isoformat(), "error": str(exc)[:200]})
+        return payload
+
+
+def pmo_meta_strategy_empty(status: str = "UNAVAILABLE", note: str = "") -> Dict[str, Any]:
+    return {
+        "ok": False,
+        "enabled": False,
+        "available": PMO_META_STRATEGY_AVAILABLE,
+        "status": status,
+        "note": note,
+        "read_only": True,
+        "score_influence": False,
+        "live_unlocked": False,
+        "orders_placed": False,
+        "settings_changed": False,
+        "error": "" if PMO_META_STRATEGY_AVAILABLE else PMO_META_STRATEGY_ERROR,
+        "modules": {},
+        "journal": {},
+    }
+
+
+def pmo_meta_strategy_report(
+    settings: Optional[Dict[str, Any]] = None,
+    *,
+    current_state: Optional[Dict[str, Any]] = None,
+    record: bool = False,
+) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    if not bool(settings.get("ENABLE_PMO_META_STRATEGY_LAYER", True)):
+        return pmo_meta_strategy_empty("OFF", "ENABLE_PMO_META_STRATEGY_LAYER is false.")
+    if not PMO_META_STRATEGY_AVAILABLE or pmo_meta_strategy_analyze is None:
+        return pmo_meta_strategy_empty("UNAVAILABLE", PMO_META_STRATEGY_ERROR or "meta strategy layer unavailable.")
+    try:
+        payload = pmo_meta_strategy_analyze(
+            TRADE_JOURNAL_FILE,
+            PMO_WHY_NOT_FILE,
+            PMO_WHY_NOT_EVENTS_FILE,
+            settings=settings,
+            current_state=current_state or {},
+        )
+        payload.update({
+            "updated": now_et().isoformat(),
+            "available": True,
+            "enabled": True,
+            "score_influence": bool(settings.get("PMO_META_STRATEGY_SCORE_INFLUENCE", False)),
+            "read_only": not bool(settings.get("PMO_META_STRATEGY_SCORE_INFLUENCE", False)),
+            "report_file": str(PMO_META_STRATEGY_REPORT_FILE),
+            "data_sources": {
+                "closed_trades": str(TRADE_JOURNAL_FILE),
+                "why_not_latest": str(PMO_WHY_NOT_FILE),
+                "why_not_events": str(PMO_WHY_NOT_EVENTS_FILE),
+                "mode": "read-only CFR/regret/shadow/calibration analytics",
+            },
+        })
+        if record:
+            write_json_file(PMO_META_STRATEGY_REPORT_FILE, payload)
+        return payload
+    except Exception as exc:
+        payload = pmo_meta_strategy_empty("ERROR", f"meta strategy error: {str(exc)[:160]}")
+        payload.update({"enabled": True, "updated": now_et().isoformat(), "error": str(exc)[:200]})
+        return payload
+
+
+def pmo_vault_intelligence_empty(status: str = "UNAVAILABLE", note: str = "") -> Dict[str, Any]:
+    return {
+        "ok": False,
+        "enabled": False,
+        "available": PMO_VAULT_INTELLIGENCE_AVAILABLE,
+        "status": status,
+        "note": note,
+        "read_only": True,
+        "score_influence": False,
+        "live_unlocked": False,
+        "orders_placed": False,
+        "settings_changed": False,
+        "error": "" if PMO_VAULT_INTELLIGENCE_AVAILABLE else PMO_VAULT_INTELLIGENCE_ERROR,
+        "modules": {},
+        "journal": {},
+    }
+
+
+def pmo_vault_intelligence_report(
+    settings: Optional[Dict[str, Any]] = None,
+    *,
+    current_state: Optional[Dict[str, Any]] = None,
+    record: bool = False,
+) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    if not bool(settings.get("ENABLE_PMO_VAULT_INTELLIGENCE", True)):
+        return pmo_vault_intelligence_empty("OFF", "ENABLE_PMO_VAULT_INTELLIGENCE is false.")
+    if not PMO_VAULT_INTELLIGENCE_AVAILABLE or pmo_vault_intelligence_analyze is None:
+        return pmo_vault_intelligence_empty("UNAVAILABLE", PMO_VAULT_INTELLIGENCE_ERROR or "vault intelligence unavailable.")
+    try:
+        payload = pmo_vault_intelligence_analyze(
+            TRADE_JOURNAL_FILE,
+            settings=settings,
+            current_state=current_state or {},
+        )
+        payload.update({
+            "updated": now_et().isoformat(),
+            "available": True,
+            "enabled": True,
+            "score_influence": bool(settings.get("PMO_VAULT_SCORE_INFLUENCE", False)),
+            "read_only": not bool(settings.get("PMO_VAULT_SCORE_INFLUENCE", False)),
+            "report_file": str(PMO_VAULT_INTELLIGENCE_REPORT_FILE),
+            "data_sources": {
+                "closed_trades": str(TRADE_JOURNAL_FILE),
+                "mode": "read-only cross-domain intelligence; mechanism-design probe is simulation only",
+            },
+        })
+        if record:
+            write_json_file(PMO_VAULT_INTELLIGENCE_REPORT_FILE, payload)
+        return payload
+    except Exception as exc:
+        payload = pmo_vault_intelligence_empty("ERROR", f"vault intelligence error: {str(exc)[:160]}")
+        payload.update({"enabled": True, "updated": now_et().isoformat(), "error": str(exc)[:200]})
         return payload
 
 
@@ -26522,7 +27069,7 @@ def api_data_collection_enable():
     if settings_snapshot.get("PMO_ALLOW_LIVE_TRADING") or settings_snapshot.get("PMO_LIVE_TRADING_ENABLED"):
         return jsonify({"ok": False, "error": "Data collection mode cannot enable while live trading switches are ON."}), 400
     timeout = int(max(15, min(10080, safe_float(payload.get("timeout_minutes") or settings_snapshot.get("PMO_DATA_COLLECTION_TIMEOUT_MINUTES", 10080), 10080))))
-    max_trades = int(max(5, min(150, safe_float(payload.get("max_trades") or settings_snapshot.get("PMO_DATA_COLLECTION_MAX_TRADES", 150), 150))))
+    max_trades = int(max(5, min(200, safe_float(payload.get("max_trades") or settings_snapshot.get("PMO_DATA_COLLECTION_MAX_TRADES", 200), 200))))
     result = _DATA_COLLECTION.enable(timeout_minutes=timeout, max_trades=max_trades, enabled_by="owner")
     csv_append(PMO_BOT_OWNER_COMMANDS_FILE, {
         "timestamp": now_et().isoformat(),
@@ -27698,6 +28245,61 @@ def api_frontier_intelligence():
     return jsonify({"ok": bool(report.get("ok")), "frontier_intelligence": report})
 
 
+@app.route("/api/advanced-ml", methods=["GET", "POST"])
+@app.route("/api/ai/advanced-ml", methods=["GET", "POST"])
+def api_advanced_ml_intelligence():
+    payload = request.get_json(force=True, silent=True) or {} if request.method == "POST" else {}
+    settings = load_settings()
+    symbol = str(payload.get("symbol") or request.args.get("symbol") or "").strip().upper()
+    report = pmo_advanced_ml_intelligence_report(
+        symbol,
+        settings,
+        record=bool(payload.get("record", False)),
+    )
+    return jsonify({"ok": bool(report.get("ok")), "advanced_ml": report})
+
+
+@app.route("/api/meta-strategy", methods=["GET", "POST"])
+@app.route("/api/ai/meta-strategy", methods=["GET", "POST"])
+def api_meta_strategy():
+    payload = request.get_json(force=True, silent=True) or {} if request.method == "POST" else {}
+    settings = load_settings()
+    current_state = payload.get("current_state") if isinstance(payload.get("current_state"), dict) else {}
+    if request.method == "GET":
+        current_state = {
+            "regime": request.args.get("regime", ""),
+            "score": request.args.get("score", ""),
+            "rvol": request.args.get("rvol", ""),
+            "time_bucket": request.args.get("time_bucket", ""),
+        }
+    report = pmo_meta_strategy_report(
+        settings,
+        current_state=current_state,
+        record=bool(payload.get("record", False)),
+    )
+    return jsonify({"ok": bool(report.get("ok")), "meta_strategy": report})
+
+
+@app.route("/api/vault-intelligence", methods=["GET", "POST"])
+@app.route("/api/ai/vault-intelligence", methods=["GET", "POST"])
+def api_vault_intelligence():
+    payload = request.get_json(force=True, silent=True) or {} if request.method == "POST" else {}
+    settings = load_settings()
+    current_state = payload.get("current_state") if isinstance(payload.get("current_state"), dict) else {}
+    if request.method == "GET":
+        current_state = {
+            "regime": request.args.get("regime", ""),
+            "score": request.args.get("score", ""),
+            "rvol": request.args.get("rvol", ""),
+        }
+    report = pmo_vault_intelligence_report(
+        settings,
+        current_state=current_state,
+        record=bool(payload.get("record", False)),
+    )
+    return jsonify({"ok": bool(report.get("ok")), "vault_intelligence": report})
+
+
 @app.route("/api/alpha-decay/summary", methods=["GET", "POST"])
 def api_alpha_decay_summary():
     payload = request.get_json(force=True, silent=True) or {} if request.method == "POST" else {}
@@ -28469,18 +29071,17 @@ def api_ask():
         if role in {"user", "assistant"} and content:
             clean_history.append({"role": role, "content": content})
     clean_history.append({"role": "user", "content": question})
-    system_prompt = (
-        "You are PMO Assistant, a conversational advisor inside Maurice's PMO Bot dashboard.\n"
-        "Use the live PMO state below. Be direct, specific, and practical.\n"
-        "Never place broker orders. Never change settings. Never unlock live trading. Never ask for secrets.\n"
-        "Keep answers under 150 words unless the user asks for detail.\n"
-        "If PMO proof is weak, say so clearly and keep live trading locked.\n\n"
-        "LIVE PMO STATE:\n"
-        + pmo_ai_build_system_context(settings)
+    system_prompt = pmo_ai_build_elite_system_prompt(settings)
+    user_prompt = (
+        pmo_ai_xml_block("conversation_history", clean_history[:-1])
+        + "\n\n"
+        + pmo_ai_xml_block("newest_user_message", question)
+        + "\n\n"
+        + pmo_ai_xml_block("task", "Answer the newest user message using PMO's live state, ground truth, and safety constraints.")
     )
     ai = pmo_claude_call(
         system_prompt,
-        "Answer the newest user message in this conversation:\n" + json.dumps(clean_history, default=str, indent=2),
+        user_prompt,
         max_tokens=420,
         expect_json=False,
         settings=settings,
@@ -29065,6 +29666,50 @@ def pmo_ai_log_event(event_type: str, status: str, payload: Optional[Dict[str, A
         pass
 
 
+def pmo_ai_proof_breakout(
+    journal: Dict[str, Any],
+    paper_proof: Dict[str, Any],
+    settings: Dict[str, Any],
+) -> Dict[str, Any]:
+    clean = {}
+    if isinstance(paper_proof, dict):
+        for key in ("clean_metrics", "clean_proof", "clean_summary"):
+            candidate = paper_proof.get(key)
+            if isinstance(candidate, dict) and candidate:
+                clean = candidate
+                break
+    raw_closed = int(safe_float(journal.get("closed_trades", journal.get("closed", 0)), 0))
+    clean_closed = int(safe_float(
+        clean.get("clean_closed_paper_trades", clean.get("closed_paper_trades", clean.get("closed_trades", 0))),
+        0,
+    ))
+    return {
+        "raw_journal": {
+            "label": "Raw broker journal",
+            "closed": raw_closed,
+            "wins": int(safe_float(journal.get("wins"), 0)),
+            "losses": int(safe_float(journal.get("losses"), 0)),
+            "win_rate": safe_float(journal.get("win_rate"), 0),
+            "profit_factor": safe_float(journal.get("profit_factor"), 0),
+            "net_pnl": safe_float(journal.get("net_pnl"), 0),
+            "note": "Includes blocked symbols, pre-gate trades, and historical rows for audit visibility.",
+        },
+        "clean_proof": {
+            "label": "Clean proof journal",
+            "closed": clean_closed,
+            "wins": int(safe_float(clean.get("wins"), 0)),
+            "losses": int(safe_float(clean.get("losses"), 0)),
+            "win_rate": safe_float(clean.get("win_rate"), 0),
+            "profit_factor": safe_float(clean.get("profit_factor"), 0),
+            "net_pnl": safe_float(clean.get("net_pnl"), 0),
+            "min_trades": int(safe_float(clean.get("minimum_closed_trades_to_judge", settings.get("PMO_PROOF_MIN_TRADES", 50)), 50)),
+            "source": clean.get("source") or paper_proof.get("proof_source") if isinstance(paper_proof, dict) else "",
+            "note": "This is the live-gate proof track when clean proof is enabled.",
+        },
+        "display_note": "Raw audit and clean proof are intentionally separate; live readiness must not use raw journal contamination as proof.",
+    }
+
+
 def pmo_ai_quick_context_snapshot(settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     settings = settings or load_settings()
     cached_account = dict(getattr(bot, "_account_cache", {}) or {})
@@ -29090,14 +29735,15 @@ def pmo_ai_quick_context_snapshot(settings: Optional[Dict[str, Any]] = None) -> 
     journal = trade_journal_summary(limit=80)
     paper_proof = read_json_file(PMO_PAPER_PROOF_FILE, {})
     v112_proof = read_json_file(PMO_V112_PROOF_REPORT_FILE, {})
+    proof_breakout = pmo_ai_proof_breakout(journal, paper_proof, settings)
     why_not_latest = read_json_file(PMO_WHY_NOT_FILE, {})
     missing: List[str] = []
     if not bool(account.get("ok")):
         missing.append("Alpaca account cache is not confirmed yet.")
     if safe_float(journal.get("profit_factor"), 0) < safe_float(settings.get("PMO_PAPER_PROOF_BREAKER_MIN_PROFIT_FACTOR"), 0.8):
-        missing.append("Journal profit factor is below the paper proof breaker threshold.")
+        missing.append("Raw journal profit factor is below the paper proof breaker threshold.")
     if safe_float(journal.get("win_rate"), 0) < safe_float(settings.get("PMO_PAPER_PROOF_BREAKER_MIN_WIN_RATE"), 0.35):
-        missing.append("Journal win rate is below the proof breaker threshold.")
+        missing.append("Raw journal win rate is below the proof breaker threshold.")
     why_summary = why_not_latest.get("summary", {}) if isinstance(why_not_latest.get("summary"), dict) else {}
     if safe_float(why_summary.get("blocked"), 0) > 0:
         missing.append(f"Why-Not currently has {why_summary.get('blocked')} blocked setup(s).")
@@ -29119,6 +29765,7 @@ def pmo_ai_quick_context_snapshot(settings: Optional[Dict[str, Any]] = None) -> 
         "reconciliation": {},
         "live_readiness": {"score": "locked", "status": "Use the readiness tool for a deep broker check."},
         "paper_proof": paper_proof,
+        "proof_breakout": proof_breakout,
         "v112_proof": v112_proof,
         "journal": journal,
         "why_not": why_not_latest,
@@ -29140,6 +29787,7 @@ def pmo_ai_context_snapshot(settings: Optional[Dict[str, Any]] = None) -> Dict[s
     paper_proof = pmo_paper_proof_snapshot(settings, record=False)
     v112_proof = pmo_v112_proof_report(settings, record=False)
     journal = trade_journal_summary(limit=80)
+    proof_breakout = pmo_ai_proof_breakout(journal, paper_proof, settings)
     why_not_latest = read_json_file(PMO_WHY_NOT_FILE, {})
     missing: List[str] = []
     if not bool(account.get("ok")):
@@ -29147,9 +29795,9 @@ def pmo_ai_context_snapshot(settings: Optional[Dict[str, Any]] = None) -> Dict[s
     if safe_float(account.get("equity") or account.get("portfolio_value"), 0) <= 0:
         missing.append("Account equity is missing or zero.")
     if safe_float(journal.get("profit_factor"), 0) < safe_float(settings.get("PMO_PAPER_PROOF_BREAKER_MIN_PROFIT_FACTOR"), 0.8):
-        missing.append("Journal profit factor is below the paper proof breaker threshold.")
+        missing.append("Raw journal profit factor is below the paper proof breaker threshold.")
     if safe_float(journal.get("win_rate"), 0) < safe_float(settings.get("PMO_PAPER_PROOF_BREAKER_MIN_WIN_RATE"), 0.35):
-        missing.append("Journal win rate is below the proof breaker threshold.")
+        missing.append("Raw journal win rate is below the proof breaker threshold.")
     lr_score = safe_float(live_readiness.get("score") or live_readiness.get("readiness_score"), 0)
     if lr_score < 80:
         missing.append("Live readiness is still locked by proof, safety, or reconciliation gates.")
@@ -29172,6 +29820,7 @@ def pmo_ai_context_snapshot(settings: Optional[Dict[str, Any]] = None) -> Dict[s
         "reconciliation": reconciliation,
         "live_readiness": live_readiness,
         "paper_proof": paper_proof,
+        "proof_breakout": proof_breakout,
         "v112_proof": v112_proof,
         "journal": journal,
         "why_not": why_not_latest,
@@ -29227,6 +29876,7 @@ def pmo_ai_missing_summary(context: Dict[str, Any]) -> Dict[str, Any]:
     journal = context.get("journal") if isinstance(context.get("journal"), dict) else {}
     readiness = context.get("live_readiness") if isinstance(context.get("live_readiness"), dict) else {}
     proof = context.get("paper_proof") if isinstance(context.get("paper_proof"), dict) else {}
+    proof_breakout = context.get("proof_breakout") if isinstance(context.get("proof_breakout"), dict) else {}
     next_actions = [
         "Keep live trading locked.",
         "Sync the paper journal until open/target/stop rows become closed outcomes.",
@@ -29242,6 +29892,7 @@ def pmo_ai_missing_summary(context: Dict[str, Any]) -> Dict[str, Any]:
             "profit_factor": journal.get("profit_factor"),
             "net_pnl": journal.get("net_pnl"),
         },
+        "proof_breakout": proof_breakout,
         "live_readiness_score": readiness.get("score", readiness.get("readiness_score")),
         "paper_proof_score": proof.get("proof_score", proof.get("score")),
         "next_actions": next_actions,
@@ -29304,7 +29955,7 @@ def pmo_ai_run_tool(tool_name: str, payload: Dict[str, Any], settings: Dict[str,
         if settings.get("PMO_ALLOW_LIVE_TRADING") or settings.get("PMO_LIVE_TRADING_ENABLED"):
             return {"status": "BLOCKED", "error": "Data collection mode cannot enable while live trading switches are ON."}
         timeout = int(max(15, min(10080, safe_float(args.get("timeout_minutes") or payload.get("timeout_minutes") or settings.get("PMO_DATA_COLLECTION_TIMEOUT_MINUTES", 10080), 10080))))
-        max_trades = int(max(5, min(150, safe_float(args.get("max_trades") or payload.get("max_trades") or settings.get("PMO_DATA_COLLECTION_MAX_TRADES", 150), 150))))
+        max_trades = int(max(5, min(200, safe_float(args.get("max_trades") or payload.get("max_trades") or settings.get("PMO_DATA_COLLECTION_MAX_TRADES", 200), 200))))
         result = _DATA_COLLECTION.enable(timeout_minutes=timeout, max_trades=max_trades, enabled_by="desk_commander")
         csv_append(PMO_BOT_OWNER_COMMANDS_FILE, {
             "timestamp": now_et().isoformat(),
@@ -29975,6 +30626,17 @@ def api_deck_snapshot():
     tier_ab17_snapshot = trade_edge_six_snapshot.get("tier_ab17") if isinstance(trade_edge_six_snapshot, dict) else {}
     if not isinstance(tier_ab17_snapshot, dict) or not tier_ab17_snapshot:
         tier_ab17_snapshot = pmo_tier_ab17_status(settings, record=False)
+    dashboard_polish = pmo_dashboard_polish_snapshot(settings, journal_summary, paper_proof, regime)
+    meta_strategy = pmo_meta_strategy_report(
+        settings,
+        current_state={"regime": regime_label, "score": 70, "rvol": 1.5},
+        record=False,
+    )
+    vault_intelligence = pmo_vault_intelligence_report(
+        settings,
+        current_state={"regime": regime_label, "score": 70, "rvol": 1.5},
+        record=False,
+    )
 
     return jsonify({
         "ok": True,
@@ -30035,6 +30697,9 @@ def api_deck_snapshot():
         "trade_edge_six": trade_edge_six_snapshot,
         "tier_ab17": tier_ab17_snapshot,
         "barchart_context": pmo_barchart_index_context(settings),
+        "dashboard_polish": dashboard_polish,
+        "meta_strategy": meta_strategy,
+        "vault_intelligence": vault_intelligence,
     })
 
 

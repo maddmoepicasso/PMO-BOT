@@ -9,9 +9,9 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger("pmo.data_collection")
 
 DEFAULT_TIMEOUT_MINUTES = 10080
-DEFAULT_MAX_TRADES = 150
+DEFAULT_MAX_TRADES = 200
 MAX_TIMEOUT_MINUTES = 10080
-MAX_COLLECTION_TRADES = 150
+MAX_COLLECTION_TRADES = 200
 
 NORMAL_GATE_LABELS = {
     "min_score": 65.0,
@@ -25,31 +25,52 @@ NORMAL_GATE_LABELS = {
 }
 
 DATA_COLLECTION_GATES = {
-    "PMO_EXECUTOR_MIN_SCORE": 60.0,
-    "PMO_PAPER_EXECUTOR_MIN_SCORE": 60.0,
-    "PMO_BACKGROUND_PAPER_MIN_SCORE": 60.0,
-    "PMO_WHY_NOT_MIN_SCORE": 60.0,
-    "PMO_SCORE_WATCH_ALERT_MIN": 60.0,
-    "PMO_SCORE_PAPER_ONLY_MIN": 60.0,
-    "PMO_SCORE_PRIORITY_PAPER_MIN": 70.0,
-    "PMO_SCORE_ELITE_PAPER_MIN": 85.0,
-    "PMO_REBUILD_ENTRY_SCORE_MIN": 60.0,
+    "PMO_EXECUTOR_MIN_SCORE": 40.0,
+    "PMO_PAPER_EXECUTOR_MIN_SCORE": 40.0,
+    "PMO_BACKGROUND_PAPER_MIN_SCORE": 40.0,
+    "PMO_WHY_NOT_MIN_SCORE": 40.0,
+    "PMO_SCORE_WATCH_ALERT_MIN": 40.0,
+    "PMO_SCORE_PAPER_ONLY_MIN": 40.0,
+    "PMO_SCORE_PRIORITY_PAPER_MIN": 55.0,
+    "PMO_SCORE_ELITE_PAPER_MIN": 75.0,
+    "PMO_REBUILD_ENTRY_SCORE_MIN": 40.0,
     "PMO_REBUILD_ENTRY_SCORE_MAX": 100.0,
     "PMO_REBUILD_SUSPEND_ABOVE_SCORE": 101.0,
-    "PMO_WHY_NOT_MIN_RVOL": 1.2,
-    "PMO_OPENING_MIN_RVOL": 1.2,
-    "PMO_TICK_TIMING_MIN_RVOL": 1.2,
-    "PMO_OPENING_EARLIEST_ENTRY": "09:35",
+    "PMO_WHY_NOT_REQUIRE_RVOL": False,
+    "PMO_WHY_NOT_BLOCK_MISSING_RVOL": False,
+    "PMO_WHY_NOT_REQUIRE_VWAP_DATA": False,
+    "PMO_WHY_NOT_MIN_RVOL": 0.0,
+    "PMO_OPENING_MIN_RVOL": 0.0,
+    "PMO_TICK_TIMING_MIN_RVOL": 0.0,
+    "PMO_OPENING_EARLIEST_ENTRY": "09:30",
+    "PMO_OPENING_REQUIRE_TWO_CLOSED_5M_BARS": False,
     "PMO_OPENING_REQUIRE_GAP_UP_HOLD": False,
-    "PMO_OPENING_ALLOWED_GAP_SIGNALS": ["GAP_UP_HOLD", "GAP_UP", "FLAT", "NO_GAP"],
+    "PMO_OPENING_ALLOWED_GAP_SIGNALS": [
+        "GAP_UP_HOLD",
+        "GAP_UP",
+        "GAP_UP_FILL",
+        "GAP_DOWN_HOLD",
+        "GAP_DOWN_FILL",
+        "GAP_DOWN",
+        "FLAT",
+        "NO_GAP",
+        "NONE",
+    ],
     "PMO_OPENING_REQUIRE_ORB_BREAKOUT": False,
     "PMO_OPENING_BLOCK_ON_MISSING_EDGE": False,
-    "PMO_PAPER_MAX_DAILY_TRADES": 20,
-    "PMO_PAPER_MAX_STOCK_TRADES": 20,
-    "PMO_MAX_DAILY_TRADES": 20,
+    "PMO_PAPER_MAX_DAILY_TRADES": 100,
+    "PMO_PAPER_MAX_STOCK_TRADES": 100,
+    "PMO_MAX_DAILY_TRADES": 100,
+    "PMO_MAX_TRADES_BY_MARKET": {"STOCK": 100, "CRYPTO": 20, "OPTION": 0},
     "PMO_ORDER_NOTIONAL_USD": 40.0,
     "PMO_MAX_ORDER_NOTIONAL_USD": 40.0,
-    "PMO_REGIME_LONG_ALLOWED_VALUES": ["BULL", "BULLISH", "MIXED"],
+    "PMO_MICRO_MAX_OPEN_POSITIONS": 25,
+    "PMO_REQUIRE_MARKET_DATA_FOR_EXECUTION": False,
+    "PMO_SMART_LIMIT_REQUIRE_MARKET_DATA": False,
+    "PMO_SMART_LIMIT_REQUIRE_CLEAR_REGIME": False,
+    "PMO_SMART_LIMIT_REQUIRE_RISK_GUARDS": False,
+    "PMO_SMART_LIMIT_FULL_SIZE_SCORE": 40.0,
+    "PMO_REGIME_LONG_ALLOWED_VALUES": ["BULL", "BULLISH", "MIXED", "DEFENSIVE", "BEAR", "UNKNOWN"],
     "DATA_COLLECTION_ACTIVE": True,
 }
 
@@ -241,13 +262,13 @@ class DataCollectionManager:
                 },
                 "normal_gates": NORMAL_GATE_LABELS,
                 "relaxed_gates": {
-                    "min_score": 60.0,
-                    "min_rvol": 1.2,
-                    "open_from": "09:35",
+                    "min_score": 40.0,
+                    "min_rvol": 0.0,
+                    "open_from": "09:30",
                     "gap_required": False,
-                    "gap_allowed": "GAP_UP/GAP_UP_HOLD/FLAT",
+                    "gap_allowed": "ALL_DIRECTIONS",
                     "orb_required": False,
-                    "regime_allowed": "BULL/BULLISH/MIXED",
+                    "regime_allowed": "ALL_REGIMES",
                     "max_trades_day": DATA_COLLECTION_GATES["PMO_PAPER_MAX_DAILY_TRADES"],
                     "target_trades": self._state.max_trades,
                 },

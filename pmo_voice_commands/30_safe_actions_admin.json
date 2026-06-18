@@ -83,29 +83,31 @@
         "collection status",
         "how many collection trades",
         "how many trades collected",
-        "show 150 trade target"
+        "show 200 trade target"
       ],
       "examples": ["data collection status"],
       "arguments": {}
     },
     {
-      "id": "enable_data_collection_150",
-      "label": "Enable Data Collection To 150",
+      "id": "enable_data_collection_200",
+      "label": "Enable Data Collection To 200",
       "tool": "enable_data_collection",
       "intent": "tool",
       "confidence": 0.9,
       "phrases": [
+        "start data collection until 200 trades",
+        "continue data collection until 200 trades",
+        "continue collecting data until 200 trades",
+        "keep collecting data until 200 trades",
+        "resume data collection until 200 trades",
+        "enable data collection to 200 trades",
+        "turn on collection mode for 200 trades",
         "start data collection until 150 trades",
-        "continue data collection until 150 trades",
-        "continue collecting data until 150 trades",
-        "keep collecting data until 150 trades",
-        "resume data collection until 150 trades",
-        "enable data collection to 150 trades",
-        "turn on collection mode for 150 trades"
+        "continue data collection until 150 trades"
       ],
-      "examples": ["continue data collection until 150 trades"],
+      "examples": ["continue data collection until 200 trades"],
       "arguments": {
-        "max_trades": 150,
+        "max_trades": 200,
         "timeout_minutes": 10080
       }
     },

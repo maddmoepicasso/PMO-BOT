@@ -86,14 +86,18 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
 
             effective = self.mod.pmo_data_collection_effective_settings(dict(self.mod.DEFAULT_SETTINGS))
             self.assertTrue(effective["DATA_COLLECTION_ACTIVE"])
-            self.assertEqual(effective["PMO_REBUILD_ENTRY_SCORE_MIN"], 60.0)
+            self.assertEqual(effective["PMO_REBUILD_ENTRY_SCORE_MIN"], 40.0)
             self.assertEqual(effective["PMO_REBUILD_ENTRY_SCORE_MAX"], 100.0)
-            self.assertEqual(effective["PMO_WHY_NOT_MIN_RVOL"], 1.2)
-            self.assertEqual(effective["PMO_OPENING_EARLIEST_ENTRY"], "09:35")
+            self.assertEqual(effective["PMO_WHY_NOT_MIN_RVOL"], 0.0)
+            self.assertFalse(effective["PMO_WHY_NOT_REQUIRE_RVOL"])
+            self.assertEqual(effective["PMO_OPENING_EARLIEST_ENTRY"], "09:30")
             self.assertEqual(effective["PMO_ORDER_NOTIONAL_USD"], 40.0)
             self.assertEqual(effective["PMO_MAX_ORDER_NOTIONAL_USD"], 40.0)
             self.assertIn("GAP_UP", effective["PMO_OPENING_ALLOWED_GAP_SIGNALS"])
+            self.assertIn("GAP_DOWN", effective["PMO_OPENING_ALLOWED_GAP_SIGNALS"])
             self.assertIn("MIXED", effective["PMO_REGIME_LONG_ALLOWED_VALUES"])
+            self.assertIn("DEFENSIVE", effective["PMO_REGIME_LONG_ALLOWED_VALUES"])
+            self.assertEqual(effective["PMO_PAPER_MAX_DAILY_TRADES"], 100)
             self.assertTrue(effective["ALPACA_PAPER"])
             self.assertFalse(effective["PMO_ALLOW_LIVE_TRADING"])
             self.assertFalse(effective["PMO_LIVE_TRADING_ENABLED"])
@@ -114,8 +118,8 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
                 effective,
                 rvol=1.5,
             )
-            self.assertFalse(gap_down["allowed"])
-            self.assertIn("GAP_UP or FLAT only", " | ".join(gap_down["blockers"]))
+            self.assertTrue(gap_down["allowed"])
+            self.assertIn("data collection gap gate passed", " | ".join(gap_down["confirmations"]))
 
             fields = self.mod.pmo_data_collection_journal_fields("NVDA")
             self.assertTrue(fields["data_collection_mode"])
@@ -131,22 +135,22 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertFalse(normal["DATA_COLLECTION_ACTIVE"])
         self.assertEqual(normal["PMO_REBUILD_ENTRY_SCORE_MIN"], self.mod.DEFAULT_SETTINGS["PMO_REBUILD_ENTRY_SCORE_MIN"])
 
-    def test_data_collection_accepts_150_trade_target(self):
+    def test_data_collection_accepts_200_trade_target(self):
         token = self.mod.first_env("PMO_BOT_ADMIN_TOKEN")
         try:
             response = self.client.post(
                 "/api/data-collection/enable",
-                json={"timeout_minutes": 10080, "max_trades": 150},
+                json={"timeout_minutes": 10080, "max_trades": 200},
                 headers={"X-Admin-Token": token},
             )
             self.assertEqual(response.status_code, 200)
             body = response.get_json()
             self.assertTrue(body["ok"])
             self.assertTrue(body["status"]["active"])
-            self.assertEqual(body["status"]["max_trades"], 150)
-            self.assertEqual(body["status"]["target_trades"], 150)
+            self.assertEqual(body["status"]["max_trades"], 200)
+            self.assertEqual(body["status"]["target_trades"], 200)
             self.assertEqual(body["status"]["timeout_minutes"], 10080)
-            self.assertIn("150 paper trades", body["message"])
+            self.assertIn("200 paper trades", body["message"])
         finally:
             self.client.post(
                 "/api/data-collection/disable",
@@ -154,12 +158,17 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
                 headers={"X-Admin-Token": token},
             )
 
-    def test_voice_command_maps_data_collection_to_150_trade_target(self):
-        parsed = self.mod.parse_ai_command("continue data collection until 150 trades", input_type="voice")
+    def test_voice_command_maps_data_collection_to_200_trade_target(self):
+        parsed = self.mod.parse_ai_command("continue data collection until 200 trades", input_type="voice")
         self.assertTrue(parsed["ok"])
         self.assertEqual(parsed["tool"], "enable_data_collection")
-        self.assertEqual(parsed["arguments"]["max_trades"], 150)
+        self.assertEqual(parsed["arguments"]["max_trades"], 200)
         self.assertEqual(parsed["arguments"]["timeout_minutes"], 10080)
+
+        legacy = self.mod.parse_ai_command("continue data collection until 150 trades", input_type="voice")
+        self.assertTrue(legacy["ok"])
+        self.assertEqual(legacy["tool"], "enable_data_collection")
+        self.assertEqual(legacy["arguments"]["max_trades"], 200)
 
         status = self.mod.parse_ai_command("data collection status", input_type="voice")
         self.assertTrue(status["ok"])
@@ -309,6 +318,46 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
             self.assertIn("ANTHROPIC_API_KEY", result["error"])
         finally:
             self.mod.first_env = original_first_env
+
+    def test_ask_prompt_uses_xml_ground_truth_and_safety_contract(self):
+        prompt = self.mod.pmo_ai_build_elite_system_prompt(dict(self.mod.DEFAULT_SETTINGS))
+        self.assertIn("<role_constraints>", prompt)
+        self.assertIn("<ground_truth>", prompt)
+        self.assertIn("<output_contract>", prompt)
+        self.assertIn("<live_pmo_state>", prompt)
+        self.assertIn("Score inversion has been observed", prompt)
+        self.assertIn("data_collection_target", prompt)
+        self.assertIn("never_do", prompt)
+        self.assertIn("place orders", prompt)
+        self.assertIn("unlock live trading", prompt)
+
+    def test_api_ask_sends_structured_prompt_without_unlocking_safety(self):
+        original_first_env = self.mod.first_env
+        original_call = self.mod.pmo_claude_call
+        captured = {}
+        try:
+            self.mod.first_env = lambda *names: "test-key"
+
+            def fake_call(system_prompt, user_prompt, *args, **kwargs):
+                captured["system_prompt"] = system_prompt
+                captured["user_prompt"] = user_prompt
+                return {"ok": True, "text": "Decision: WAIT. Top factor: proof is still rebuilding.", "model": "test-model", "usage": {}}
+
+            self.mod.pmo_claude_call = fake_call
+            response = self.client.post("/api/ask", json={"question": "Should PMO take NVDA right now?"})
+            self.assertEqual(response.status_code, 200)
+            body = response.get_json()
+            self.assertTrue(body["ok"])
+            self.assertFalse(body["live_unlocked"])
+            self.assertFalse(body["orders_placed"])
+            self.assertFalse(body["settings_changed"])
+            self.assertIn("<ground_truth>", captured["system_prompt"])
+            self.assertIn("<live_pmo_state>", captured["system_prompt"])
+            self.assertIn("<newest_user_message>", captured["user_prompt"])
+            self.assertIn("<task>", captured["user_prompt"])
+        finally:
+            self.mod.first_env = original_first_env
+            self.mod.pmo_claude_call = original_call
 
     def test_warp_ai_does_not_call_provider_on_passive_review(self):
         original_call = self.mod.pmo_claude_call
@@ -1807,6 +1856,161 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertIn("monte_carlo", report["signals"])
         self.assertIn("operational_guidance", report)
 
+    def test_advanced_ml_intelligence_covers_all_requested_layers(self):
+        advanced_mod = load_local_module("pmo_advanced_ml_intelligence")
+        report = advanced_mod.analyze_advanced_ml_intelligence(
+            PMO_DIR / "pmo_csv" / "pmo_bot_trade_journal.csv",
+            PMO_DIR / "pmo_csv" / "pmo_order_execution_journal.csv",
+            symbol="SPY",
+            settings={
+                "PMO_ADVANCED_ML_MAX_ROWS": 5000,
+                "PMO_ADVANCED_ML_SYNTHETIC_ROWS": 25,
+            },
+        )
+        self.assertTrue(report["ok"])
+        self.assertTrue(report["read_only"])
+        self.assertFalse(report["orders_placed"])
+        self.assertFalse(report["live_trading_changed"])
+        modules = report["modules"]
+        for key in {
+            "regime_conditional_models",
+            "price_action_embeddings",
+            "kalman_vwap",
+            "rl_exit_timing",
+            "conformal_prediction",
+            "monte_carlo_dropout",
+            "time_series_cross_validation",
+            "decay_weighting",
+            "stacked_engine_meta_learner",
+            "kelly_with_uncertainty",
+            "minimum_description_length",
+            "synthetic_trade_generation",
+        }:
+            self.assertIn(key, modules)
+        self.assertTrue(modules["synthetic_trade_generation"]["excluded_from_proof"])
+        self.assertIn("stacking_status", report["journal"])
+        self.assertIn("walk_forward_status", report["journal"])
+
+    def test_advanced_ml_intelligence_endpoint_is_read_only(self):
+        response = self.client.get("/api/ai/advanced-ml?symbol=SPY")
+        self.assertEqual(response.status_code, 200)
+        report = response.get_json()["advanced_ml"]
+        self.assertTrue(report["ok"])
+        self.assertTrue(report["read_only"])
+        self.assertFalse(report["orders_placed"])
+        self.assertFalse(report["live_trading_changed"])
+        self.assertIn("stacked_engine_meta_learner", report["modules"])
+        self.assertIn("time_series_cross_validation", report["modules"])
+        self.assertIn("minimum_description_length", report["modules"])
+
+    def test_meta_strategy_layer_covers_cfr_and_system_meta_layers(self):
+        meta_mod = load_local_module("pmo_meta_strategy_layer")
+        report = meta_mod.analyze_meta_strategy_layer(
+            PMO_DIR / "pmo_csv" / "pmo_bot_trade_journal.csv",
+            PMO_DIR / "pmo_reports" / "pmo_why_not_latest.json",
+            PMO_DIR / "pmo_csv" / "pmo_why_not_events.csv",
+            settings={"PMO_META_MAX_ROWS": 5000, "PMO_META_SHADOW_EVENT_ROWS": 5000},
+            current_state={"regime": "BULL", "score": 71, "rvol": 2.1, "pnl_today": 1.2, "trades_today": 2},
+        )
+        self.assertTrue(report["ok"])
+        self.assertTrue(report["read_only"])
+        self.assertFalse(report["orders_placed"])
+        self.assertFalse(report["settings_changed"])
+        self.assertFalse(report["live_trading_changed"])
+        modules = report["modules"]
+        for key in {
+            "counterfactual_regret_minimization",
+            "regret_table",
+            "adversarial_market_model",
+            "attention_weighting",
+            "alpha_decay_lead_time",
+            "regime_model_router",
+            "shadow_trade_tracker",
+            "confidence_calibration",
+            "prediction_error_model",
+        }:
+            self.assertIn(key, modules)
+        distribution = modules["counterfactual_regret_minimization"]["action_distribution"]
+        self.assertTrue({"TAKE_FULL", "TAKE_HALF", "WAIT_CONFIRMATION", "SKIP"}.issubset(distribution))
+        self.assertIn("cfr_action", report["journal"])
+
+    def test_meta_strategy_endpoint_is_read_only(self):
+        response = self.client.post(
+            "/api/ai/meta-strategy",
+            json={"current_state": {"regime": "BULL", "score": 71, "rvol": 2.1}},
+        )
+        self.assertEqual(response.status_code, 200)
+        report = response.get_json()["meta_strategy"]
+        self.assertTrue(report["ok"])
+        self.assertTrue(report["read_only"])
+        self.assertFalse(report["orders_placed"])
+        self.assertFalse(report["settings_changed"])
+        self.assertFalse(report["live_trading_changed"])
+        self.assertIn("counterfactual_regret_minimization", report["modules"])
+        self.assertIn("shadow_trade_tracker", report["modules"])
+
+    def test_vault_intelligence_covers_all_vault_layers(self):
+        vault_mod = load_local_module("pmo_vault_intelligence")
+        report = vault_mod.analyze_vault_intelligence(
+            PMO_DIR / "pmo_csv" / "pmo_bot_trade_journal.csv",
+            settings={"PMO_VAULT_MAX_ROWS": 5000},
+            current_state={"regime": "BULL", "score": 71, "rvol": 2.1},
+        )
+        self.assertTrue(report["ok"])
+        self.assertTrue(report["read_only"])
+        self.assertFalse(report["orders_placed"])
+        self.assertFalse(report["settings_changed"])
+        self.assertFalse(report["live_trading_changed"])
+        modules = report["modules"]
+        for key in {
+            "epigenetic_algorithm",
+            "strange_attractor_detection",
+            "bayesian_surprise",
+            "eigenportfolio_decomposition",
+            "symmetry_breaking",
+            "mutual_information_maximization",
+            "mechanism_design_probe",
+        }:
+            self.assertIn(key, modules)
+        self.assertEqual(modules["mechanism_design_probe"]["status"], "SIMULATION_ONLY")
+        self.assertIn("vault_top_information_feature", report["journal"])
+
+    def test_vault_intelligence_endpoint_is_read_only(self):
+        response = self.client.post(
+            "/api/ai/vault-intelligence",
+            json={"current_state": {"regime": "BULL", "score": 71, "rvol": 2.1}},
+        )
+        self.assertEqual(response.status_code, 200)
+        report = response.get_json()["vault_intelligence"]
+        self.assertTrue(report["ok"])
+        self.assertTrue(report["read_only"])
+        self.assertFalse(report["orders_placed"])
+        self.assertFalse(report["settings_changed"])
+        self.assertFalse(report["live_trading_changed"])
+        self.assertIn("epigenetic_algorithm", report["modules"])
+        self.assertIn("mechanism_design_probe", report["modules"])
+
+    def test_trade_journal_quality_fields_include_meta_regret_tags(self):
+        fields = self.mod.pmo_trade_journal_quality_fields(
+            "SPY",
+            {
+                "score": 71,
+                "relative_volume": 2.1,
+                "entry_price": 100,
+                "exit_price": 103,
+                "side": "LONG",
+                "market_regime": "BULL",
+            },
+            use_live_context=False,
+        )
+        self.assertEqual(fields["meta_layer_status"], "READ_ONLY_LOGGED")
+        self.assertIn("TAKE_FULL", fields["meta_cfr_alternatives"])
+        self.assertIn("TAKE_HALF", fields["meta_cfr_alternatives"])
+        self.assertIn("WAIT_CONFIRMATION", fields["meta_cfr_alternatives"])
+        self.assertIn("SKIP", fields["meta_cfr_alternatives"])
+        self.assertIn("meta_attention_weight", fields)
+        self.assertIn("meta_prediction_error_question", fields)
+
     def test_trade_journal_quality_fields_auto_logs_deep_exit_policy(self):
         original_report = self.mod.pmo_deep_intelligence_report
         try:
@@ -1989,6 +2193,8 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
             "ENABLE_PMO_INSTITUTIONAL_SIGNALS": True,
             "ENABLE_PMO_DEEP_INTELLIGENCE": True,
             "ENABLE_PMO_FRONTIER_INTELLIGENCE": True,
+            "ENABLE_PMO_META_STRATEGY_LAYER": True,
+            "ENABLE_PMO_VAULT_INTELLIGENCE": True,
             "PMO_CRYPTO_PROFILE_ENABLED": True,
             "ENABLE_PMO_POST_GATE_EQUITY_PROOF": True,
             "ENABLE_PMO_ARCHITECTURE_PLANNER": True,
@@ -1997,9 +2203,9 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         })
         result = self.mod.pmo_learning_constellation_status(settings)
         engine_ids = {row["id"] for row in result["engines"]}
-        self.assertEqual(result["total"], 17)
+        self.assertEqual(result["total"], 20)
         self.assertGreaterEqual(result["active_count"], 10)
-        self.assertTrue({"ensemble", "alpha", "institutional", "deep", "frontier", "crypto", "postgate"}.issubset(engine_ids))
+        self.assertTrue({"ensemble", "alpha", "institutional", "deep", "frontier", "advanced_ml", "meta_strategy", "vault", "crypto", "postgate"}.issubset(engine_ids))
         self.assertTrue(result["live_influence_locked"])
         self.assertFalse(result["passive_provider_calls"])
 

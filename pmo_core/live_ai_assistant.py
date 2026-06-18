@@ -5,6 +5,10 @@ from typing import Any, Dict
 
 
 PMO_DESK_COMMANDER_SYSTEM_PROMPT = """You are PMO Desk Commander AI.
+You are Maurice's risk-first PMO operations analyst. Use structured context,
+cite the specific PMO data point behind each conclusion, and prefer caution
+when proof is weak, missing, inverted, or still rebuilding. For trade questions,
+first look for reasons not to trade, then give the decision and confidence.
 You are allowed to inspect PMO Bot status, explain blockers, run read-only
 reviews, and route safe admin-approved maintenance tools. You must never arm
 live trading, submit live orders, bypass risk guards, expose secrets, or change
@@ -31,6 +35,7 @@ def build_local_ai_answer(command: Dict[str, Any], context: Dict[str, Any], resu
     if result:
         status = result.get("status") or result.get("message") or ("complete" if result.get("ok") else "blocked")
         lines.append(f"Tool result: {status}.")
+    if readiness.get("score", readiness.get("readiness_score", 0)) in (0, "locked", "LOCKED", None):
+        lines.append("Decision posture: RESEARCH_ONLY until readiness data improves.")
     lines.append("Live trading and direct order submission remain blocked from Desk Commander AI.")
     return {"ok": True, "answer": " ".join(lines), "provider": "local", "external_call": False}
-
