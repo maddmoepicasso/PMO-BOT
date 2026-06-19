@@ -2223,8 +2223,8 @@ function S(k){const s=window.liveSettings||liveSettings||{};return s[k]!==undefi
 function fmt$(v){if(v===undefined||v===null||v==='')return '--';const n=parseFloat(v);if(isNaN(n))return v;return(n>=0?'+':'')+'$'+Math.abs(n).toFixed(2);}
 function fmtPct(v){if(v===undefined||v===null)return 'N/A';const n=parseFloat(v);if(isNaN(n))return 'N/A';return(n*100).toFixed(1)+'%';}
 function now(){return new Date().toTimeString().split(' ')[0];}
-function addLog(containerId,time,msg){const el=document.getElementById(containerId);if(!el)return;const div=document.createElement('div');div.className='le';div.innerHTML=`<span class="le-t">${time}</span><span class="le-m">${msg}</span>`;el.insertBefore(div,el.firstChild);while(el.children.length>6)el.removeChild(el.lastChild);}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function addLog(containerId,time,msg){const el=document.getElementById(containerId);if(!el)return;const div=document.createElement('div');div.className='le';div.innerHTML=`<span class="le-t">${esc(time)}</span><span class="le-m">${esc(msg)}</span>`;el.insertBefore(div,el.firstChild);while(el.children.length>6)el.removeChild(el.lastChild);}
 function money(v){const n=parseFloat(v||0);return (n<0?'-$':'$')+Math.abs(n).toFixed(2);}
 function numVal(...vals){for(const v of vals){if(v===undefined||v===null||v==='')continue;const n=parseFloat(v);if(Number.isFinite(n))return n;}return null;}
 function cleanRegimeValue(v){

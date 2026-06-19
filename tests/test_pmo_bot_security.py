@@ -174,6 +174,40 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
             self.assertEqual(status["trades_collected"], 1)
             self.assertEqual(status["trades_remaining"], 199)
 
+    def test_data_collection_status_uses_cumulative_journal_progress(self):
+        original_path = self.mod.PMO_ORDER_EXECUTION_FILE
+        with tempfile.TemporaryDirectory() as tmp:
+            journal_path = Path(tmp) / "pmo_order_execution_journal.csv"
+            journal_path.write_text(
+                "\n".join([
+                    "timestamp,status,symbol,side,score,source_order_id,client_order_id,trade_plan_id,sync_key,data_collection_mode,data_collection_tag,data_collection_session",
+                    "2026-06-18T10:00:00-04:00,SUBMITTED,NVDA,BUY,67,OID1,,,SYNC1,True,DATA_COLLECTION_AAAA1111,AAAA1111",
+                    "2026-06-18T10:05:00-04:00,BLOCKED,MSFT,BUY,69,OID2,,,SYNC2,True,DATA_COLLECTION_AAAA1111,AAAA1111",
+                    "2026-06-18T10:10:00-04:00,SUBMITTED,AMD,BUY,71,OID3,,,SYNC3,True,DATA_COLLECTION_BBBB2222,BBBB2222",
+                ]),
+                encoding="utf-8",
+            )
+            self.mod.PMO_ORDER_EXECUTION_FILE = journal_path
+            try:
+                status = {
+                    "ok": True,
+                    "data_collection": {
+                        "session_id": "BBBB2222",
+                        "trades_collected": 0,
+                        "trades_remaining": 200,
+                        "target_trades": 200,
+                        "max_trades": 200,
+                    },
+                }
+                enriched = self.mod.pmo_enrich_data_collection_status(status)["data_collection"]
+                self.assertEqual(enriched["session_trades_collected"], 0)
+                self.assertEqual(enriched["cumulative_trades_collected"], 2)
+                self.assertEqual(enriched["trades_collected"], 2)
+                self.assertEqual(enriched["trades_remaining"], 198)
+                self.assertEqual(enriched["journal_current_session_submitted"], 1)
+            finally:
+                self.mod.PMO_ORDER_EXECUTION_FILE = original_path
+
     def test_voice_command_maps_data_collection_to_200_trade_target(self):
         parsed = self.mod.parse_ai_command("continue data collection until 200 trades", input_type="voice")
         self.assertTrue(parsed["ok"])
@@ -305,6 +339,19 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertIn("/api/profit-tracker", html)
         self.assertNotIn("Payment + Profit Receiving", html)
         self.assertNotIn("panelPaymentHub", html)
+
+    def test_live_readiness_supports_read_only_get(self):
+        response = self.client.get("/api/live-readiness")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload.get("ok"))
+        self.assertIn("live_readiness", payload)
+        self.assertIn("broker_reconciliation", payload)
+
+    def test_orbital_deck_escapes_log_messages(self):
+        html = (self.mod.PMO_DIR / "deck" / "pmo_orbital_command_deck.html").read_text(encoding="utf-8")
+        self.assertIn("${esc(time)}</span><span class=\"le-m\">${esc(msg)}</span>", html)
+        self.assertNotIn("${time}</span><span class=\"le-m\">${msg}</span>", html)
 
     def test_orbital_deck_places_profit_tracker_under_alpaca_chart(self):
         html = (self.mod.PMO_DIR / "deck" / "pmo_orbital_command_deck.html").read_text(encoding="utf-8")

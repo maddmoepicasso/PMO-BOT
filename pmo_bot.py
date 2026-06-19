@@ -4044,6 +4044,65 @@ def pmo_data_collection_journal_fields(symbol: str = "") -> Dict[str, Any]:
     }
 
 
+def pmo_data_collection_journal_progress(target_trades: int = 200, active_session: str = "") -> Dict[str, Any]:
+    rows = recent_csv_rows(PMO_ORDER_EXECUTION_FILE, 20000)
+    submitted_keys = set()
+    session_counts: Dict[str, int] = {}
+    current_session = str(active_session or "").strip().upper()
+    for idx, row in enumerate(rows):
+        status = str(row.get("status") or "").strip().upper()
+        if status != "SUBMITTED":
+            continue
+        tag = str(row.get("data_collection_tag") or "").strip().upper()
+        session = str(row.get("data_collection_session") or "").strip().upper()
+        mode = str(row.get("data_collection_mode") or "").strip().lower()
+        if not (tag.startswith("DATA_COLLECTION_") or session or mode in {"true", "1", "yes"}):
+            continue
+        key = ""
+        for field in ("source_order_id", "client_order_id", "trade_plan_id", "sync_key"):
+            key = str(row.get(field) or "").strip().upper()
+            if key:
+                break
+        if not key:
+            key = "|".join(str(row.get(field) or "").strip().upper() for field in ("timestamp", "symbol", "side", "score", "status")) or str(idx)
+        if key in submitted_keys:
+            continue
+        submitted_keys.add(key)
+        session_key = session or tag.replace("DATA_COLLECTION_", "", 1) or "UNKNOWN"
+        session_counts[session_key] = session_counts.get(session_key, 0) + 1
+    collected = len(submitted_keys)
+    target = int(max(1, safe_float(target_trades, 200)))
+    return {
+        "journal_submitted_trades": collected,
+        "journal_trades_remaining": max(0, target - collected),
+        "journal_progress_pct": round(min(1.0, collected / target), 4),
+        "journal_session_counts": session_counts,
+        "journal_current_session_submitted": session_counts.get(current_session, 0) if current_session else 0,
+        "journal_source": str(PMO_ORDER_EXECUTION_FILE),
+    }
+
+
+def pmo_enrich_data_collection_status(status: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(status, dict):
+        return status
+    data = status.get("data_collection")
+    if not isinstance(data, dict):
+        return status
+    target = int(safe_float(data.get("target_trades") or data.get("max_trades") or 200, 200))
+    progress = pmo_data_collection_journal_progress(target, data.get("session_id", ""))
+    session_collected = int(safe_float(data.get("trades_collected"), 0))
+    cumulative = int(progress.get("journal_submitted_trades", 0))
+    data["session_trades_collected"] = session_collected
+    data["session_trades_remaining"] = max(0, target - session_collected)
+    data["cumulative_trades_collected"] = cumulative
+    data["cumulative_trades_remaining"] = max(0, target - cumulative)
+    data["trades_collected"] = cumulative
+    data["trades_remaining"] = max(0, target - cumulative)
+    data["progress_source"] = "order_execution_journal"
+    data.update(progress)
+    return status
+
+
 def pmo_setup_local_admin_token(token: str) -> Dict[str, Any]:
     clean = str(token or "").strip()
     if len(clean) < 8:
@@ -27182,7 +27241,7 @@ def api_data_collection_status():
             "live_unlocked": False,
             "orders_placed": False,
         }), 503
-    return jsonify(_DATA_COLLECTION.get_status())
+    return jsonify(pmo_enrich_data_collection_status(_DATA_COLLECTION.get_status()))
 
 
 @app.route("/api/data-collection/enable", methods=["POST"])
@@ -27201,6 +27260,8 @@ def api_data_collection_enable():
     timeout = int(max(15, min(10080, safe_float(payload.get("timeout_minutes") or settings_snapshot.get("PMO_DATA_COLLECTION_TIMEOUT_MINUTES", 10080), 10080))))
     max_trades = int(max(5, min(200, safe_float(payload.get("max_trades") or settings_snapshot.get("PMO_DATA_COLLECTION_MAX_TRADES", 200), 200))))
     result = _DATA_COLLECTION.enable(timeout_minutes=timeout, max_trades=max_trades, enabled_by="owner")
+    if isinstance(result.get("status"), dict):
+        result["status"] = pmo_enrich_data_collection_status({"data_collection": result["status"]}).get("data_collection", result["status"])
     csv_append(PMO_BOT_OWNER_COMMANDS_FILE, {
         "timestamp": now_et().isoformat(),
         "action": "data_collection_enable",
@@ -27221,6 +27282,8 @@ def api_data_collection_disable():
     if not (PMO_DATA_COLLECTION_AVAILABLE and _DATA_COLLECTION is not None):
         return jsonify({"ok": False, "error": PMO_DATA_COLLECTION_ERROR or "Data collection manager unavailable."}), 503
     result = _DATA_COLLECTION.disable("manual_owner_disable")
+    if isinstance(result.get("status"), dict):
+        result["status"] = pmo_enrich_data_collection_status({"data_collection": result["status"]}).get("data_collection", result["status"])
     csv_append(PMO_BOT_OWNER_COMMANDS_FILE, {
         "timestamp": now_et().isoformat(),
         "action": "data_collection_disable",
@@ -30066,7 +30129,7 @@ def pmo_ai_run_tool(tool_name: str, payload: Dict[str, Any], settings: Dict[str,
         return {"status": "FRONTEND_ACTION", "action": "stop_voice"}
     if tool_name == "get_data_collection_status":
         status = (
-            _DATA_COLLECTION.get_status()
+            pmo_enrich_data_collection_status(_DATA_COLLECTION.get_status())
             if PMO_DATA_COLLECTION_AVAILABLE and _DATA_COLLECTION is not None
             else {
                 "ok": False,
@@ -30087,6 +30150,8 @@ def pmo_ai_run_tool(tool_name: str, payload: Dict[str, Any], settings: Dict[str,
         timeout = int(max(15, min(10080, safe_float(args.get("timeout_minutes") or payload.get("timeout_minutes") or settings.get("PMO_DATA_COLLECTION_TIMEOUT_MINUTES", 10080), 10080))))
         max_trades = int(max(5, min(200, safe_float(args.get("max_trades") or payload.get("max_trades") or settings.get("PMO_DATA_COLLECTION_MAX_TRADES", 200), 200))))
         result = _DATA_COLLECTION.enable(timeout_minutes=timeout, max_trades=max_trades, enabled_by="desk_commander")
+        if isinstance(result.get("status"), dict):
+            result["status"] = pmo_enrich_data_collection_status({"data_collection": result["status"]}).get("data_collection", result["status"])
         csv_append(PMO_BOT_OWNER_COMMANDS_FILE, {
             "timestamp": now_et().isoformat(),
             "action": "desk_commander_data_collection_enable",
@@ -30408,7 +30473,7 @@ def api_order_origin_audit():
     return jsonify({"ok": True, "order_origin_audit": audit})
 
 
-@app.route("/api/live-readiness", methods=["POST"])
+@app.route("/api/live-readiness", methods=["GET", "POST"])
 def api_live_readiness():
     settings = load_settings()
     account = bot.account_snapshot()
