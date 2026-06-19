@@ -594,6 +594,10 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
     def test_layout_toolbar_is_compact_and_shrinkable(self):
         editor_js = self.mod.PMO_LAYOUT_EDITOR_ASSET.read_text(encoding="utf-8")
         self.assertIn('right:auto;', editor_js)
+        self.assertIn('top:auto;', editor_js)
+        self.assertIn('bottom:12px;', editor_js)
+        self.assertIn('toolbarPositionVersion: 2', editor_js)
+        self.assertIn('savedToolbarY < 72', editor_js)
         self.assertIn('width:max-content;', editor_js)
         self.assertIn('data-action="toggle-toolbar-compact"', editor_js)
         self.assertIn('toolbarMinWidth(collapsed)', editor_js)

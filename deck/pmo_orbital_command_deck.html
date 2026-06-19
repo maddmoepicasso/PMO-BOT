@@ -2035,7 +2035,7 @@ function setBotHost(host,persist=false){
 function installPMOLayoutEditor(){
   if(document.querySelector('script[data-pmo-layout-editor]')||window.PMOVisualLayoutEditorLoaded)return;
   const script=document.createElement('script');
-  script.src=BOT_HOST+'/assets/pmo-layout-editor.js?v=dashboard-toolbar-compact-v2';
+  script.src=BOT_HOST+'/assets/pmo-layout-editor.js?v=dashboard-toolbar-compact-v3';
   script.defer=true;
   script.dataset.pmoLayoutEditor='true';
   script.dataset.dashboard='pmo-orbital-command-deck';
@@ -7123,5 +7123,4 @@ startRealtimeEngine();
 </script>
 </body>
 </html>
-
 

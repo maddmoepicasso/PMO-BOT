@@ -66,6 +66,7 @@
         const base = {
             version: 1,
             movementModeVersion: 2,
+            toolbarPositionVersion: 2,
             dashboard: dashboardName,
             snap: false,
             grid: 24,
@@ -90,6 +91,11 @@
                 if (saved.movementModeVersion !== 2) {
                     merged.snap = false;
                     merged.movementModeVersion = 2;
+                }
+                if (saved.toolbarPositionVersion !== 2) {
+                    merged.toolbarPositionVersion = 2;
+                    const savedToolbarY = Number(merged.toolbar && merged.toolbar.y);
+                    if (!Number.isFinite(savedToolbarY) || savedToolbarY < 72) merged.toolbar = {};
                 }
                 return merged;
             }
@@ -230,7 +236,8 @@
                 position:fixed;
                 left:12px;
                 right:auto;
-                top:10px;
+                top:auto;
+                bottom:12px;
                 z-index:2147482600;
                 display:flex;
                 align-items:center;
@@ -440,7 +447,8 @@
                 .pmo-layout-toolbar {
                     left:8px;
                     right:auto;
-                    top:8px;
+                    top:auto;
+                    bottom:8px;
                     gap:5px;
                     width:auto !important;
                     max-width:calc(100vw - 16px);
@@ -971,6 +979,7 @@
             toolbar.style.left = '';
             toolbar.style.right = '';
             toolbar.style.top = '';
+            toolbar.style.bottom = '';
             toolbar.style.width = saved.collapsed ? 'auto' : '';
             toolbar.classList.toggle('is-collapsed', Boolean(saved.collapsed));
             return;
@@ -980,6 +989,7 @@
         toolbar.style.left = next.x + 'px';
         toolbar.style.top = next.y + 'px';
         toolbar.style.right = 'auto';
+        toolbar.style.bottom = 'auto';
         toolbar.style.width = next.collapsed ? 'auto' : Math.max(toolbarMinWidth(false), next.width || Math.min(window.innerWidth - 24, 720)) + 'px';
         toolbar.classList.toggle('is-collapsed', Boolean(next.collapsed));
     }
