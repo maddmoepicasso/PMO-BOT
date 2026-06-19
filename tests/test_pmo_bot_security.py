@@ -190,6 +190,73 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertTrue(status["ok"])
         self.assertEqual(status["tool"], "get_data_collection_status")
 
+    def test_clean_execution_doctrine_blocks_contaminated_normal_entries(self):
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        settings.update({
+            "DATA_COLLECTION_ACTIVE": False,
+            "ENABLE_PMO_CLEAN_EXECUTION_DOCTRINE": True,
+            "PMO_EXECUTION_DOCTRINE_REQUIRE_BULLISH": True,
+            "PMO_EXECUTION_DOCTRINE_NORMAL_SCORE_MIN": 65,
+            "PMO_EXECUTION_DOCTRINE_NORMAL_SCORE_MAX": 74.99,
+        })
+
+        blocked_symbol = self.mod.pmo_clean_execution_doctrine_gate(
+            "HOOD",
+            70,
+            settings,
+            mode="PAPER_ALPACA",
+            market="STOCK",
+            regime={"regime": "BULLISH"},
+        )
+        self.assertFalse(blocked_symbol["allowed"])
+        self.assertIn("clean doctrine blocklist", " | ".join(blocked_symbol["blockers"]))
+
+        high_score = self.mod.pmo_clean_execution_doctrine_gate(
+            "SPY",
+            90,
+            settings,
+            mode="PAPER_ALPACA",
+            market="STOCK",
+            regime={"regime": "BULLISH"},
+        )
+        self.assertFalse(high_score["allowed"])
+        self.assertIn("clean doctrine score band", " | ".join(high_score["blockers"]))
+
+        defensive = self.mod.pmo_clean_execution_doctrine_gate(
+            "SPY",
+            70,
+            settings,
+            mode="PAPER_ALPACA",
+            market="STOCK",
+            regime={"regime": "DEFENSIVE"},
+        )
+        self.assertFalse(defensive["allowed"])
+        self.assertIn("clean doctrine regime gate", " | ".join(defensive["blockers"]))
+
+    def test_clean_execution_doctrine_keeps_data_collection_isolated(self):
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        settings.update({
+            "DATA_COLLECTION_ACTIVE": True,
+            "ENABLE_PMO_CLEAN_EXECUTION_DOCTRINE": True,
+            "PMO_EXECUTION_DOCTRINE_REQUIRE_BULLISH": True,
+            "PMO_EXECUTION_DOCTRINE_NORMAL_SCORE_MIN": 65,
+            "PMO_EXECUTION_DOCTRINE_NORMAL_SCORE_MAX": 74.99,
+        })
+
+        result = self.mod.pmo_clean_execution_doctrine_gate(
+            "SPY",
+            90,
+            settings,
+            mode="PAPER_ALPACA",
+            market="STOCK",
+            regime={"regime": "DEFENSIVE"},
+        )
+        self.assertTrue(result["allowed"])
+        self.assertEqual(result["status"], "DATA_COLLECTION_ISOLATED")
+        self.assertTrue(result["data_collection_isolated"])
+        self.assertIn("research-only", " | ".join(result["warnings"]))
+        self.assertNotIn("clean doctrine score band", " | ".join(result["blockers"]))
+
     def test_ai_tool_manifest_includes_data_collection_tools(self):
         tools = {tool["name"]: tool for tool in self.mod.build_tool_manifest()}
         self.assertIn("get_data_collection_status", tools)
@@ -1416,8 +1483,9 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
                     "ENABLE_PMO_PAPER_EXECUTOR_COLLECTION_MODE": True,
                     "PMO_REQUIRE_MARKET_DATA_FOR_EXECUTION": True,
                     "PMO_REQUIRE_PROTECTIVE_EXIT_PLAN": True,
-                    "PMO_PAPER_EXECUTOR_MIN_SCORE": 75,
-                    "PMO_AGGRESSIVE_PAPER_EXECUTOR_MIN_SCORE": 75,
+                    "PMO_SCORE_PAPER_ONLY_MIN": 65,
+                    "PMO_PAPER_EXECUTOR_MIN_SCORE": 65,
+                    "PMO_AGGRESSIVE_PAPER_EXECUTOR_MIN_SCORE": 65,
                     "PMO_MAX_DAILY_TRADES": 10,
                     "PMO_MAX_TRADES_BY_MARKET": {"STOCK": 10, "CRYPTO": 0, "OPTION": 0},
                 })
@@ -1441,7 +1509,7 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
                 decision = {
                     "symbol": "SPY",
                     "side": "LONG",
-                    "score": 85,
+                    "score": 70,
                     "market_data": {"ok": True, "price": 100},
                 }
                 result = bot.submit_order_from_decision(decision, {"price": 100, "notional": 100})

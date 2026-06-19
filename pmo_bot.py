@@ -557,6 +557,11 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_REBUILD_ENTRY_SCORE_MIN": 65,
     "PMO_REBUILD_ENTRY_SCORE_MAX": 74.99,
     "PMO_REBUILD_SUSPEND_ABOVE_SCORE": 77,
+    "ENABLE_PMO_CLEAN_EXECUTION_DOCTRINE": True,
+    "PMO_EXECUTION_DOCTRINE_BLOCK_CFR_WAIT": False,
+    "PMO_EXECUTION_DOCTRINE_REQUIRE_BULLISH": True,
+    "PMO_EXECUTION_DOCTRINE_NORMAL_SCORE_MIN": 65,
+    "PMO_EXECUTION_DOCTRINE_NORMAL_SCORE_MAX": 74.99,
     "ENABLE_PMO_REGIME_HARD_GATE": True,
     "PMO_REGIME_LONG_ALLOWED_VALUES": ["BULL", "BULLISH"],
     "ENABLE_PMO_INVERSE_ETF_LONG_BLOCK": True,
@@ -6878,6 +6883,17 @@ class PMOBot:
         health = self.connection_check()
         regime = pmo_market_regime_snapshot(self, fresh=True)
         guard_row = {**payload, **decision}
+        clean_doctrine_gate = pmo_clean_execution_doctrine_gate(
+            symbol,
+            score,
+            settings,
+            mode=mode,
+            market=market,
+            regime=regime,
+        )
+        if clean_doctrine_gate.get("blockers"):
+            blocked.extend(clean_doctrine_gate.get("blockers", []))
+        decision["clean_execution_doctrine"] = clean_doctrine_gate
         entry_rebuild_guard = pmo_entry_rebuild_guard(
             symbol,
             side,
@@ -6965,7 +6981,7 @@ class PMOBot:
             row = self.log_executor_decision("BLOCKED", decision, " | ".join(blocked), alpaca_profile=execution_profile_slug, settings_override=settings)
             if market == "CRYPTO":
                 csv_append(PMO_CRYPTO_ORDER_EXECUTION_FILE, row)
-            return {"ok": False, "submitted": False, "status": "BLOCKED", "alpaca_profile": execution_profile_slug, "blocked": blocked, "score_band": score_band, "smart_limits": smart_limits, "entry_rebuild_guard": entry_rebuild_guard, "drawdown_governor": drawdown_governor, "trade_plan": trade_plan, "order_prestage": order_prestage, "paper_proof": paper_proof, "proof_quality_breaker": proof_quality_breaker, "journal_row": row}
+            return {"ok": False, "submitted": False, "status": "BLOCKED", "alpaca_profile": execution_profile_slug, "blocked": blocked, "score_band": score_band, "smart_limits": smart_limits, "clean_execution_doctrine": clean_doctrine_gate, "entry_rebuild_guard": entry_rebuild_guard, "drawdown_governor": drawdown_governor, "trade_plan": trade_plan, "order_prestage": order_prestage, "paper_proof": paper_proof, "proof_quality_breaker": proof_quality_breaker, "journal_row": row}
         order_side = OrderSide.BUY
         if market == "OPTION":
             order_request = MarketOrderRequest(
@@ -7003,12 +7019,12 @@ class PMOBot:
                 and _DATA_COLLECTION.is_active
             ):
                 _DATA_COLLECTION.record_trade(symbol)
-            return {"ok": True, "submitted": True, "status": "SUBMITTED", "alpaca_profile": execution_profile_slug, "order": order, "notional": notional, "score_band": score_band, "smart_limits": smart_limits, "entry_rebuild_guard": entry_rebuild_guard, "drawdown_governor": drawdown_governor, "trade_plan": trade_plan, "order_prestage": order_prestage, "paper_proof": paper_proof, "proof_quality_breaker": proof_quality_breaker, "journal_row": row}
+            return {"ok": True, "submitted": True, "status": "SUBMITTED", "alpaca_profile": execution_profile_slug, "order": order, "notional": notional, "score_band": score_band, "smart_limits": smart_limits, "clean_execution_doctrine": clean_doctrine_gate, "entry_rebuild_guard": entry_rebuild_guard, "drawdown_governor": drawdown_governor, "trade_plan": trade_plan, "order_prestage": order_prestage, "paper_proof": paper_proof, "proof_quality_breaker": proof_quality_breaker, "journal_row": row}
         except Exception as exc:
             row = self.log_executor_decision("FAILED", decision, str(exc), alpaca_profile=execution_profile_slug, settings_override=settings)
             if market == "CRYPTO":
                 csv_append(PMO_CRYPTO_ORDER_EXECUTION_FILE, row)
-            return {"ok": False, "submitted": False, "status": "FAILED", "alpaca_profile": execution_profile_slug, "error": str(exc), "score_band": score_band, "smart_limits": smart_limits, "entry_rebuild_guard": entry_rebuild_guard, "drawdown_governor": drawdown_governor, "trade_plan": trade_plan, "order_prestage": order_prestage, "paper_proof": paper_proof, "proof_quality_breaker": proof_quality_breaker, "journal_row": row}
+            return {"ok": False, "submitted": False, "status": "FAILED", "alpaca_profile": execution_profile_slug, "error": str(exc), "score_band": score_band, "smart_limits": smart_limits, "clean_execution_doctrine": clean_doctrine_gate, "entry_rebuild_guard": entry_rebuild_guard, "drawdown_governor": drawdown_governor, "trade_plan": trade_plan, "order_prestage": order_prestage, "paper_proof": paper_proof, "proof_quality_breaker": proof_quality_breaker, "journal_row": row}
 
     def evaluate_tradingview_alert(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         active_settings = pmo_data_collection_effective_settings(self.settings)
@@ -11393,6 +11409,99 @@ def pmo_rebuild_score_gate(score: Any, settings: Dict[str, Any], mode: Optional[
         "blockers": blockers,
         "confirmations": confirmations,
         "warnings": warnings,
+    }
+
+
+def pmo_clean_execution_doctrine_gate(
+    symbol: str,
+    score: Any,
+    settings: Dict[str, Any],
+    *,
+    mode: Optional[str] = None,
+    market: Optional[str] = None,
+    regime: Optional[Dict[str, Any]] = None,
+    meta_strategy: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    enabled = bool(settings.get("ENABLE_PMO_CLEAN_EXECUTION_DOCTRINE", True))
+    clean_symbol = str(symbol or "").strip().upper()
+    clean_mode = str(mode or settings.get("PMO_ORDER_EXECUTION_MODE", "SIGNAL_ONLY")).upper()
+    clean_market = str(market or detect_market(clean_symbol, "AUTO")).upper()
+    data_collection_active = bool(settings.get("DATA_COLLECTION_ACTIVE"))
+    value = safe_float(score, 0)
+    blockers: List[str] = []
+    warnings: List[str] = []
+    confirmations: List[str] = []
+
+    if not enabled:
+        return {
+            "enabled": False,
+            "allowed": True,
+            "status": "DISABLED",
+            "blockers": [],
+            "warnings": [],
+            "confirmations": ["clean execution doctrine disabled"],
+            "data_collection_isolated": data_collection_active,
+        }
+
+    if pmo_is_symbol_blocked(clean_symbol, settings):
+        blockers.append(f"clean doctrine blocklist: {clean_symbol} is permanently blocked from new PMO entries")
+
+    if data_collection_active:
+        warnings.append("data collection mode active: relaxed paper trades are research-only and excluded from live proof")
+        confirmations.append("data collection isolation active: live remains locked and orders stay paper-only")
+    else:
+        min_score = safe_float(settings.get("PMO_EXECUTION_DOCTRINE_NORMAL_SCORE_MIN", settings.get("PMO_REBUILD_ENTRY_SCORE_MIN", 65)), 65)
+        max_score = safe_float(settings.get("PMO_EXECUTION_DOCTRINE_NORMAL_SCORE_MAX", settings.get("PMO_REBUILD_ENTRY_SCORE_MAX", 74.99)), 74.99)
+        if value < min_score or value > max_score:
+            blockers.append(f"clean doctrine score band: normal execution only allows {min_score:g}-{max_score:g}; got {value:g}")
+        else:
+            confirmations.append(f"clean doctrine score band passed: {value:g} inside {min_score:g}-{max_score:g}")
+
+    regime_name = str((regime or {}).get("regime") or (regime or {}).get("status") or "UNKNOWN").upper()
+    if (
+        clean_market == "STOCK"
+        and not data_collection_active
+        and bool(settings.get("PMO_EXECUTION_DOCTRINE_REQUIRE_BULLISH", True))
+        and regime_name not in {"BULL", "BULLISH"}
+    ):
+        blockers.append(f"clean doctrine regime gate: normal stock entries require BULL/BULLISH; current regime is {regime_name}")
+    elif regime_name in {"BULL", "BULLISH"}:
+        confirmations.append(f"clean doctrine regime passed: {regime_name}")
+
+    meta = meta_strategy or {}
+    cfr = meta.get("cfr") or meta.get("cfr_engine") or {}
+    action_distribution = cfr.get("action_distribution") if isinstance(cfr, dict) else {}
+    cfr_action = str(
+        (action_distribution or {}).get("recommended_action")
+        or (action_distribution or {}).get("action")
+        or cfr.get("recommended_action")
+        or ""
+    ).upper()
+    if cfr_action:
+        if (
+            not data_collection_active
+            and bool(settings.get("PMO_EXECUTION_DOCTRINE_BLOCK_CFR_WAIT", False))
+            and "WAIT" in cfr_action
+        ):
+            blockers.append(f"clean doctrine CFR gate: CFR says {cfr_action}; wait for confirmation")
+        else:
+            warnings.append(f"CFR status observed: {cfr_action}")
+
+    status = "BLOCK" if blockers else "DATA_COLLECTION_ISOLATED" if data_collection_active else "PASS"
+    return {
+        "enabled": True,
+        "allowed": not blockers,
+        "status": status,
+        "mode": clean_mode,
+        "market": clean_market,
+        "symbol": clean_symbol,
+        "score": value,
+        "data_collection_isolated": data_collection_active,
+        "regime": regime_name,
+        "cfr_action": cfr_action,
+        "blockers": blockers,
+        "warnings": warnings,
+        "confirmations": confirmations,
     }
 
 
