@@ -1169,6 +1169,23 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_STARTUP_MODE": "SUMMARY",
     "PMO_WATCHLIST": ["SPY", "USO", "SLV", "GLD", "QQQ", "AAPL", "MSFT", "NVDA", "AMD", "META", "TSLA"],
     "PMO_AUTO_WATCHLIST_UNIVERSE": ["SPY", "USO", "SLV", "GLD", "QQQ", "AAPL", "MSFT", "NVDA", "AMD", "META", "TSLA"],
+    "ENABLE_PMO_QUALITY_EXPANSION_WATCHLIST": True,
+    "PMO_ENFORCE_WATCHLIST_SAFETY_FILTER": True,
+    "PMO_QUALITY_EXPANSION_WATCHLIST": [
+        "AMD", "AVGO", "QCOM", "TXN", "ADI", "MU", "LRCX", "KLAC", "AMAT", "ON", "MRVL", "SNPS",
+        "ADBE", "ORCL", "NOW", "INTU", "PANW", "CRWD", "SNOW", "WDAY", "TEAM", "DDOG",
+        "JPM", "BAC", "WFC", "GS", "MS", "C", "SCHW", "BLK", "AXP", "SPGI",
+        "UNH", "LLY", "JNJ", "ABBV", "MRK", "TMO", "ISRG", "VRTX", "REGN", "GILD",
+        "HD", "LOW", "MCD", "SBUX", "BKNG", "TJX", "ROST", "YUM",
+        "PG", "KO", "PEP", "COST", "WMT", "CL",
+        "CAT", "DE", "HON", "UNP", "RTX", "LMT", "GE", "ETN",
+        "XOM", "CVX", "COP", "SLB", "EOG", "OXY",
+        "GOOGL", "META", "NFLX", "DIS", "CMCSA", "TMUS",
+        "XLE", "XLF", "XLV", "XLB", "XLRE", "XLP", "XLI", "XBI", "SMH", "IGV",
+        "DIA", "MDY", "IJH", "IJR", "VTV", "VUG",
+        "PLD", "AMT", "EQIX", "O",
+        "LIN", "FCX", "NUE", "APD",
+    ],
     "ENABLE_PMO_INTERNATIONAL_QUALITY_WATCHLIST": True,
     "PMO_INTERNATIONAL_QUALITY_INCLUDE_HIGHER_RISK": True,
     "PMO_INTERNATIONAL_QUALITY_TOP_10": ["TSM", "ASML", "SAP", "NVO", "MELI", "HDB", "AZN", "ADYEY", "RACE", "SBGSY"],
@@ -1756,7 +1773,7 @@ EDITABLE_SETTINGS: Dict[str, Dict[str, Any]] = {
     "PMO_INTRADAY_REFRESH_ENABLED": {"type": "bool"},
     "PMO_INTRADAY_REFRESH_INTERVAL_SECONDS": {"type": "int", "min": 60, "max": 3600},
     "PMO_INTRADAY_BARS_LOOKBACK": {"type": "int", "min": 20, "max": 200},
-    "PMO_INTRADAY_REFRESH_MAX_SYMBOLS": {"type": "int", "min": 1, "max": 150},
+    "PMO_INTRADAY_REFRESH_MAX_SYMBOLS": {"type": "int", "min": 1, "max": 250},
     "ENABLE_PMO_V112_PAPER_REPLAY_JOURNAL": {"type": "bool"},
     "PMO_V112_MAX_REPLAY_LOGS_PER_RUN": {"type": "int", "min": 1, "max": 100},
     "PMO_V112_OUTCOME_REVIEW_HOURS": {"type": "int", "min": 1, "max": 720},
@@ -1898,6 +1915,9 @@ EDITABLE_SETTINGS: Dict[str, Dict[str, Any]] = {
     "ENABLE_CASH_LOCKOUT": {"type": "bool"},
     "ENABLE_PMO_ACCESS_SOURCE_HUB": {"type": "bool"},
     "ENABLE_PMO_AUTO_WATCHLIST_AI": {"type": "bool"},
+    "ENABLE_PMO_QUALITY_EXPANSION_WATCHLIST": {"type": "bool"},
+    "PMO_ENFORCE_WATCHLIST_SAFETY_FILTER": {"type": "bool"},
+    "PMO_QUALITY_EXPANSION_WATCHLIST": {"type": "text"},
     "ENABLE_PMO_INTERNATIONAL_QUALITY_WATCHLIST": {"type": "bool"},
     "PMO_INTERNATIONAL_QUALITY_INCLUDE_HIGHER_RISK": {"type": "bool"},
     "PMO_AUTO_WATCHLIST_MAX_SYMBOLS": {"type": "int", "min": 1, "max": 100},
@@ -2086,6 +2106,8 @@ SWITCHBOARD_GROUPS = {
         "PMO_ONESIGNAL_TIMEOUT_SECONDS", "PMO_ONESIGNAL_WEB_SDK_ENABLED",
         "PMO_ONESIGNAL_WEB_APP_ID", "PMO_ONESIGNAL_ALLOW_LOCALHOST_AS_SECURE_ORIGIN",
         "ENABLE_PMO_ACCESS_SOURCE_HUB", "ENABLE_PMO_AUTO_WATCHLIST_AI",
+        "ENABLE_PMO_QUALITY_EXPANSION_WATCHLIST", "PMO_ENFORCE_WATCHLIST_SAFETY_FILTER",
+        "PMO_QUALITY_EXPANSION_WATCHLIST",
         "PMO_ACCESS_MAX_ITEMS", "PMO_AUTO_WATCHLIST_MAX_SYMBOLS",
         "PMO_AUTO_WATCHLIST_MIN_SCORE", "PMO_AUTO_WATCHLIST_REFRESH_MINUTES",
         "ENABLE_PMO_INTERNATIONAL_QUALITY_WATCHLIST", "PMO_INTERNATIONAL_QUALITY_INCLUDE_HIGHER_RISK",
@@ -2879,21 +2901,77 @@ def pmo_international_quality_watchlist(settings: Optional[Dict[str, Any]] = Non
     }
 
 
+def pmo_watchlist_safety_exclusions(settings: Optional[Dict[str, Any]] = None) -> set:
+    settings = settings or load_settings()
+    return set(pmo_symbol_blocklist(settings)) | set(pmo_leveraged_etf_symbols(settings)) | set(pmo_inverse_etf_symbols(settings))
+
+
+def pmo_safe_watchlist_symbols(symbols: Iterable[Any], settings: Optional[Dict[str, Any]] = None) -> List[str]:
+    settings = settings or load_settings()
+    unique = unique_symbols(symbols)
+    if not bool(settings.get("PMO_ENFORCE_WATCHLIST_SAFETY_FILTER", True)):
+        return unique
+    excluded = pmo_watchlist_safety_exclusions(settings)
+    return [symbol for symbol in unique if symbol not in excluded]
+
+
+def pmo_quality_expansion_symbols(settings: Optional[Dict[str, Any]] = None) -> List[str]:
+    settings = settings or load_settings()
+    if not bool(settings.get("ENABLE_PMO_QUALITY_EXPANSION_WATCHLIST", True)):
+        return []
+    raw_symbols = settings.get("PMO_QUALITY_EXPANSION_WATCHLIST") or DEFAULT_SETTINGS.get("PMO_QUALITY_EXPANSION_WATCHLIST", [])
+    return pmo_safe_watchlist_symbols(raw_symbols, settings)
+
+
+def pmo_quality_expansion_watchlist(settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    raw_symbols = unique_symbols(settings.get("PMO_QUALITY_EXPANSION_WATCHLIST") or DEFAULT_SETTINGS.get("PMO_QUALITY_EXPANSION_WATCHLIST", []))
+    excluded = pmo_watchlist_safety_exclusions(settings)
+    active_symbols = [symbol for symbol in raw_symbols if symbol not in excluded]
+    excluded_symbols = [symbol for symbol in raw_symbols if symbol in excluded]
+    return {
+        "ok": True,
+        "enabled": bool(settings.get("ENABLE_PMO_QUALITY_EXPANSION_WATCHLIST", True)),
+        "source": "PMO_QUALITY_EXPANSION_WATCHLIST",
+        "selection_criteria": "high liquidity, optionable, sector-diverse, large/mid-cap bias",
+        "same_gates_apply": True,
+        "gate_summary": {
+            "rvol": "PMO gates unchanged",
+            "vwap": "PMO gates unchanged",
+            "regime": "PMO gates unchanged",
+            "score_band": "PMO gates unchanged",
+            "blocklist": "enforced",
+        },
+        "safety_filter_enabled": bool(settings.get("PMO_ENFORCE_WATCHLIST_SAFETY_FILTER", True)),
+        "total_candidates": len(raw_symbols),
+        "active_candidates": len(active_symbols),
+        "excluded_candidates": len(excluded_symbols),
+        "excluded_symbols": excluded_symbols,
+        "active_symbols": active_symbols,
+        "watchlist_only": False,
+        "live_order_unlocked": False,
+        "orders_placed": False,
+        "settings_changed_by_endpoint": False,
+    }
+
+
 def pmo_market_universe(settings: Dict[str, Any]) -> List[str]:
     if bool(settings.get("ENABLE_PMO_MICRO_ACCOUNT_MODE", False)):
         safe_symbols = settings.get("PMO_MICRO_SAFE_WATCHLIST") or DEFAULT_SETTINGS.get("PMO_MICRO_SAFE_WATCHLIST", [])
-        return unique_symbols(safe_symbols)
+        return pmo_safe_watchlist_symbols(safe_symbols, settings)
     sector_symbols = [item["symbol"] for item in SECTOR_ROTATION_SYMBOLS]
     international_symbols: List[str] = []
     if bool(settings.get("ENABLE_PMO_INTERNATIONAL_QUALITY_WATCHLIST", True)):
         international_symbols = [row["symbol"] for row in pmo_international_quality_rows(settings)]
-    return unique_symbols(
+    quality_expansion_symbols = pmo_quality_expansion_symbols(settings)
+    return pmo_safe_watchlist_symbols(unique_symbols(
         settings.get("PMO_WATCHLIST", []),
         settings.get("PMO_AUTO_WATCHLIST_UNIVERSE", []),
+        quality_expansion_symbols,
         international_symbols,
         sector_symbols,
         ALL_MARKET_WATCHLIST_SYMBOLS,
-    )
+    ), settings)
 
 
 def atomic_write_text(path: Path, text: str) -> None:
@@ -5360,7 +5438,8 @@ class PMOBot:
             pmo_market_universe(self.settings),
             crypto_symbols,
         )
-        for symbol in symbols[:150]:
+        max_symbols = int(max(1, min(250, safe_float(self.settings.get("PMO_INTRADAY_REFRESH_MAX_SYMBOLS", 200), 200))))
+        for symbol in symbols[:max_symbols]:
             data = self.get_latest_price(symbol, "AUTO")
             ranked.append({
                 "symbol": data.get("symbol", symbol),
@@ -32865,7 +32944,7 @@ def pmo_refresh_intraday_watchlist(settings: Optional[Dict[str, Any]] = None, fo
         selected_symbols,
         settings.get("PMO_AUTO_WATCHLIST_UNIVERSE", []),
     )
-    max_symbols = int(max(1, min(150, safe_float(settings.get("PMO_INTRADAY_REFRESH_MAX_SYMBOLS", 40), 40))))
+    max_symbols = int(max(1, min(250, safe_float(settings.get("PMO_INTRADAY_REFRESH_MAX_SYMBOLS", 200), 200))))
     stock_symbols = [sym for sym in symbols if detect_market(str(sym), "AUTO") == "STOCK"][:max_symbols]
     if not stock_symbols:
         return {"ok": True, "skipped": True, "reason": "empty stock watchlist", "fetched": 0}
@@ -33673,6 +33752,7 @@ def api_connections_refresh():
 def api_market_universe():
     settings = load_settings()
     international_quality = pmo_international_quality_watchlist(settings)
+    quality_expansion = pmo_quality_expansion_watchlist(settings)
     return jsonify({
         "ok": True,
         "supported_markets": settings.get("PMO_SUPPORTED_MARKETS", []),
@@ -33686,6 +33766,14 @@ def api_market_universe():
             "higher_risk_count": international_quality["higher_risk_count"],
             "symbols": international_quality["symbols"],
         },
+        "quality_expansion": {
+            "enabled": quality_expansion["enabled"],
+            "same_gates_apply": quality_expansion["same_gates_apply"],
+            "total_candidates": quality_expansion["total_candidates"],
+            "active_candidates": quality_expansion["active_candidates"],
+            "excluded_candidates": quality_expansion["excluded_candidates"],
+            "excluded_symbols": quality_expansion["excluded_symbols"],
+        },
     })
 
 
@@ -33694,6 +33782,13 @@ def api_market_universe():
 def api_international_quality_watchlist():
     settings = load_settings()
     return jsonify(pmo_international_quality_watchlist(settings))
+
+
+@app.route("/api/quality-expansion-watchlist", methods=["GET"])
+@app.route("/api/watchlist/quality-expansion", methods=["GET"])
+def api_quality_expansion_watchlist():
+    settings = load_settings()
+    return jsonify(pmo_quality_expansion_watchlist(settings))
 
 
 @app.route("/api/tradingview/refresh-pine", methods=["POST"])

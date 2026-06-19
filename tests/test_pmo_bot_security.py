@@ -832,6 +832,46 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertNotIn("ASML", disabled_universe)
         self.assertNotIn("OTGLY", disabled_universe)
 
+    def test_quality_expansion_watchlist_filters_unsafe_symbols(self):
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        settings["ENABLE_PMO_MICRO_ACCOUNT_MODE"] = False
+        snapshot = self.mod.pmo_quality_expansion_watchlist(settings)
+
+        self.assertTrue(snapshot["ok"])
+        self.assertTrue(snapshot["same_gates_apply"])
+        self.assertEqual(snapshot["total_candidates"], 100)
+        self.assertEqual(snapshot["active_candidates"], 99)
+        self.assertIn("CVX", snapshot["excluded_symbols"])
+        self.assertIn("ADBE", snapshot["active_symbols"])
+        self.assertIn("PLD", snapshot["active_symbols"])
+        self.assertFalse(snapshot["orders_placed"])
+        self.assertFalse(snapshot["live_order_unlocked"])
+
+    def test_quality_expansion_symbols_join_safe_market_universe(self):
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        settings["ENABLE_PMO_MICRO_ACCOUNT_MODE"] = False
+        settings["PMO_WATCHLIST"] = []
+        settings["PMO_AUTO_WATCHLIST_UNIVERSE"] = []
+        universe = self.mod.pmo_market_universe(settings)
+
+        self.assertIn("ADBE", universe)
+        self.assertIn("TMO", universe)
+        self.assertIn("PLD", universe)
+        self.assertNotIn("CVX", universe)
+        self.assertNotIn("SQQQ", universe)
+        self.assertNotIn("TQQQ", universe)
+
+    def test_quality_expansion_endpoint_is_read_only(self):
+        response = self.client.get("/api/quality-expansion-watchlist")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["total_candidates"], 100)
+        self.assertTrue(payload["same_gates_apply"])
+        self.assertFalse(payload["orders_placed"])
+        self.assertFalse(payload["live_order_unlocked"])
+        self.assertFalse(payload["settings_changed_by_endpoint"])
+
     def test_international_quality_endpoint_is_read_only(self):
         response = self.client.get("/api/international-quality-watchlist")
         self.assertEqual(response.status_code, 200)
