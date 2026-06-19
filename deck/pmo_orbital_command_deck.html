@@ -455,6 +455,11 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
 .s-amber{background:var(--abg);border-color:var(--ad);color:var(--amber)}
 .s-green{background:var(--gbg);border-color:var(--gd);color:var(--green)}
 .csvg{position:absolute;inset:0;pointer-events:none}
+.const-legend{position:absolute;right:12px;top:42px;z-index:3;display:flex;flex-direction:column;gap:6px;min-width:126px;padding:8px 9px;border:1px solid rgba(122,183,255,.22);border-radius:7px;background:linear-gradient(180deg,rgba(8,13,24,.76),rgba(4,8,16,.54));box-shadow:0 10px 28px rgba(0,0,0,.24);backdrop-filter:blur(6px);pointer-events:none}
+.const-legend span{display:flex;align-items:center;gap:6px;font-size:8px;font-weight:800;letter-spacing:.04em;line-height:1.15;text-transform:uppercase;white-space:nowrap}
+.const-dot{width:7px;height:7px;border-radius:50%;box-shadow:0 0 10px currentColor;flex:0 0 7px}
+.const-legend-v{color:var(--violet)}.const-legend-c{color:var(--cyan)}.const-legend-r{color:var(--red)}.const-legend-a{color:var(--amber)}.const-legend-o{color:var(--text3)}
+@media(max-width:760px){.const-legend{right:8px;top:auto;bottom:8px;min-width:118px;padding:7px}.const-legend span{font-size:7px}}
 
 /* FIREWALL */
 .fw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
@@ -1309,13 +1314,13 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
     <div class="star-node" style="left:168px;top:306px" onclick="aiNodeInfo('advanced_ml')"><div class="sc s-cyan" id="cn-advanced_ml">ML+</div><div class="sl" style="color:var(--cyan)">Advanced ML</div></div>
     <div class="star-node" style="left:309px;top:306px" onclick="aiNodeInfo('meta_strategy')"><div class="sc s-green" id="cn-meta_strategy">CFR</div><div class="sl" style="color:var(--green)">Meta Strategy</div></div>
     <div class="star-node" style="left:452px;top:306px" onclick="aiNodeInfo('vault')"><div class="sc s-act" id="cn-vault">VLT</div><div class="sl" style="color:var(--violet)">Vault Intel</div></div>
-  </div>
-  <div style="display:flex;gap:13px;margin-top:3px;flex-wrap:wrap">
-    <span style="font-size:8px;color:var(--violet)">Active+Influencing</span>
-    <span style="font-size:8px;color:var(--cyan)">Active+Observe</span>
-    <span style="font-size:8px;color:var(--red)">Blocked live</span>
-    <span style="font-size:8px;color:var(--amber)">Observe+Report</span>
-    <span style="font-size:8px;color:var(--text3)">-- Observe-only</span>
+    <div class="const-legend" aria-label="AI constellation legend">
+      <span class="const-legend-v"><i class="const-dot"></i>Active+Influencing</span>
+      <span class="const-legend-c"><i class="const-dot"></i>Active+Observe</span>
+      <span class="const-legend-r"><i class="const-dot"></i>Blocked live</span>
+      <span class="const-legend-a"><i class="const-dot"></i>Observe+Report</span>
+      <span class="const-legend-o"><i class="const-dot"></i>Observe-only</span>
+    </div>
   </div>
 </div>
 

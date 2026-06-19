@@ -2234,6 +2234,19 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertIn("meta_strategy:['Meta Strategy / CFR'", html)
         self.assertIn("vault:['Vault Intelligence'", html)
 
+    def test_constellation_legend_is_inside_map_canvas(self):
+        html = (self.mod.PMO_DIR / "deck" / "pmo_orbital_command_deck.html").read_text(encoding="utf-8")
+        wrap_index = html.index('<div class="const-wrap">')
+        legend_index = html.index('class="const-legend"')
+        next_panel_index = html.index('<!-- AI SIGNAL ENGINES -->')
+        self.assertGreater(legend_index, wrap_index)
+        self.assertLess(legend_index, next_panel_index)
+        self.assertIn(".const-legend{position:absolute;right:12px;top:42px", html)
+        self.assertIn("Active+Influencing", html)
+        self.assertIn("Active+Observe", html)
+        self.assertIn("Blocked live", html)
+        self.assertIn("Observe+Report", html)
+
     def test_trade_discipline_blocks_trend_entry_after_three_thirty(self):
         settings = dict(self.mod.DEFAULT_SETTINGS)
         settings.update({
