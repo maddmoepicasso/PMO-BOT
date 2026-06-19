@@ -27,3 +27,7 @@ python pmo_bot.py
 ```
 
 Live trading switches remain unchanged and locked by default.
+
+## Operational Docs
+
+- `docs/live_trading_readiness_checklist.md` - owner review checklist for live trading readiness. This is documentation only and does not unlock or enforce any gate.
