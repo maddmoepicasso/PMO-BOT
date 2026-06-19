@@ -8046,6 +8046,56 @@ def recent_csv_rows(path: Path, limit: int = 8) -> List[Dict[str, Any]]:
     return rows[-limit:]
 
 
+def pmo_csv_rows(path: Path) -> List[Dict[str, Any]]:
+    if not path.exists():
+        return []
+    try:
+        with path.open(newline="", encoding="utf-8", errors="replace") as handle:
+            return list(csv.DictReader(handle))
+    except Exception:
+        return []
+
+
+def pmo_trade_journal_sync_state(path: Optional[Path] = None) -> Dict[str, Any]:
+    rows = pmo_csv_rows(path or TRADE_JOURNAL_FILE)
+    existing_keys = {
+        str(row.get("sync_key", "")).strip()
+        for row in rows
+        if str(row.get("sync_key", "")).strip()
+    }
+    existing_closed = {
+        str(row.get("source_order_id", "") or row.get("order_id", "")).strip()
+        for row in rows
+        if str(row.get("status", "")).upper().startswith("CLOSED")
+    }
+    terminal_source_ids = {
+        str(row.get("source_order_id", "") or row.get("order_id", "")).strip()
+        for row in rows
+        if str(row.get("status", "")).upper().startswith(("CLOSED", "VOID_"))
+    }
+    close_submitted_by_source: Dict[str, str] = {}
+    allocated_close_order_ids = set()
+    reserved_close_order_ids = set()
+    for row in rows:
+        source_id = str(row.get("source_order_id", "") or row.get("order_id", "")).strip()
+        close_id = str(row.get("close_order_id", "")).strip()
+        row_status = str(row.get("status", "")).upper()
+        if source_id and close_id and row_status == "CLOSE_SUBMITTED":
+            close_submitted_by_source[source_id] = close_id
+            reserved_close_order_ids.add(close_id)
+        if close_id and row_status.startswith("CLOSED"):
+            allocated_close_order_ids.add(close_id)
+    return {
+        "rows": rows,
+        "existing_keys": existing_keys,
+        "existing_closed": existing_closed,
+        "terminal_source_ids": terminal_source_ids,
+        "close_submitted_by_source": close_submitted_by_source,
+        "allocated_close_order_ids": allocated_close_order_ids,
+        "reserved_close_order_ids": reserved_close_order_ids,
+    }
+
+
 def csv_truth(value: Any) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "on", "y"}
 
@@ -9627,7 +9677,30 @@ def pmo_trade_journal_quality_fields(symbol: str, source_row: Optional[Dict[str,
     }
 
 
+_trade_journal_sync_lock = threading.Lock()
+
+
 def pmo_sync_trade_journal_from_broker(settings: Dict[str, Any], days: int = 14, limit: int = 500, close_hits: Optional[bool] = None) -> Dict[str, Any]:
+    if not _trade_journal_sync_lock.acquire(blocking=False):
+        return {
+            "ok": True,
+            "busy": True,
+            "updated": now_et().isoformat(),
+            "appended": 0,
+            "open_synced": 0,
+            "closed_synced": 0,
+            "close_submitted": 0,
+            "orders_placed": False,
+            "live_unlocked": False,
+            "detail": "Trade journal sync already running; skipped duplicate sync pass.",
+        }
+    try:
+        return _pmo_sync_trade_journal_from_broker_locked(settings, days=days, limit=limit, close_hits=close_hits)
+    finally:
+        _trade_journal_sync_lock.release()
+
+
+def _pmo_sync_trade_journal_from_broker_locked(settings: Dict[str, Any], days: int = 14, limit: int = 500, close_hits: Optional[bool] = None) -> Dict[str, Any]:
     if close_hits is None:
         close_hits = bool(settings.get("ENABLE_PMO_PAPER_AUTO_CLOSE_ON_TARGET_STOP", True))
     elif not isinstance(close_hits, bool):
@@ -9637,26 +9710,14 @@ def pmo_sync_trade_journal_from_broker(settings: Dict[str, Any], days: int = 14,
     executor_rows = recent_csv_rows(PMO_ORDER_EXECUTION_FILE, 5000)
     submitted_rows = [row for row in executor_rows if str(row.get("status", "")).upper() == "SUBMITTED" and str(row.get("paper", "")).lower() in {"true", "1", "yes"}]
     plan_rows = {str(row.get("plan_id", "")).strip(): row for row in recent_csv_rows(PMO_TRADE_PLAN_FILE, 5000) if str(row.get("plan_id", "")).strip()}
-    journal_rows = recent_csv_rows(TRADE_JOURNAL_FILE, 5000)
-    existing_keys = {str(row.get("sync_key", "")).strip() for row in journal_rows if str(row.get("sync_key", "")).strip()}
-    existing_closed = {str(row.get("source_order_id", "") or row.get("order_id", "")).strip() for row in journal_rows if str(row.get("status", "")).upper().startswith("CLOSED")}
-    terminal_source_ids = {
-        str(row.get("source_order_id", "") or row.get("order_id", "")).strip()
-        for row in journal_rows
-        if str(row.get("status", "")).upper().startswith(("CLOSED", "VOID_"))
-    }
-    close_submitted_by_source: Dict[str, str] = {}
-    allocated_close_order_ids = set()
-    reserved_close_order_ids = set()
-    for journal_row in journal_rows:
-        source_id = str(journal_row.get("source_order_id", "") or journal_row.get("order_id", "")).strip()
-        close_id = str(journal_row.get("close_order_id", "")).strip()
-        row_status = str(journal_row.get("status", "")).upper()
-        if source_id and close_id and row_status == "CLOSE_SUBMITTED":
-            close_submitted_by_source[source_id] = close_id
-            reserved_close_order_ids.add(close_id)
-        if close_id and row_status.startswith("CLOSED"):
-            allocated_close_order_ids.add(close_id)
+    journal_state = pmo_trade_journal_sync_state()
+    journal_rows = journal_state["rows"]
+    existing_keys = journal_state["existing_keys"]
+    existing_closed = journal_state["existing_closed"]
+    terminal_source_ids = journal_state["terminal_source_ids"]
+    close_submitted_by_source = journal_state["close_submitted_by_source"]
+    allocated_close_order_ids = journal_state["allocated_close_order_ids"]
+    reserved_close_order_ids = journal_state["reserved_close_order_ids"]
     profiles = sorted({env_key_slug(row.get("alpaca_profile") or bot.alpaca_profile) for row in submitted_rows}) or [env_key_slug(bot.alpaca_profile)]
     broker_by_profile: Dict[str, List[Dict[str, Any]]] = {}
     positions_by_profile: Dict[str, List[Dict[str, Any]]] = {}
@@ -10423,8 +10484,14 @@ def pmo_apply_journal_lot_reconciliation(
 
     written = 0
     if record:
+        existing_keys = pmo_trade_journal_sync_state()["existing_keys"]
         for marker in markers:
+            marker_key = str(marker.get("sync_key") or "").strip()
+            if marker_key and marker_key in existing_keys:
+                continue
             csv_append(TRADE_JOURNAL_FILE, marker)
+            if marker_key:
+                existing_keys.add(marker_key)
             written += 1
     return {
         "ok": True,

@@ -400,6 +400,45 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertFalse(body["live_unlocked"])
         self.assertIn("dry_run", body)
 
+    def test_trade_journal_sync_state_reads_full_journal_keys(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            journal = Path(tmp) / "pmo_bot_trade_journal.csv"
+            self.mod.csv_append(journal, {
+                "timestamp": "2026-06-18T09:40:00-04:00",
+                "status": "OPEN_FILLED",
+                "symbol": "OLD",
+                "source_order_id": "old-order",
+                "sync_key": "old-order:OPEN_FILLED",
+            })
+            for index in range(12):
+                self.mod.csv_append(journal, {
+                    "timestamp": f"2026-06-18T10:{index:02d}:00-04:00",
+                    "status": "OPEN_FILLED",
+                    "symbol": f"T{index}",
+                    "source_order_id": f"new-order-{index}",
+                    "sync_key": f"new-order-{index}:OPEN_FILLED",
+                })
+
+            recent_keys = {row.get("sync_key") for row in self.mod.recent_csv_rows(journal, 5)}
+            self.assertNotIn("old-order:OPEN_FILLED", recent_keys)
+
+            state = self.mod.pmo_trade_journal_sync_state(journal)
+            self.assertIn("old-order:OPEN_FILLED", state["existing_keys"])
+            self.assertIn("new-order-11:OPEN_FILLED", state["existing_keys"])
+
+    def test_trade_journal_sync_returns_busy_without_second_write_path(self):
+        acquired = self.mod._trade_journal_sync_lock.acquire(blocking=False)
+        self.assertTrue(acquired)
+        try:
+            result = self.mod.pmo_sync_trade_journal_from_broker(dict(self.mod.DEFAULT_SETTINGS))
+            self.assertTrue(result["ok"])
+            self.assertTrue(result["busy"])
+            self.assertFalse(result["orders_placed"])
+            self.assertFalse(result["live_unlocked"])
+            self.assertEqual(result["appended"], 0)
+        finally:
+            self.mod._trade_journal_sync_lock.release()
+
     def test_journal_reconciliation_markers_are_append_only_not_proof(self):
         original_trade_journal = self.mod.TRADE_JOURNAL_FILE
         try:
@@ -432,6 +471,11 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
                     record=True,
                 )
                 self.assertEqual(result["markers_written"], 2)
+                duplicate_run = self.mod.pmo_apply_journal_lot_reconciliation(
+                    positions=[{"symbol": "TEST"}],
+                    record=True,
+                )
+                self.assertEqual(duplicate_run["markers_written"], 0)
                 rows = self.mod.recent_csv_rows(self.mod.TRADE_JOURNAL_FILE, 20)
                 statuses = {row.get("status") for row in rows}
                 self.assertIn("BROKER_CONSOLIDATED", statuses)
