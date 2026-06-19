@@ -608,6 +608,18 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertIn("free.classList.toggle('is-on', state.editMode && !state.snap)", editor_js)
         self.assertIn("snap.classList.toggle('is-on', state.editMode && state.snap)", editor_js)
 
+    def test_orbital_deck_stream_updates_do_not_repaint_v112_panels(self):
+        html = (self.mod.PMO_DIR / "deck" / "pmo_orbital_command_deck.html").read_text(encoding="utf-8")
+        self.assertIn("const streamLite = snapshot.stream === true", html)
+        self.assertIn("function updateLightStreamPanels()", html)
+        self.assertIn("if(streamLite){\n    updateLightStreamPanels();\n    return;\n  }\n  updateAllPanels();", html)
+        light_block = html.split("function updateLightStreamPanels()", 1)[1].split("function toggleAIChat", 1)[0]
+        self.assertIn("updateProof();", light_block)
+        self.assertNotIn("updateConstellation();", light_block)
+        self.assertNotIn("updateReadinessVault();", light_block)
+        self.assertNotIn("updateRealJournal();", light_block)
+        self.assertNotIn("updateDashboardPolish();", light_block)
+
     def test_reports_route_blocks_env_and_source_files(self):
         blocked_paths = [
             self.mod.PMO_DIR / ".env",

@@ -2115,6 +2115,8 @@ var tradeTruthLoading = false;
 var assetUniverseLoading = false;
 const QUICK_POLL_INTERVAL = 2000;
 const DEEP_POLL_INTERVAL = 30000;
+const LIGHT_STREAM_RENDER_MIN_MS = 900;
+var lastLightStreamRenderMs = 0;
 
 function fetchWithTimeout(url, opts, timeoutMs){
   const cleanOpts={...(opts||{})};
@@ -2495,6 +2497,7 @@ async function fetchJsonTimed(path,timeoutMs){
 }
 function applyLiveSnapshot(snapshot,mode,latency){
   if(!snapshot||typeof snapshot!=='object')return;
+  const streamLite = snapshot.stream === true && snapshot.mode !== 'SNAPSHOT' && !snapshot.journal && !snapshot.why_not && !snapshot.dashboard_polish && !snapshot.tradeTruth;
   if(snapshot.mode==='SNAPSHOT'||snapshot.trust_level||snapshot.data_quality_issues){
     deckSnapshotData=snapshot;
     liveData={...liveData,deckSnapshot:snapshot};
@@ -2511,7 +2514,23 @@ function applyLiveSnapshot(snapshot,mode,latency){
   setBanner('live','LIVE - '+mode+' connected to PMO Bot at '+BOT_HOST+' - '+(typeof lastLatencyMs==='number'?lastLatencyMs+'ms':'live'));
   const ds=document.getElementById('drawerStatus');
   if(ds){ds.textContent='Connected';ds.style.color='var(--green)';}
+  if(streamLite){
+    updateLightStreamPanels();
+    return;
+  }
   updateAllPanels();
+}
+
+function updateLightStreamPanels(){
+  const nowMs=Date.now();
+  if(nowMs-lastLightStreamRenderMs<LIGHT_STREAM_RENDER_MIN_MS)return;
+  lastLightStreamRenderMs=nowMs;
+  updateNav();
+  updateMetrics();
+  updateProof();
+  updateDeskAI();
+  updateFirewall();
+  if(aiChatOpen)updateAIContext();
 }
 
 let aiChatOpen=false;
