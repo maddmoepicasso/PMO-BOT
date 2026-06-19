@@ -293,10 +293,17 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
 
     def test_ai_tool_manifest_includes_data_collection_tools(self):
         tools = {tool["name"]: tool for tool in self.mod.build_tool_manifest()}
+        self.assertEqual(tools["get_pmo_status"]["endpoint"], "/api/deck/snapshot")
         self.assertIn("get_data_collection_status", tools)
         self.assertEqual(tools["get_data_collection_status"]["permission"], "READ_ONLY")
         self.assertIn("enable_data_collection", tools)
         self.assertEqual(tools["enable_data_collection"]["permission"], "ADMIN_REQUIRED")
+
+    def test_orbital_deck_avoids_heavy_status_polling(self):
+        html = (self.mod.PMO_DIR / "deck" / "pmo_orbital_command_deck.html").read_text(encoding="utf-8")
+        self.assertIn("BOT_HOST+'/api/deck/snapshot'", html)
+        self.assertNotIn("BOT_HOST+'/api/status'", html)
+        self.assertNotIn("getJson('/api/status')", html)
 
     def test_profit_tracker_snapshot_is_read_only(self):
         snapshot = self.mod.pmo_profit_tracker_snapshot(

@@ -86,7 +86,7 @@ def _tool(
 def build_tool_manifest() -> List[Dict[str, Any]]:
     """Return the Desk Commander tool manifest."""
     return [
-        _tool("get_pmo_status", "PMO Status", READ_ONLY, "Read bot health, account, regime, and proof state.", "/api/status", "GET"),
+        _tool("get_pmo_status", "PMO Status", READ_ONLY, "Read fast bot health, account, regime, and proof state.", "/api/deck/snapshot", "GET"),
         _tool("get_live_readiness", "Live Readiness", READ_ONLY, "Explain why live readiness is locked or unlocked.", "/api/live-readiness"),
         _tool("get_safety_status", "Safety Status", READ_ONLY, "Read current PMO safety mode and proof snapshot.", "/api/safety/status", "GET"),
         _tool("refresh_connections", "Refresh Connections", READ_ONLY, "Refresh broker and service connection status.", "/api/connections/refresh"),

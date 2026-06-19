@@ -2045,7 +2045,7 @@ function installPMOLayoutEditor(){
 }
 window.addEventListener('DOMContentLoaded',()=>{setBotHost(sameMachineBotHost()||BOT_HOST,false);pmoApplyLogoSrcs();installPMOLayoutEditor();});
 var connected = false;
-var liveData = window.liveData || {};   // full snapshot from /api/status + /api/health
+var liveData = window.liveData || {};   // fast snapshot from /api/deck/snapshot + /api/health
 var liveSettings = window.liveSettings || {};
 var tradeReplayData = window.tradeReplayData || null;
 var assetUniverseData = window.assetUniverseData || null;
@@ -2367,7 +2367,7 @@ async function fetchAll(silent=false){
   fetchAllLoading=true;
   try{
     if(!connected)await discoverBotHost();
-    // Health is useful, but PMO status is the authoritative dashboard payload.
+    // Health is useful, but the fast deck snapshot is the authoritative dashboard payload.
     let health={};
     try{
       const hResp=await fetchWithTimeout(BOT_HOST+'/api/health',{},5000);
@@ -2376,10 +2376,10 @@ async function fetchAll(silent=false){
       health={ok:false,error:healthErr.message};
     }
 
-    // /api/status is useful but heavier; never let it block the live snapshot path.
+    // /api/status is intentionally avoided here; it is too heavy for live polling.
     let status={};
     try{
-      const sResp=await fetchWithTimeout(BOT_HOST+'/api/status',{},15000);
+      const sResp=await fetchWithTimeout(BOT_HOST+'/api/deck/snapshot',{},8000);
       status=sResp.ok?await sResp.json():{ok:false,error:'HTTP '+sResp.status};
     }catch(statusErr){
       status={ok:false,error:statusErr.message};
@@ -2393,7 +2393,7 @@ async function fetchAll(silent=false){
       fetchWithTimeout(BOT_HOST+'/api/intelligence/status',{},8000).then(r=>r.json()),
       fetchWithTimeout(BOT_HOST+'/api/trade-replay?limit=25',{},20000).then(r=>r.json()),
       fetchWithTimeout(BOT_HOST+'/api/asset-universe',{},20000).then(r=>r.json()),
-      fetchWithTimeout(BOT_HOST+'/api/deck/snapshot',{},8000).then(r=>r.json()),
+      Promise.resolve(status),
       fetchWithTimeout(BOT_HOST+'/api/trade-truth',{},20000).then(r=>r.json()),
       fetchWithTimeout(BOT_HOST+'/api/firewall/status',{},8000).then(r=>r.json()),
       fetchWithTimeout(BOT_HOST+'/api/edges',{},8000).then(r=>r.json()),

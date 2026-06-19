@@ -25784,7 +25784,7 @@ bindClick('refreshSafetyStatusButton', async () => {
     toast('PMO safety status refreshed');
 });
 bindClick('viewProofGapsButton', async () => {
-    const status = await getJson('/api/status');
+    const status = await getJson('/api/deck/snapshot');
     const crypto = await getJson('/api/crypto/proof');
     setText('proofGapOut', JSON.stringify({paper_proof: status.paper_proof, crypto_proof: crypto.proof}, null, 2));
     toast('PMO proof gaps loaded');
@@ -26436,7 +26436,7 @@ bindClick('cmsRefreshSafetyButton', async () => {
     toast('CMS safety refreshed');
 });
 bindClick('refreshCmsSettingsButton', async () => {
-    const payload = await getJson('/api/status');
+    const payload = await getJson('/api/deck/snapshot');
     const rows = Object.keys(payload.settings || {}).map(name => ({name, category: 'Runtime Settings', current: payload.settings[name], default: '', type: typeof payload.settings[name], changed_from_default: '', risk_level: /LIVE|ORDER|EXECUTOR|SECRET/.test(name) ? 'HIGH' : 'NORMAL'}));
     renderCmsSettings(rows, getValue('cmsSettingsSearch', ''));
     setText('cmsSettingsOut', JSON.stringify({count: rows.length}, null, 2));
@@ -26485,18 +26485,18 @@ bindClick('viewProofGapsButton', async () => {
     toast('PMO proof gaps refreshed');
 });
 bindClick('refreshTodayButton', async () => {
-    const status = await getJson('/api/status');
+    const status = await getJson('/api/deck/snapshot');
     const allDay = await getJson('/api/all-day/status');
     const executor = await getJson('/api/executor/status');
     const payload = {
-        safety_state: allDay.all_day?.runner_mode || status.mode || 'UNKNOWN',
+        safety_state: allDay.all_day?.runner_mode || status.bot_mode || status.mode || 'UNKNOWN',
         alpaca_connected: status.account?.status || status.alpaca_status || 'UNKNOWN',
         paper_mode: status.settings?.ALPACA_PAPER,
         dry_run_orders: status.settings?.PMO_DRY_RUN_ORDERS,
         equity: status.account?.equity,
         buying_power: status.account?.buying_power,
         day_pnl: status.account?.day_pnl,
-        market_regime: status.regime?.regime,
+        market_regime: status.regime || status.market_session?.session || 'UNKNOWN',
         current_blocker: (allDay.all_day?.blockers || [])[0] || 'No blocker reported',
         next_safe_action: allDay.all_day?.next_action,
         executor_ready: executor.executor?.ready,
@@ -31592,6 +31592,21 @@ def api_deck_snapshot():
         "account_profiles": account_profile_rows,
         "paper_safe": paper_safe,
         "execution_mode": execution_mode,
+        "settings": {
+            "BOT_MODE": str(settings.get("BOT_MODE", settings.get("PMO_BOT_MODE", "UNKNOWN"))).upper(),
+            "ALPACA_PAPER": bool(settings.get("ALPACA_PAPER", True)),
+            "PMO_DRY_RUN_ORDERS": bool(settings.get("PMO_DRY_RUN_ORDERS", True)),
+            "ORDER_AUTOMATION_ENABLED": bool(settings.get("ORDER_AUTOMATION_ENABLED", False)),
+            "PMO_ALLOW_LIVE_TRADING": bool(settings.get("PMO_ALLOW_LIVE_TRADING", False)),
+            "PMO_LIVE_TRADING_ENABLED": bool(settings.get("PMO_LIVE_TRADING_ENABLED", False)),
+            "ENABLE_TRADINGVIEW_WEBHOOK_BRIDGE": bool(settings.get("ENABLE_TRADINGVIEW_WEBHOOK_BRIDGE", False)),
+            "ENABLE_PMO_BACKGROUND_PAPER_SCHEDULER": bool(settings.get("ENABLE_PMO_BACKGROUND_PAPER_SCHEDULER", False)),
+            "ENABLE_PMO_TRADE_DISCIPLINE_CHECKS": bool(settings.get("ENABLE_PMO_TRADE_DISCIPLINE_CHECKS", True)),
+            "PMO_MICRO_CAUTION_LOSS_USD": settings.get("PMO_MICRO_CAUTION_LOSS_USD", 1.5),
+            "PMO_PROOF_MIN_WIN_RATE": settings.get("PMO_PROOF_MIN_WIN_RATE", 0.52),
+            "PMO_PROOF_MIN_PF": settings.get("PMO_PROOF_MIN_PF", 1.25),
+            "TRADINGVIEW_WEBHOOK_SECRET": "***SET***" if str(settings.get("TRADINGVIEW_WEBHOOK_SECRET") or "").strip() else "",
+        },
         "why_not_on": why_not_on,
         "env_badge": "LIVE" if bool(settings.get("PMO_LIVE_TRADING_ENABLED")) else "PAPER",
         "bot_mode": str(settings.get("BOT_MODE", settings.get("PMO_BOT_MODE", "UNKNOWN"))).upper(),
