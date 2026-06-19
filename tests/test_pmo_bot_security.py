@@ -1032,6 +1032,46 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertEqual(summary["total_trades"], 15)
         self.assertEqual(summary["total_losses"], 0)
 
+    def test_crypto_tiered_watchlist_tracks_research_and_execution_support(self):
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        snapshot = self.mod.pmo_crypto_tiered_watchlist_snapshot(settings)
+        self.assertTrue(snapshot["ok"])
+        self.assertTrue(snapshot["enabled"])
+        self.assertEqual(len(snapshot["tiers"]), 7)
+        self.assertEqual(snapshot["total_symbols"], 70)
+        self.assertEqual(snapshot["execution_supported_count"], 8)
+        self.assertEqual(snapshot["tier_execution_supported_count"], 6)
+        self.assertEqual(snapshot["research_only_count"], 64)
+        self.assertIn("BTC/USD", snapshot["execution_supported_symbols"])
+        self.assertEqual(snapshot["execution_supported_outside_tiers"], ["BCH/USD", "LTC/USD"])
+        self.assertIn("SOL/USD", snapshot["priority_symbols"])
+        self.assertIn("TAO/USD", snapshot["priority_symbols"])
+        self.assertNotIn("TAO/USD", snapshot["execution_supported_symbols"])
+        self.assertTrue(snapshot["watchlist_only"])
+        self.assertTrue(snapshot["paper_only"])
+        self.assertFalse(snapshot["live_unlocked"])
+        self.assertFalse(snapshot["orders_placed"])
+
+    def test_crypto_research_only_symbols_are_not_execution_supported(self):
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        self.assertTrue(self.mod.pmo_crypto_symbol_execution_supported("BTC/USD", settings))
+        self.assertTrue(self.mod.pmo_crypto_symbol_execution_supported("DOGE/USD", settings))
+        self.assertFalse(self.mod.pmo_crypto_symbol_execution_supported("TAO/USD", settings))
+        self.assertFalse(self.mod.pmo_crypto_symbol_execution_supported("PEPE/USD", settings))
+
+    def test_crypto_tiered_watchlist_endpoint_is_read_only(self):
+        response = self.client.get("/api/crypto/tiered-watchlist")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        snapshot = payload["crypto_tiered_watchlist"]
+        self.assertEqual(snapshot["total_symbols"], 70)
+        self.assertEqual(snapshot["execution_supported_count"], 8)
+        self.assertEqual(snapshot["tier_execution_supported_count"], 6)
+        self.assertEqual(snapshot["research_only_count"], 64)
+        self.assertFalse(snapshot["live_unlocked"])
+        self.assertFalse(snapshot["orders_placed"])
+
     def test_build_trade_plan_uses_crypto_profile_for_crypto_symbols(self):
         settings = dict(self.mod.DEFAULT_SETTINGS)
         settings.update({

@@ -1104,8 +1104,32 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_CRYPTO_RESEARCH_ONLY": True,
     "PMO_CRYPTO_PAPER_ONLY": True,
     "PMO_CRYPTO_ALLOW_LIVE_AFTER_PROOF": False,
-    "PMO_CRYPTO_WATCHLIST": ["BTC/USD", "ETH/USD", "SOL/USD"],
-    "PMO_CRYPTO_DISCOVERY_UNIVERSE": ["BTC/USD", "ETH/USD", "SOL/USD", "AVAX/USD", "LINK/USD", "DOGE/USD", "LTC/USD", "BCH/USD"],
+    "PMO_CRYPTO_WATCHLIST": [
+        "BTC/USD", "ETH/USD", "SOL/USD", "TAO/USD", "RNDR/USD", "AKT/USD",
+        "LINK/USD", "AVAX/USD", "SUI/USD", "AAVE/USD", "PENDLE/USD", "JUP/USD",
+        "TIA/USD", "ARB/USD", "OP/USD", "PEPE/USD", "BONK/USD", "WIF/USD",
+        "DOGE/USD", "LTC/USD", "BCH/USD",
+    ],
+    "PMO_CRYPTO_DISCOVERY_UNIVERSE": [
+        "BTC/USD", "ETH/USD", "SOL/USD", "BNB/USD", "XRP/USD", "DOGE/USD", "ADA/USD", "AVAX/USD", "LINK/USD", "SUI/USD",
+        "APT/USD", "SEI/USD", "NEAR/USD", "DOT/USD", "ATOM/USD", "ALGO/USD", "ICP/USD", "KAS/USD", "HBAR/USD", "EGLD/USD",
+        "TAO/USD", "RNDR/USD", "FET/USD", "AKT/USD", "AIOZ/USD", "TRAC/USD", "IO/USD", "NOS/USD", "PAAL/USD", "PHA/USD",
+        "UNI/USD", "AAVE/USD", "MKR/USD", "JUP/USD", "PENDLE/USD", "ENA/USD", "CRV/USD", "RAY/USD", "AERO/USD", "DYDX/USD",
+        "IMX/USD", "BEAM/USD", "GALA/USD", "RON/USD", "SAND/USD", "MANA/USD", "ILV/USD", "PIXEL/USD", "PORTAL/USD", "MAGIC/USD",
+        "GRT/USD", "AR/USD", "TIA/USD", "EIGEN/USD", "W/USD", "ZRO/USD", "AXL/USD", "STRK/USD", "ARB/USD", "OP/USD",
+        "BONK/USD", "PEPE/USD", "WIF/USD", "FLOKI/USD", "BRETT/USD", "POPCAT/USD", "TURBO/USD", "MOG/USD", "GIGA/USD", "BOME/USD",
+    ],
+    "PMO_CRYPTO_TIERED_WATCHLIST_ENABLED": True,
+    "PMO_CRYPTO_EXECUTION_SUPPORTED_SYMBOLS": ["BTC/USD", "ETH/USD", "SOL/USD", "DOGE/USD", "LINK/USD", "LTC/USD", "BCH/USD", "AVAX/USD"],
+    "PMO_CRYPTO_TIERED_WATCHLIST": [
+        {"tier": "TIER_1_LARGE_CAP_CORE", "symbols": ["BTC/USD", "ETH/USD", "SOL/USD", "BNB/USD", "XRP/USD", "DOGE/USD", "ADA/USD", "AVAX/USD", "LINK/USD", "SUI/USD"]},
+        {"tier": "TIER_2_LAYER_1_BLOCKCHAINS", "symbols": ["APT/USD", "SEI/USD", "NEAR/USD", "DOT/USD", "ATOM/USD", "ALGO/USD", "ICP/USD", "KAS/USD", "HBAR/USD", "EGLD/USD"]},
+        {"tier": "TIER_3_AI_COMPUTE", "symbols": ["TAO/USD", "RNDR/USD", "FET/USD", "AKT/USD", "AIOZ/USD", "TRAC/USD", "IO/USD", "NOS/USD", "PAAL/USD", "PHA/USD"]},
+        {"tier": "TIER_4_DEFI", "symbols": ["UNI/USD", "AAVE/USD", "MKR/USD", "JUP/USD", "PENDLE/USD", "ENA/USD", "CRV/USD", "RAY/USD", "AERO/USD", "DYDX/USD"]},
+        {"tier": "TIER_5_GAMING_METAVERSE", "symbols": ["IMX/USD", "BEAM/USD", "GALA/USD", "RON/USD", "SAND/USD", "MANA/USD", "ILV/USD", "PIXEL/USD", "PORTAL/USD", "MAGIC/USD"]},
+        {"tier": "TIER_6_INFRASTRUCTURE_DATA", "symbols": ["GRT/USD", "AR/USD", "TIA/USD", "EIGEN/USD", "W/USD", "ZRO/USD", "AXL/USD", "STRK/USD", "ARB/USD", "OP/USD"]},
+        {"tier": "TIER_7_HIGH_BETA_MOMENTUM", "symbols": ["BONK/USD", "PEPE/USD", "WIF/USD", "FLOKI/USD", "BRETT/USD", "POPCAT/USD", "TURBO/USD", "MOG/USD", "GIGA/USD", "BOME/USD"]},
+    ],
     "PMO_CRYPTO_PROFILE_ENABLED": True,
     "PMO_CRYPTO_STOP_LOSS_PCT": 6.0,
     "PMO_CRYPTO_TAKE_PROFIT_PCT": 10.0,
@@ -1842,6 +1866,9 @@ EDITABLE_SETTINGS: Dict[str, Dict[str, Any]] = {
     "PMO_CRYPTO_ALLOW_LIVE_AFTER_PROOF": {"type": "bool"},
     "PMO_CRYPTO_WATCHLIST": {"type": "text"},
     "PMO_CRYPTO_DISCOVERY_UNIVERSE": {"type": "text"},
+    "PMO_CRYPTO_TIERED_WATCHLIST_ENABLED": {"type": "bool"},
+    "PMO_CRYPTO_EXECUTION_SUPPORTED_SYMBOLS": {"type": "text"},
+    "PMO_CRYPTO_TIERED_WATCHLIST": {"type": "text"},
     "PMO_CRYPTO_PROFILE_ENABLED": {"type": "bool"},
     "PMO_CRYPTO_STOP_LOSS_PCT": {"type": "float", "min": 0.1, "max": 50},
     "PMO_CRYPTO_TAKE_PROFIT_PCT": {"type": "float", "min": 0.1, "max": 100},
@@ -1997,7 +2024,8 @@ SWITCHBOARD_GROUPS = {
         "ENABLE_PMO_CRYPTO_WEBSOCKET_FEEDS", "PMO_CRYPTO_WS_PROVIDER_ORDER",
         "PMO_CRYPTO_WS_MAX_PRICE_AGE_SECONDS", "PMO_CRYPTO_WS_RECONNECT_SECONDS",
         "ENABLE_PMO_CRYPTO_SCANNER", "PMO_CRYPTO_WATCHLIST",
-        "PMO_CRYPTO_DISCOVERY_UNIVERSE",
+        "PMO_CRYPTO_DISCOVERY_UNIVERSE", "PMO_CRYPTO_TIERED_WATCHLIST_ENABLED",
+        "PMO_CRYPTO_EXECUTION_SUPPORTED_SYMBOLS", "PMO_CRYPTO_TIERED_WATCHLIST",
         "ENABLE_AI_SELF_OPTIMIZATION", "ENABLE_AI_TRADE_MEMORY_ENGINE",
     ],
     "Execution + Risk": [
@@ -6987,6 +7015,8 @@ class PMOBot:
         if market not in set(settings.get("PMO_EXECUTOR_ALLOWED_MARKETS", ["STOCK"])):
             blocked.append(f"{market} execution is not enabled in PMO_EXECUTOR_ALLOWED_MARKETS")
         if market == "CRYPTO":
+            if not pmo_crypto_symbol_execution_supported(symbol, settings):
+                blocked.append(f"{symbol} is research-only; not in PMO_CRYPTO_EXECUTION_SUPPORTED_SYMBOLS")
             if not settings.get("ENABLE_PMO_CRYPTO_PAPER_TRADING", False):
                 blocked.append("ENABLE_PMO_CRYPTO_PAPER_TRADING is OFF")
             if not settings.get("ENABLE_PMO_CRYPTO_EXECUTOR", False):
@@ -20307,6 +20337,59 @@ def pmo_crypto_symbols(settings: Dict[str, Any], limit: Optional[int] = None) ->
     return crypto_symbols
 
 
+def pmo_crypto_execution_supported_symbols(settings: Optional[Dict[str, Any]] = None) -> set:
+    settings = settings or load_settings()
+    configured = settings.get("PMO_CRYPTO_EXECUTION_SUPPORTED_SYMBOLS", [])
+    return {normalize_crypto_symbol(symbol) for symbol in unique_symbols(configured)}
+
+
+def pmo_crypto_symbol_execution_supported(symbol: Any, settings: Optional[Dict[str, Any]] = None) -> bool:
+    normalized = normalize_crypto_symbol(str(symbol or ""))
+    return bool(normalized and normalized in pmo_crypto_execution_supported_symbols(settings))
+
+
+def pmo_crypto_tiered_watchlist_snapshot(settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    raw_tiers = settings.get("PMO_CRYPTO_TIERED_WATCHLIST") or DEFAULT_SETTINGS.get("PMO_CRYPTO_TIERED_WATCHLIST", [])
+    supported = pmo_crypto_execution_supported_symbols(settings)
+    priority = set(pmo_crypto_symbols({"PMO_CRYPTO_WATCHLIST": settings.get("PMO_CRYPTO_WATCHLIST", []), "PMO_CRYPTO_DISCOVERY_UNIVERSE": []}))
+    tiers = []
+    all_symbols: List[str] = []
+    for item in raw_tiers if isinstance(raw_tiers, list) else []:
+        if not isinstance(item, dict):
+            continue
+        tier_name = str(item.get("tier") or "UNTIERED").strip().upper()
+        symbols = [normalize_crypto_symbol(symbol) for symbol in unique_symbols(item.get("symbols", []))]
+        all_symbols.extend(symbols)
+        tiers.append({
+            "tier": tier_name,
+            "count": len(symbols),
+            "symbols": symbols,
+            "execution_supported": [symbol for symbol in symbols if symbol in supported],
+            "research_only": [symbol for symbol in symbols if symbol not in supported],
+        })
+    all_unique = unique_symbols(all_symbols)
+    tier_supported = [symbol for symbol in all_unique if symbol in supported]
+    tier_research_only = [symbol for symbol in all_unique if symbol not in supported]
+    return {
+        "ok": True,
+        "enabled": bool(settings.get("PMO_CRYPTO_TIERED_WATCHLIST_ENABLED", True)),
+        "total_symbols": len(all_unique),
+        "priority_symbols": [symbol for symbol in pmo_crypto_symbols({"PMO_CRYPTO_WATCHLIST": settings.get("PMO_CRYPTO_WATCHLIST", []), "PMO_CRYPTO_DISCOVERY_UNIVERSE": []})],
+        "execution_supported_symbols": sorted(supported),
+        "execution_supported_count": len(supported),
+        "tier_execution_supported_count": len(tier_supported),
+        "execution_supported_outside_tiers": sorted(symbol for symbol in supported if symbol not in set(all_unique)),
+        "research_only_count": len(tier_research_only),
+        "tiers": tiers,
+        "watchlist_only": True,
+        "paper_only": True,
+        "live_unlocked": False,
+        "orders_placed": False,
+        "safety_note": "Tiered crypto list is research/watchlist context. Execution remains limited to PMO_CRYPTO_EXECUTION_SUPPORTED_SYMBOLS and existing crypto paper/live gates.",
+    }
+
+
 def pmo_crypto_watchlist_rows(settings: Dict[str, Any], limit: Optional[int] = None) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
     for symbol in pmo_crypto_symbols(settings, limit=limit or 8):
@@ -20494,6 +20577,7 @@ def pmo_crypto_status_snapshot(settings: Optional[Dict[str, Any]] = None, record
     settings = settings or load_settings()
     proof = pmo_crypto_proof_snapshot(settings, record=False)
     rows = pmo_crypto_live_price_rows(settings, limit=5) if settings.get("ENABLE_PMO_CRYPTO_MARKET_DATA", True) else []
+    tiered_watchlist = pmo_crypto_tiered_watchlist_snapshot(settings)
     blockers: List[str] = []
     if not settings.get("ENABLE_PMO_CRYPTO_MARKET_DATA", True):
         blockers.append("ENABLE_PMO_CRYPTO_MARKET_DATA is OFF")
@@ -20529,6 +20613,13 @@ def pmo_crypto_status_snapshot(settings: Optional[Dict[str, Any]] = None, record
         "min_score": settings.get("PMO_CRYPTO_MIN_SCORE", 85),
         "proof": proof,
         "top_symbols": rows,
+        "tiered_watchlist": {
+            "enabled": tiered_watchlist["enabled"],
+            "total_symbols": tiered_watchlist["total_symbols"],
+            "execution_supported_count": tiered_watchlist["execution_supported_count"],
+            "research_only_count": tiered_watchlist["research_only_count"],
+            "priority_symbols": tiered_watchlist["priority_symbols"],
+        },
         "blockers": pmo_unique_text(blockers),
         "next_action": "Run crypto Why-Not, then enable crypto paper only if every paper guard is intentional." if blockers else "Crypto paper executor can submit only after signal, score, risk, and Alpaca paper gates pass.",
     }
@@ -20548,6 +20639,8 @@ def pmo_crypto_why_not_snapshot(settings: Optional[Dict[str, Any]] = None, recor
             blockers.append(row.get("reason") or "crypto market data unavailable")
         if score < min_score:
             blockers.append(f"score {score:g} is below PMO_CRYPTO_MIN_SCORE {min_score:g}")
+        if not pmo_crypto_symbol_execution_supported(row.get("symbol"), settings):
+            blockers.append(f"{row.get('symbol')} is research-only; not execution-supported")
         if not settings.get("ENABLE_PMO_CRYPTO_PAPER_TRADING", False):
             blockers.append("ENABLE_PMO_CRYPTO_PAPER_TRADING is OFF")
         if not settings.get("ENABLE_PMO_CRYPTO_EXECUTOR", False):
@@ -20567,6 +20660,7 @@ def pmo_crypto_why_not_snapshot(settings: Optional[Dict[str, Any]] = None, recor
             "score": score,
             "price": row.get("price"),
             "feed": row.get("feed"),
+            "execution_supported": pmo_crypto_symbol_execution_supported(row.get("symbol"), settings),
             "decision": decision,
             "blockers": blockers,
             "next_action": "Paper crypto signal can be reviewed." if decision == "PAPER_READY" else blockers[0],
@@ -29381,6 +29475,13 @@ def api_alpha_decay_params(ticker):
 def api_crypto_status():
     settings = load_settings()
     return jsonify({"ok": True, "crypto": pmo_crypto_status_snapshot(settings, record=False)})
+
+
+@app.route("/api/crypto/tiered-watchlist", methods=["GET"])
+@app.route("/api/crypto/watchlist/tiers", methods=["GET"])
+def api_crypto_tiered_watchlist():
+    settings = load_settings()
+    return jsonify({"ok": True, "crypto_tiered_watchlist": pmo_crypto_tiered_watchlist_snapshot(settings)})
 
 
 @app.route("/api/crypto/profile", methods=["GET", "POST"])
