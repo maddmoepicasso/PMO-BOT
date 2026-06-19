@@ -715,6 +715,23 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
   </div>
 </div>
 
+<!-- PMO PROFIT TRACKER -->
+<div class="panel sp3" id="panelProfitTracker">
+  <div class="ph"><span class="pt">PMO Profit Tracker</span><span class="badge bv" id="profitBadge">Read-only</span></div>
+  <div class="pay-summary">
+    <div class="pay-card"><div class="pay-k">Alpaca Gains</div><div class="pay-v" id="profitAlpaca">$0.00</div></div>
+    <div class="pay-card"><div class="pay-k">Crypto Gains</div><div class="pay-v" id="profitCrypto">$0.00</div></div>
+    <div class="pay-card"><div class="pay-k">Net P&amp;L</div><div class="pay-v" id="profitNet">$0.00</div></div>
+    <div class="pay-card"><div class="pay-k">Today</div><div class="pay-v" id="profitDay">$0.00</div></div>
+  </div>
+  <div class="tune-note">Read-only profit tracking only. No payment links, receiving accounts, withdrawals, bank links, crypto wallets, or money movement controls.</div>
+  <div class="pay-list" id="profitRows" style="margin-top:10px">
+    <div class="pay-row pay-head"><span>Bucket</span><span>P&amp;L</span><span>Detail</span></div>
+    <div class="pay-row"><span>-</span><span>-</span><span>Awaiting /api/profit-tracker...</span></div>
+  </div>
+  <div class="wiz-result" id="profitResult" style="margin-top:8px">Profit tracker is read-only and never places orders or moves money.</div>
+</div>
+
 <!-- PMO DESK COMMANDER AI -->
 <div class="panel sp3 desk-ai-panel" id="panelDeskCommanderAI">
   <div class="ph"><span class="pt">PMO Desk Commander AI</span><span class="pmoai-panel-brand"><img class="pmoai-panel-logo" src="/logo.png?v=pmoai" alt="PMO AI"><span class="badge bv" id="deskAIBadge">Loading</span></span></div>
@@ -1222,23 +1239,6 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
       <div class="pmoai-answer" id="pmoaiAnswer" style="margin-top:8px">Start PMOAI with Start PMOAI Assistant.bat, then ask from here.</div>
     </div>
   </div>
-</div>
-
-<!-- PMO PROFIT TRACKER -->
-<div class="panel sp3" id="panelProfitTracker">
-  <div class="ph"><span class="pt">PMO Profit Tracker</span><span class="badge bv" id="profitBadge">Read-only</span></div>
-  <div class="pay-summary">
-    <div class="pay-card"><div class="pay-k">Alpaca Gains</div><div class="pay-v" id="profitAlpaca">$0.00</div></div>
-    <div class="pay-card"><div class="pay-k">Crypto Gains</div><div class="pay-v" id="profitCrypto">$0.00</div></div>
-    <div class="pay-card"><div class="pay-k">Net P&amp;L</div><div class="pay-v" id="profitNet">$0.00</div></div>
-    <div class="pay-card"><div class="pay-k">Today</div><div class="pay-v" id="profitDay">$0.00</div></div>
-  </div>
-  <div class="tune-note">Read-only profit tracking only. No payment links, receiving accounts, withdrawals, bank links, crypto wallets, or money movement controls.</div>
-  <div class="pay-list" id="profitRows" style="margin-top:10px">
-    <div class="pay-row pay-head"><span>Bucket</span><span>P&amp;L</span><span>Detail</span></div>
-    <div class="pay-row"><span>-</span><span>-</span><span>Awaiting /api/profit-tracker...</span></div>
-  </div>
-  <div class="wiz-result" id="profitResult" style="margin-top:8px">Profit tracker is read-only and never places orders or moves money.</div>
 </div>
 
 <!-- ONESIGNAL NOTIFICATIONS -->
@@ -1998,7 +1998,19 @@ function setBotHost(host,persist=false){
   if(drawerHost)drawerHost.textContent=shareSafeHost();
   pmoApplyLogoSrcs();
 }
-window.addEventListener('DOMContentLoaded',()=>{setBotHost(sameMachineBotHost()||BOT_HOST,false);pmoApplyLogoSrcs();});
+function installPMOLayoutEditor(){
+  if(document.querySelector('script[data-pmo-layout-editor]')||window.PMOVisualLayoutEditorLoaded)return;
+  const script=document.createElement('script');
+  script.src=BOT_HOST+'/assets/pmo-layout-editor.js?v=dashboard-free-move';
+  script.defer=true;
+  script.dataset.pmoLayoutEditor='true';
+  script.dataset.dashboard='pmo-orbital-command-deck';
+  script.dataset.root='.grid';
+  script.dataset.storageVersion='v4';
+  script.onerror=()=>console.warn('PMO layout editor failed to load from',BOT_HOST);
+  document.head.appendChild(script);
+}
+window.addEventListener('DOMContentLoaded',()=>{setBotHost(sameMachineBotHost()||BOT_HOST,false);pmoApplyLogoSrcs();installPMOLayoutEditor();});
 var connected = false;
 var liveData = window.liveData || {};   // full snapshot from /api/status + /api/health
 var liveSettings = window.liveSettings || {};

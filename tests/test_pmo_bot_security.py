@@ -306,6 +306,26 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertNotIn("Payment + Profit Receiving", html)
         self.assertNotIn("panelPaymentHub", html)
 
+    def test_orbital_deck_places_profit_tracker_under_alpaca_chart(self):
+        html = (self.mod.PMO_DIR / "deck" / "pmo_orbital_command_deck.html").read_text(encoding="utf-8")
+        alpaca_index = html.index('id="panelAlpacaChart"')
+        profit_index = html.index('id="panelProfitTracker"')
+        desk_ai_index = html.index('id="panelDeskCommanderAI"')
+        self.assertLess(alpaca_index, profit_index)
+        self.assertLess(profit_index, desk_ai_index)
+        self.assertEqual(html.count('id="panelProfitTracker"'), 1)
+
+    def test_orbital_deck_loads_free_move_layout_editor(self):
+        html = (self.mod.PMO_DIR / "deck" / "pmo_orbital_command_deck.html").read_text(encoding="utf-8")
+        editor_js = self.mod.PMO_LAYOUT_EDITOR_ASSET.read_text(encoding="utf-8")
+        self.assertIn("function installPMOLayoutEditor()", html)
+        self.assertIn("BOT_HOST+'/assets/pmo-layout-editor.js", html)
+        self.assertIn("script.dataset.root='.grid'", html)
+        self.assertIn("script.dataset.storageVersion='v4'", html)
+        self.assertIn("'.panel'", editor_js)
+        self.assertIn("body.pmo-layout-editing .pmo-layout-widget iframe", editor_js)
+        self.assertIn("localStorage.setItem(storageKey", editor_js)
+
     def test_reports_route_blocks_env_and_source_files(self):
         blocked_paths = [
             self.mod.PMO_DIR / ".env",

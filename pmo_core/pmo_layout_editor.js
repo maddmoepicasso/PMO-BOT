@@ -12,6 +12,7 @@
     const storageKey = 'pmo.visualLayout.' + layoutStorageVersion + '.' + dashboardName + '.' + location.pathname;
     const mobileQuery = window.matchMedia('(max-width: 760px)');
     const blockSelector = [
+        '.panel',
         '.card',
         '.mini',
         'details.panel',
@@ -140,6 +141,7 @@
                 min-width:150px;
                 min-height:72px;
                 transition:box-shadow .16s ease, outline-color .16s ease, opacity .16s ease;
+                pointer-events:auto;
             }
             .pmo-layout-positioned {
                 position:absolute !important;
@@ -149,6 +151,7 @@
                 overflow-wrap:anywhere;
                 overscroll-behavior:contain;
                 scrollbar-gutter:stable;
+                transform:none !important;
             }
             .pmo-layout-positioned img,
             .pmo-layout-positioned video,
@@ -170,6 +173,16 @@
                 outline-offset:3px;
                 cursor:grab;
                 touch-action:none;
+                user-select:none;
+                -webkit-user-select:none;
+            }
+            body.pmo-layout-editing .pmo-layout-widget * {
+                pointer-events:auto;
+            }
+            body.pmo-layout-editing .pmo-layout-widget iframe,
+            body.pmo-layout-editing .pmo-layout-widget .tradingview-widget-container,
+            body.pmo-layout-editing .pmo-layout-widget .tradingview-widget-container__widget {
+                pointer-events:none;
             }
             body.pmo-layout-editing .pmo-layout-widget:hover {
                 outline-color:rgba(0,255,157,.82);
