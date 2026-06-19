@@ -1951,10 +1951,12 @@ function detectHost(){
 }
 function detectPMOAIHost(){
   const loc=window.location;
+  if(loc.hostname&&loc.port==='8091')return loc.origin;
+  if(loc.hostname&&(loc.hostname==='localhost'||loc.hostname==='127.0.0.1'))return 'http://127.0.0.1:8091';
   if(loc.hostname&&loc.hostname!=='localhost'&&loc.hostname!=='127.0.0.1'){
-    return 'http://'+loc.hostname+':8093';
+    return 'http://'+loc.hostname+':8091';
   }
-  return 'http://192.168.1.155:8093';
+  return BOT_HOST || 'http://127.0.0.1:8091';
 }
 let BOT_HOST_CANDIDATES = buildBotHostCandidates();
 let BOT_HOST = sameMachineBotHost() || BOT_HOST_CANDIDATES[0] || PMO_KNOWN_LAN_HOST;

@@ -4,6 +4,7 @@ import hashlib
 import json
 import sqlite3
 import time
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +20,7 @@ class PMOAIStore:
         return conn
 
     def _init(self) -> None:
-        with self.connect() as conn:
+        with closing(self.connect()) as conn:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS pmoai_cache (
@@ -58,6 +59,7 @@ class PMOAIStore:
                 )
                 """
             )
+            conn.commit()
 
     @staticmethod
     def cache_key(message: str, route: dict[str, Any]) -> str:
@@ -65,7 +67,7 @@ class PMOAIStore:
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     def get_cache(self, key: str) -> dict[str, Any] | None:
-        with self.connect() as conn:
+        with closing(self.connect()) as conn:
             row = conn.execute("SELECT * FROM pmoai_cache WHERE cache_key=?", (key,)).fetchone()
         if not row:
             return None
@@ -76,28 +78,31 @@ class PMOAIStore:
         }
 
     def put_cache(self, key: str, request: str, provider: str, response: dict[str, Any]) -> None:
-        with self.connect() as conn:
+        with closing(self.connect()) as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO pmoai_cache(cache_key, request, response, provider, created_at) VALUES(?,?,?,?,?)",
                 (key, request, json.dumps(response), provider, time.time()),
             )
+            conn.commit()
 
     def log_usage(self, provider: str, model: str, task_type: str, status: str, latency_ms: int, detail: str = "", estimated_cost: float = 0) -> None:
-        with self.connect() as conn:
+        with closing(self.connect()) as conn:
             conn.execute(
                 "INSERT INTO pmoai_usage(timestamp, provider, model, task_type, status, estimated_cost, latency_ms, detail) VALUES(?,?,?,?,?,?,?,?)",
                 (time.time(), provider, model, task_type, status, estimated_cost, latency_ms, detail[:400]),
             )
+            conn.commit()
 
     def log_audit(self, action: str, actor: str, provider: str, detail: str) -> None:
-        with self.connect() as conn:
+        with closing(self.connect()) as conn:
             conn.execute(
                 "INSERT INTO pmoai_audit(timestamp, action, actor, provider, detail) VALUES(?,?,?,?,?)",
                 (time.time(), action, actor, provider, detail[:600]),
             )
+            conn.commit()
 
     def usage_summary(self, limit: int = 40) -> dict[str, Any]:
-        with self.connect() as conn:
+        with closing(self.connect()) as conn:
             rows = conn.execute(
                 "SELECT provider, model, task_type, status, estimated_cost, latency_ms, datetime(timestamp, 'unixepoch') AS ts FROM pmoai_usage ORDER BY id DESC LIMIT ?",
                 (limit,),
@@ -109,4 +114,3 @@ class PMOAIStore:
             "recent": [dict(row) for row in rows],
             "totals": [dict(row) for row in totals],
         }
-

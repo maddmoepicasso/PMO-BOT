@@ -353,6 +353,38 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertIn("${esc(time)}</span><span class=\"le-m\">${esc(msg)}</span>", html)
         self.assertNotIn("${time}</span><span class=\"le-m\">${msg}</span>", html)
 
+    def test_pmoai_bridge_routes_are_same_origin_and_safe(self):
+        health = self.client.get("/api/pmoai/health")
+        self.assertEqual(health.status_code, 200)
+        health_body = health.get_json()
+        self.assertTrue(health_body.get("ok"))
+        self.assertEqual(health_body.get("hosted_by"), "PMO Bot same-origin proxy")
+        self.assertIsInstance(health_body.get("live_provider_calls"), bool)
+
+        providers = self.client.get("/api/pmoai/providers")
+        self.assertEqual(providers.status_code, 200)
+        provider_body = providers.get_json()
+        self.assertTrue(provider_body.get("ok"))
+        self.assertTrue(any(row.get("provider") == "local" for row in provider_body.get("providers", [])))
+
+        route = self.client.post("/api/pmoai/route", json={"message": "debug this API bug"})
+        self.assertEqual(route.status_code, 200)
+        self.assertEqual(route.get_json()["route"]["task_type"], "coding")
+
+        chat = self.client.post("/api/pmoai/chat", json={"message": "quick project plan", "provider": "local", "no_cache": True})
+        self.assertEqual(chat.status_code, 200)
+        chat_body = chat.get_json()
+        self.assertTrue(chat_body.get("ok"))
+        self.assertEqual(chat_body.get("provider"), "local")
+        self.assertFalse(bool(chat_body.get("live_provider_call")))
+
+    def test_pmoai_command_center_is_served_by_main_bot(self):
+        response = self.client.get("/pmoai_command_center.html")
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn("PMOAI Command Center", html)
+        self.assertIn("location.port==='8091'", html)
+
     def test_orbital_deck_places_profit_tracker_under_alpaca_chart(self):
         html = (self.mod.PMO_DIR / "deck" / "pmo_orbital_command_deck.html").read_text(encoding="utf-8")
         alpaca_index = html.index('id="panelAlpacaChart"')

@@ -224,6 +224,42 @@ except Exception as exc:  # pragma: no cover - data collection controls must fai
     PMO_DATA_COLLECTION_ERROR = str(exc)
 
 try:
+    from pmoai.config import (
+        SETTINGS as PMOAI_SETTINGS,
+        provider_key_details as pmoai_provider_key_details,
+        provider_key_status as pmoai_provider_key_status,
+        refresh_env_from_disk as pmoai_refresh_env_from_disk,
+        runtime_flags as pmoai_runtime_flags,
+    )
+    from pmoai.providers import call_provider as pmoai_call_provider
+    from pmoai.providers import provider_model as pmoai_provider_model
+    from pmoai.records import CHECKLIST as PMOAI_RECORDS_CHECKLIST
+    from pmoai.records import DEFAULT_RESPONSE as PMOAI_RECORDS_DEFAULT_RESPONSE
+    from pmoai.records import diagnose_records as pmoai_diagnose_records
+    from pmoai.router import choose_route as pmoai_choose_route
+    from pmoai.storage import PMOAIStore
+
+    _PMOAI_STORE = PMOAIStore(PMOAI_SETTINGS.db_path)
+    PMOAI_AVAILABLE = True
+    PMOAI_ERROR = ""
+except Exception as exc:  # pragma: no cover - PMOAI proxy must fail closed
+    PMOAI_SETTINGS = None
+    pmoai_provider_key_details = None
+    pmoai_provider_key_status = None
+    pmoai_refresh_env_from_disk = None
+    pmoai_runtime_flags = None
+    pmoai_call_provider = None
+    pmoai_provider_model = None
+    PMOAI_RECORDS_CHECKLIST = []
+    PMOAI_RECORDS_DEFAULT_RESPONSE = ""
+    pmoai_diagnose_records = None
+    pmoai_choose_route = None
+    PMOAIStore = None
+    _PMOAI_STORE = None
+    PMOAI_AVAILABLE = False
+    PMOAI_ERROR = str(exc)
+
+try:
     from pmo_claude_codex import (
         CLAUDE_CODEX_ROLES,
         SYSTEM_PROMPTS as PMO_CLAUDE_CODEX_SYSTEM_PROMPTS,
@@ -27104,6 +27140,215 @@ def control():
         logo_version=int(logo.stat().st_mtime) if logo else int(time.time()),
         layout_editor_version=int(PMO_LAYOUT_EDITOR_ASSET.stat().st_mtime) if PMO_LAYOUT_EDITOR_ASSET.exists() else int(time.time()),
     )
+
+
+def pmoai_command_center_html(html_text: str) -> str:
+    return html_text.replace(
+        "function detectHost(){const h=location.hostname;return h&&h!=='localhost'&&h!=='127.0.0.1'?'http://'+h+':8093':PMOAI_KNOWN}",
+        "function detectHost(){const h=location.hostname;if(location.port==='8091')return location.origin;if(h&&h!=='localhost'&&h!=='127.0.0.1')return 'http://'+h+':8093';return 'http://127.0.0.1:8091'}",
+    )
+
+
+@app.route("/pmoai_command_center.html")
+@app.route("/pmoai")
+def pmoai_command_center():
+    desktop_dir = PMO_DIR.parent.parent
+    candidates = [
+        PMO_DIR / "deck" / "pmoai_command_center.html",
+        desktop_dir / "pmoai_command_center.html",
+        PMO_DIR.parent / "pmoai_command_center.html",
+    ]
+    for page_path in candidates:
+        if page_path.exists():
+            try:
+                return Response(pmoai_command_center_html(page_path.read_text(encoding="utf-8")), mimetype="text/html")
+            except Exception:
+                return send_file(page_path, mimetype="text/html", max_age=0)
+    return Response("PMOAI Command Center file was not found.", status=503, mimetype="text/plain")
+
+
+def pmoai_unavailable_response() -> Response:
+    return jsonify({
+        "ok": False,
+        "service": "PMOAI",
+        "available": False,
+        "error": PMOAI_ERROR or "PMOAI package unavailable.",
+        "live_provider_call": False,
+        "orders_placed": False,
+        "live_unlocked": False,
+    })
+
+
+def pmoai_options_or_unavailable():
+    if request.method == "OPTIONS":
+        return ("", 204)
+    if not PMOAI_AVAILABLE:
+        return pmoai_unavailable_response(), 503
+    return None
+
+
+@app.route("/api/pmoai/health", methods=["GET", "OPTIONS"])
+def api_pmoai_health():
+    unavailable = pmoai_options_or_unavailable()
+    if unavailable:
+        return unavailable
+    flags = pmoai_runtime_flags()
+    return jsonify({
+        "ok": True,
+        "service": "PMOAI",
+        "version": "0.1.0",
+        "hosted_by": "PMO Bot same-origin proxy",
+        "live_provider_calls": flags["live_provider_calls"],
+        "cache_enabled": flags["cache_enabled"],
+        "providers": pmoai_provider_key_status(),
+    })
+
+
+@app.route("/api/pmoai/env/reload", methods=["POST", "OPTIONS"])
+def api_pmoai_env_reload():
+    unavailable = pmoai_options_or_unavailable()
+    if unavailable:
+        return unavailable
+    return jsonify(pmoai_refresh_env_from_disk())
+
+
+@app.route("/api/pmoai/providers", methods=["GET", "OPTIONS"])
+def api_pmoai_providers():
+    unavailable = pmoai_options_or_unavailable()
+    if unavailable:
+        return unavailable
+    keys = pmoai_provider_key_status()
+    details = pmoai_provider_key_details()
+    flags = pmoai_runtime_flags()
+    rows = []
+    for provider in ["openai", "claude", "perplexity", "gemini", "local"]:
+        detail = details.get(provider, {})
+        rows.append({
+            "provider": provider,
+            "configured": keys.get(provider, False),
+            "model": pmoai_provider_model(provider, "general"),
+            "live_enabled": flags["live_provider_calls"] and keys.get(provider, False),
+            "required_env": detail.get("required_env", ""),
+            "setup_hint": detail.get("setup_hint", ""),
+        })
+    return jsonify({"ok": True, "providers": rows, "hosted_by": "PMO Bot same-origin proxy"})
+
+
+@app.route("/api/pmoai/route", methods=["POST", "OPTIONS"])
+def api_pmoai_route():
+    unavailable = pmoai_options_or_unavailable()
+    if unavailable:
+        return unavailable
+    payload = request.get_json(force=True, silent=True) or {}
+    message = str(payload.get("message", "")).strip()
+    force_provider = payload.get("provider")
+    if not message:
+        return jsonify({"ok": False, "message": "message is required"}), 400
+    return jsonify({"ok": True, "route": pmoai_choose_route(message, force_provider).to_dict()})
+
+
+@app.route("/api/pmoai/chat", methods=["POST", "OPTIONS"])
+def api_pmoai_chat():
+    unavailable = pmoai_options_or_unavailable()
+    if unavailable:
+        return unavailable
+    payload: Dict[str, Any] = request.get_json(force=True, silent=True) or {}
+    message = str(payload.get("message", "")).strip()
+    force_provider = payload.get("provider")
+    actor = request.headers.get("X-PMOAI-User", "dashboard")
+    if not message:
+        return jsonify({"ok": False, "message": "message is required"}), 400
+    decision = pmoai_choose_route(message, force_provider).to_dict()
+    flags = pmoai_runtime_flags()
+    cache_key = _PMOAI_STORE.cache_key(message, decision) if _PMOAI_STORE else ""
+    if flags["cache_enabled"] and not payload.get("no_cache") and _PMOAI_STORE:
+        cached = _PMOAI_STORE.get_cache(cache_key)
+        if cached:
+            _PMOAI_STORE.log_audit("cache_hit", actor, cached["provider"], decision["task_type"])
+            return jsonify({"ok": True, "cached": True, "route": decision, "hosted_by": "PMO Bot same-origin proxy", **cached["response"]})
+    started = time.perf_counter()
+    try:
+        response, latency_ms, model = pmoai_call_provider(message, decision)
+        latency_ms = latency_ms or int((time.perf_counter() - started) * 1000)
+        routed_provider = decision["provider"]
+        provider = "local" if response.get("mode") == "local_planner" else routed_provider
+        if _PMOAI_STORE:
+            _PMOAI_STORE.log_usage(provider, model, decision["task_type"], "ok", latency_ms, f"routed={routed_provider}")
+            _PMOAI_STORE.log_audit("chat", actor, provider, decision["reason"])
+        result = {
+            "answer": response.get("answer", ""),
+            "citations": response.get("citations", []),
+            "provider": provider,
+            "model": model,
+            "latency_ms": latency_ms,
+            "live_provider_call": provider == routed_provider and flags["live_provider_calls"] and pmoai_provider_key_status().get(provider, False),
+            "hosted_by": "PMO Bot same-origin proxy",
+        }
+        if response.get("diagnostic"):
+            result["records"] = response["diagnostic"]
+        if flags["cache_enabled"] and _PMOAI_STORE:
+            _PMOAI_STORE.put_cache(cache_key, message, provider, result)
+        return jsonify({"ok": True, "cached": False, "route": decision, **result})
+    except Exception as exc:
+        fallback = "local"
+        local_route = {**decision, "provider": fallback, "model_role": "local", "reason": f"Fallback after provider error: {exc}"}
+        response, latency_ms, model = pmoai_call_provider(message, local_route)
+        if _PMOAI_STORE:
+            _PMOAI_STORE.log_usage(decision["provider"], pmoai_provider_model(decision["provider"], decision["model_role"]), decision["task_type"], "failed", int((time.perf_counter() - started) * 1000), str(exc))
+            _PMOAI_STORE.log_usage(fallback, model, decision["task_type"], "fallback", latency_ms, "local fallback")
+            _PMOAI_STORE.log_audit("provider_fallback", actor, decision["provider"], str(exc))
+        return jsonify({"ok": True, "cached": False, "route": decision, "fallback": fallback, "provider_error": str(exc), "provider": fallback, "model": model, "hosted_by": "PMO Bot same-origin proxy", **response})
+
+
+@app.route("/api/pmoai/usage", methods=["GET", "OPTIONS"])
+def api_pmoai_usage():
+    unavailable = pmoai_options_or_unavailable()
+    if unavailable:
+        return unavailable
+    return jsonify({"ok": True, "usage": _PMOAI_STORE.usage_summary() if _PMOAI_STORE else {}})
+
+
+@app.route("/api/pmoai/records/status", methods=["GET", "OPTIONS"])
+def api_pmoai_records_status():
+    unavailable = pmoai_options_or_unavailable()
+    if unavailable:
+        return unavailable
+    scope = str(request.args.get("scope", "all")).strip() or "all"
+    diagnostic = pmoai_diagnose_records(scope, include_deleted=True)
+    return jsonify({"ok": True, "default_response": PMOAI_RECORDS_DEFAULT_RESPONSE, "checklist": PMOAI_RECORDS_CHECKLIST, "records": diagnostic})
+
+
+@app.route("/api/pmoai/records/diagnose", methods=["POST", "OPTIONS"])
+def api_pmoai_records_diagnose():
+    unavailable = pmoai_options_or_unavailable()
+    if unavailable:
+        return unavailable
+    payload = request.get_json(force=True, silent=True) or {}
+    scope = str(payload.get("scope", "all")).strip() or "all"
+    include_deleted = bool(payload.get("include_deleted", True))
+    actor = request.headers.get("X-PMOAI-User", "dashboard")
+    diagnostic = pmoai_diagnose_records(scope, include_deleted=include_deleted)
+    if _PMOAI_STORE:
+        _PMOAI_STORE.log_audit("records_diagnose", actor, "local", f"scope={scope}; rows={diagnostic['totals']['rows']}")
+    return jsonify({"ok": True, "records": diagnostic})
+
+
+@app.route("/api/pmoai/records/resync", methods=["POST", "OPTIONS"])
+def api_pmoai_records_resync():
+    unavailable = pmoai_options_or_unavailable()
+    if unavailable:
+        return unavailable
+    payload = request.get_json(force=True, silent=True) or {}
+    scope = str(payload.get("scope", "all")).strip() or "all"
+    actor = request.headers.get("X-PMOAI-User", "dashboard")
+    diagnostic = pmoai_diagnose_records(scope, include_deleted=True)
+    if _PMOAI_STORE:
+        _PMOAI_STORE.log_audit("records_resync_requested", actor, "local", f"scope={scope}; source_count={diagnostic['audit']['source_count']}")
+    return jsonify({
+        "ok": True,
+        "message": "Manual re-sync requested. PMOAI re-inspected local historical sources; external source re-sync requires the source connector permissions.",
+        "records": diagnostic,
+    })
 
 
 @app.route("/api/health")
