@@ -443,7 +443,7 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
 .dna-sc{font-family:var(--mono);font-size:10px;font-weight:700;width:26px;text-align:right;transition:all .4s}
 
 /* CONSTELLATION */
-.const-wrap{position:relative;height:300px}
+.const-wrap{position:relative;height:380px}
 .star-node{position:absolute;cursor:pointer;transition:all .3s}
 .star-node:hover .sc{transform:scale(1.25)}
 .sc{width:37px;height:37px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;border:1px solid;transition:all .3s}
@@ -1267,7 +1267,7 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
 <div class="panel sp2">
   <div class="ph"><span class="pt">AI Learning Constellation</span><span class="badge bv" id="constBadge">--</span></div>
   <div class="const-wrap">
-    <svg class="csvg" viewBox="0 0 570 300" style="position:absolute;inset:0;width:100%;height:100%">
+    <svg class="csvg" viewBox="0 0 570 380" style="position:absolute;inset:0;width:100%;height:100%">
       <defs><marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
       <line x1="285" y1="107" x2="142" y2="44" stroke="rgba(168,85,247,.3)" stroke-width="1" marker-end="url(#a2)"/>
       <line x1="285" y1="107" x2="52" y2="107" stroke="rgba(168,85,247,.25)" stroke-width="1" marker-end="url(#a2)"/>
@@ -1284,6 +1284,10 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
       <line x1="285" y1="107" x2="328" y2="250" stroke="rgba(168,85,247,.22)" stroke-width=".8" stroke-dasharray="4 3"/>
       <line x1="285" y1="107" x2="422" y2="250" stroke="rgba(0,245,155,.22)" stroke-width=".8" stroke-dasharray="4 3"/>
       <line x1="285" y1="107" x2="512" y2="250" stroke="rgba(255,176,32,.22)" stroke-width=".8" stroke-dasharray="4 3"/>
+      <line x1="285" y1="107" x2="53" y2="326" stroke="rgba(168,85,247,.2)" stroke-width=".8" stroke-dasharray="3 4"/>
+      <line x1="285" y1="107" x2="190" y2="326" stroke="rgba(34,211,238,.2)" stroke-width=".8" stroke-dasharray="3 4"/>
+      <line x1="285" y1="107" x2="335" y2="326" stroke="rgba(0,245,155,.18)" stroke-width=".8" stroke-dasharray="3 4"/>
+      <line x1="285" y1="107" x2="478" y2="326" stroke="rgba(168,85,247,.2)" stroke-width=".8" stroke-dasharray="3 4"/>
     </svg>
     <div class="star-node" style="left:266px;top:88px" onclick="aiNodeInfo('quantum')"><div class="sc s-act" id="cn-quantum" style="box-shadow:0 0 16px rgba(168,85,247,.3)">QM</div><div class="sl" style="color:var(--violet)">Quantum Matrix</div></div>
     <div class="star-node" style="left:123px;top:20px" onclick="aiNodeInfo('learning')"><div class="sc s-act" id="cn-learning">LM</div><div class="sl" style="color:var(--violet)">Learning Memory</div></div>
@@ -1301,6 +1305,10 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
     <div class="star-node" style="left:309px;top:230px" onclick="aiNodeInfo('deep')"><div class="sc s-act" id="cn-deep">DI</div><div class="sl" style="color:var(--violet)">Deep Intel</div></div>
     <div class="star-node" style="left:403px;top:230px" onclick="aiNodeInfo('crypto')"><div class="sc s-green" id="cn-crypto">CR</div><div class="sl" style="color:var(--green)">Crypto Profile</div></div>
     <div class="star-node" style="left:493px;top:230px" onclick="aiNodeInfo('postgate')"><div class="sc s-amber" id="cn-postgate">PG</div><div class="sl" style="color:var(--amber)">Post-Gate</div></div>
+    <div class="star-node" style="left:34px;top:306px" onclick="aiNodeInfo('frontier')"><div class="sc s-act" id="cn-frontier">FI</div><div class="sl" style="color:var(--violet)">Frontier</div></div>
+    <div class="star-node" style="left:168px;top:306px" onclick="aiNodeInfo('advanced_ml')"><div class="sc s-cyan" id="cn-advanced_ml">ML+</div><div class="sl" style="color:var(--cyan)">Advanced ML</div></div>
+    <div class="star-node" style="left:309px;top:306px" onclick="aiNodeInfo('meta_strategy')"><div class="sc s-green" id="cn-meta_strategy">CFR</div><div class="sl" style="color:var(--green)">Meta Strategy</div></div>
+    <div class="star-node" style="left:452px;top:306px" onclick="aiNodeInfo('vault')"><div class="sc s-act" id="cn-vault">VLT</div><div class="sl" style="color:var(--violet)">Vault Intel</div></div>
   </div>
   <div style="display:flex;gap:13px;margin-top:3px;flex-wrap:wrap">
     <span style="font-size:8px;color:var(--violet)">Active+Influencing</span>
@@ -4709,6 +4717,10 @@ function updateConstellation(){
   const alpha=engineMap.alpha?!!engineMap.alpha.active:!!s.PMO_ALPHA_DECAY_ENABLED;
   const institutional=engineMap.institutional?!!engineMap.institutional.active:!!s.ENABLE_PMO_INSTITUTIONAL_SIGNALS;
   const deep=engineMap.deep?!!engineMap.deep.active:!!s.ENABLE_PMO_DEEP_INTELLIGENCE;
+  const frontier=engineMap.frontier?!!engineMap.frontier.active:!!s.ENABLE_PMO_FRONTIER_INTELLIGENCE;
+  const advanced_ml=engineMap.advanced_ml?!!engineMap.advanced_ml.active:!!s.ENABLE_PMO_ADVANCED_ML_INTELLIGENCE;
+  const meta_strategy=engineMap.meta_strategy?!!engineMap.meta_strategy.active:!!s.ENABLE_PMO_META_STRATEGY_LAYER;
+  const vault=engineMap.vault?!!engineMap.vault.active:!!s.ENABLE_PMO_VAULT_INTELLIGENCE;
   const crypto=engineMap.crypto?!!engineMap.crypto.active:!!s.PMO_CRYPTO_PROFILE_ENABLED;
   const postgate=engineMap.postgate?!!engineMap.postgate.active:!!s.ENABLE_PMO_POST_GATE_EQUITY_PROOF;
   const agent=engineMap.agent?!!engineMap.agent.active:!!s.ENABLE_PMO_ARCHITECTURE_PLANNER;
@@ -4726,14 +4738,18 @@ function updateConstellation(){
   nodeState('alpha',alpha?'cyan':'dim');
   nodeState('institutional',institutional?'amber':'dim');
   nodeState('deep',deep?'act':'dim');
+  nodeState('frontier',frontier?'act':'dim');
+  nodeState('advanced_ml',advanced_ml?'cyan':'dim');
+  nodeState('meta_strategy',meta_strategy?'green':'dim');
+  nodeState('vault',vault?'act':'dim');
   nodeState('crypto',crypto?'green':'dim');
   nodeState('postgate',postgate?'amber':'dim');
   nodeState('agent',agent?'green':'dim');
 
   const enabled=Number.isFinite(Number(constellation.active_count))
     ? Number(constellation.active_count)
-    : [quantum,learning,warp,asi,signal,watchlist,sector,v112,whynot,ensemble,alpha,institutional,deep,crypto,postgate,agent].filter(Boolean).length;
-  const total=Number.isFinite(Number(constellation.total))?Number(constellation.total):16;
+    : [quantum,learning,warp,asi,signal,watchlist,sector,v112,whynot,ensemble,alpha,institutional,deep,frontier,advanced_ml,meta_strategy,vault,crypto,postgate,agent].filter(Boolean).length;
+  const total=Number.isFinite(Number(constellation.total))?Number(constellation.total):20;
   set('constBadge',enabled+'/'+total+' engines active');
 }
 
@@ -6338,6 +6354,10 @@ function aiNodeInfo(id){
     alpha:['Alpha Decay','Profiles symbol edge decay, optimal hold, stop, and target behavior.',[['PMO_ALPHA_DECAY_ENABLED',S('PMO_ALPHA_DECAY_ENABLED'),'var(--blue)'],['Use rec params',S('PMO_ALPHA_DECAY_USE_REC_PARAMS'),'var(--amber)'],['Confidence gate',S('PMO_ALPHA_DECAY_CONFIDENCE_GATE'),'var(--text2)']]],
     institutional:['Institutional Signals','Liquidity vacuum, auction probes, PEAD, VRP, ask prints, and 3:30 discipline.',[['ENABLE_PMO_INSTITUTIONAL_SIGNALS',S('ENABLE_PMO_INSTITUTIONAL_SIGNALS'),'var(--amber)'],['Score influence',S('PMO_INSTITUTIONAL_SCORE_INFLUENCE'),'var(--red)'],['Mode','read-only unless enabled','var(--text3)']]],
     deep:['Deep Intelligence','Counterfactual exits, causal trust, Bayesian sizing, attention, and meta-learning.',[['ENABLE_PMO_DEEP_INTELLIGENCE',S('ENABLE_PMO_DEEP_INTELLIGENCE'),'var(--violet)'],['Score influence',S('PMO_DEEP_INTELLIGENCE_SCORE_INFLUENCE'),'var(--red)'],['Status','read-only guidance','var(--text3)']]],
+    frontier:['Frontier Intelligence','Market consciousness, narrative momentum, reflexivity, engine divergence, temporal memory, Monte Carlo, and supervised self-mod proposals.',[['ENABLE_PMO_FRONTIER_INTELLIGENCE',S('ENABLE_PMO_FRONTIER_INTELLIGENCE'),'var(--violet)'],['Score influence',S('PMO_FRONTIER_SCORE_INFLUENCE'),'var(--red)'],['Mode','read-only guidance','var(--text3)']]],
+    advanced_ml:['Advanced ML Intelligence','Regime models, price-action embeddings, Kalman VWAP, RL exits, conformal intervals, dropout uncertainty, walk-forward validation, decay weighting, stacking, Kelly uncertainty, MDL, and synthetic trade generation.',[['ENABLE_PMO_ADVANCED_ML_INTELLIGENCE',S('ENABLE_PMO_ADVANCED_ML_INTELLIGENCE'),'var(--cyan)'],['Score influence',S('PMO_ADVANCED_ML_SCORE_INFLUENCE'),'var(--red)'],['Synthetic rows',S('PMO_ADVANCED_ML_SYNTHETIC_ROWS'),'var(--text2)']]],
+    meta_strategy:['Meta Strategy / CFR','Counterfactual regret, shadow trades, confidence calibration, prediction-error trust, regime routing, attention weighting, and alpha decay routing.',[['ENABLE_PMO_META_STRATEGY_LAYER',S('ENABLE_PMO_META_STRATEGY_LAYER'),'var(--green)'],['Score influence',S('PMO_META_STRATEGY_SCORE_INFLUENCE'),'var(--red)'],['Status','read-only guidance','var(--text3)']]],
+    vault:['Vault Intelligence','Epigenetic expression, strange attractors, Bayesian surprise, eigenportfolio residuals, symmetry breaking, mutual information, and mechanism-design probes.',[['ENABLE_PMO_VAULT_INTELLIGENCE',S('ENABLE_PMO_VAULT_INTELLIGENCE'),'var(--violet)'],['Score influence',S('PMO_VAULT_SCORE_INFLUENCE'),'var(--red)'],['Max rows',S('PMO_VAULT_MAX_ROWS'),'var(--text2)']]],
     crypto:['Crypto Profile','Separate afterhours crypto profile with staged exits and crypto proof tracking.',[['PMO_CRYPTO_PROFILE_ENABLED',S('PMO_CRYPTO_PROFILE_ENABLED'),'var(--green)'],['Allow live after proof',S('PMO_CRYPTO_ALLOW_LIVE_AFTER_PROOF'),'var(--red)'],['Max notional',S('PMO_CRYPTO_MAX_NOTIONAL_USD'),'var(--text2)']]],
     postgate:['Post-Gate Equity Proof','Tracks only equity trades generated after the new gates.',[['ENABLE_PMO_POST_GATE_EQUITY_PROOF',S('ENABLE_PMO_POST_GATE_EQUITY_PROOF'),'var(--amber)'],['Min closes',S('PMO_POST_GATE_EQUITY_MIN_CLOSED_TRADES'),'var(--text2)'],['Start',S('PMO_POST_GATE_EQUITY_PROOF_START'),'var(--text3)']]],
     agent:['Agent Plan','build_agent_plan() generates architecture roadmap.',[['Import','pmo_core.agent','var(--green)'],['ENABLE_PMO_ARCHITECTURE_PLANNER',S('ENABLE_PMO_ARCHITECTURE_PLANNER'),'var(--text2)']]],

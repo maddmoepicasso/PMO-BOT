@@ -26633,16 +26633,34 @@ def pmo_ai_engine_map_extra_nodes_html() -> str:
     <div class="star-node" style="left:309px;top:230px" onclick="aiNodeInfo('deep')"><div class="sc s-act" id="cn-deep">DI</div><div class="sl" style="color:var(--violet)">Deep Intel</div></div>
     <div class="star-node" style="left:403px;top:230px" onclick="aiNodeInfo('crypto')"><div class="sc s-green" id="cn-crypto">CR</div><div class="sl" style="color:var(--green)">Crypto Profile</div></div>
     <div class="star-node" style="left:493px;top:230px" onclick="aiNodeInfo('postgate')"><div class="sc s-amber" id="cn-postgate">PG</div><div class="sl" style="color:var(--amber)">Post-Gate</div></div>
-    <div class="star-node" style="left:309px;top:270px" onclick="aiNodeInfo('frontier')"><div class="sc s-act" id="cn-frontier">FI</div><div class="sl" style="color:var(--violet)">Frontier</div></div>"""
+    <div class="star-node" style="left:34px;top:306px" onclick="aiNodeInfo('frontier')"><div class="sc s-act" id="cn-frontier">FI</div><div class="sl" style="color:var(--violet)">Frontier</div></div>
+    <div class="star-node" style="left:168px;top:306px" onclick="aiNodeInfo('advanced_ml')"><div class="sc s-cyan" id="cn-advanced_ml">ML+</div><div class="sl" style="color:var(--cyan)">Advanced ML</div></div>
+    <div class="star-node" style="left:309px;top:306px" onclick="aiNodeInfo('meta_strategy')"><div class="sc s-green" id="cn-meta_strategy">CFR</div><div class="sl" style="color:var(--green)">Meta Strategy</div></div>
+    <div class="star-node" style="left:452px;top:306px" onclick="aiNodeInfo('vault')"><div class="sc s-act" id="cn-vault">VLT</div><div class="sl" style="color:var(--violet)">Vault Intel</div></div>"""
 
 
 def pmo_ai_engine_map_deck_html(html: str) -> str:
-    if "cn-deep" in html and "engineMap.deep" in html and "cn-frontier" in html and "engineMap.frontier" in html:
+    required_tokens = (
+        "cn-deep",
+        "cn-frontier",
+        "cn-advanced_ml",
+        "cn-meta_strategy",
+        "cn-vault",
+        "engineMap.deep",
+        "engineMap.frontier",
+        "engineMap.advanced_ml",
+        "engineMap.meta_strategy",
+        "engineMap.vault",
+        "Number(constellation.total):20",
+    )
+    if all(token in html for token in required_tokens):
         return html
     html = html.replace(".const-wrap{position:relative;height:215px}", ".const-wrap{position:relative;height:330px}")
     html = html.replace(".const-wrap{position:relative;height:300px}", ".const-wrap{position:relative;height:330px}")
+    html = html.replace(".const-wrap{position:relative;height:330px}", ".const-wrap{position:relative;height:380px}")
     html = html.replace('viewBox="0 0 570 215"', 'viewBox="0 0 570 330"')
     html = html.replace('viewBox="0 0 570 300"', 'viewBox="0 0 570 330"')
+    html = html.replace('viewBox="0 0 570 330"', 'viewBox="0 0 570 380"')
     agent_node = '<div class="star-node" style="left:266px;top:3px" onclick="aiNodeInfo(\'agent\')"><div class="sc s-green" style="width:31px;height:31px;font-size:13px" id="cn-agent">PLAN</div><div class="sl" style="color:var(--green)">Agent Plan</div></div>'
     if "cn-deep" not in html and agent_node in html:
         html = html.replace(agent_node, agent_node + pmo_ai_engine_map_extra_nodes_html(), 1)
@@ -26650,6 +26668,13 @@ def pmo_ai_engine_map_deck_html(html: str) -> str:
     postgate_node = '<div class="star-node" style="left:493px;top:230px" onclick="aiNodeInfo(\'postgate\')"><div class="sc s-amber" id="cn-postgate">PG</div><div class="sl" style="color:var(--amber)">Post-Gate</div></div>'
     if "cn-frontier" not in html and postgate_node in html:
         html = html.replace(postgate_node, postgate_node + "\n    " + frontier_node, 1)
+    advanced_nodes = (
+        "\n    <div class=\"star-node\" style=\"left:168px;top:306px\" onclick=\"aiNodeInfo('advanced_ml')\"><div class=\"sc s-cyan\" id=\"cn-advanced_ml\">ML+</div><div class=\"sl\" style=\"color:var(--cyan)\">Advanced ML</div></div>"
+        "\n    <div class=\"star-node\" style=\"left:309px;top:306px\" onclick=\"aiNodeInfo('meta_strategy')\"><div class=\"sc s-green\" id=\"cn-meta_strategy\">CFR</div><div class=\"sl\" style=\"color:var(--green)\">Meta Strategy</div></div>"
+        "\n    <div class=\"star-node\" style=\"left:452px;top:306px\" onclick=\"aiNodeInfo('vault')\"><div class=\"sc s-act\" id=\"cn-vault\">VLT</div><div class=\"sl\" style=\"color:var(--violet)\">Vault Intel</div></div>"
+    )
+    if "cn-advanced_ml" not in html and "cn-frontier" in html:
+        html = html.replace(frontier_node, frontier_node + advanced_nodes, 1)
     agent_const = "  const agent=engineMap.agent?!!engineMap.agent.active:!!s.ENABLE_PMO_ARCHITECTURE_PLANNER;"
     extra_consts = (
         "  const ensemble=engineMap.ensemble?!!engineMap.ensemble.active:!!s.ENABLE_PMO_ENSEMBLE_VOTING;\n"
@@ -26657,6 +26682,9 @@ def pmo_ai_engine_map_deck_html(html: str) -> str:
         "  const institutional=engineMap.institutional?!!engineMap.institutional.active:!!s.ENABLE_PMO_INSTITUTIONAL_SIGNALS;\n"
         "  const deep=engineMap.deep?!!engineMap.deep.active:!!s.ENABLE_PMO_DEEP_INTELLIGENCE;\n"
         "  const frontier=engineMap.frontier?!!engineMap.frontier.active:!!s.ENABLE_PMO_FRONTIER_INTELLIGENCE;\n"
+        "  const advanced_ml=engineMap.advanced_ml?!!engineMap.advanced_ml.active:!!s.ENABLE_PMO_ADVANCED_ML_INTELLIGENCE;\n"
+        "  const meta_strategy=engineMap.meta_strategy?!!engineMap.meta_strategy.active:!!s.ENABLE_PMO_META_STRATEGY_LAYER;\n"
+        "  const vault=engineMap.vault?!!engineMap.vault.active:!!s.ENABLE_PMO_VAULT_INTELLIGENCE;\n"
         "  const crypto=engineMap.crypto?!!engineMap.crypto.active:!!s.PMO_CRYPTO_PROFILE_ENABLED;\n"
         "  const postgate=engineMap.postgate?!!engineMap.postgate.active:!!s.ENABLE_PMO_POST_GATE_EQUITY_PROOF;\n"
     )
@@ -26669,6 +26697,15 @@ def pmo_ai_engine_map_deck_html(html: str) -> str:
             "  const frontier=engineMap.frontier?!!engineMap.frontier.active:!!s.ENABLE_PMO_FRONTIER_INTELLIGENCE;\n",
             1,
         )
+    if "engineMap.advanced_ml" not in html and "engineMap.frontier" in html:
+        html = html.replace(
+            "  const frontier=engineMap.frontier?!!engineMap.frontier.active:!!s.ENABLE_PMO_FRONTIER_INTELLIGENCE;\n",
+            "  const frontier=engineMap.frontier?!!engineMap.frontier.active:!!s.ENABLE_PMO_FRONTIER_INTELLIGENCE;\n"
+            "  const advanced_ml=engineMap.advanced_ml?!!engineMap.advanced_ml.active:!!s.ENABLE_PMO_ADVANCED_ML_INTELLIGENCE;\n"
+            "  const meta_strategy=engineMap.meta_strategy?!!engineMap.meta_strategy.active:!!s.ENABLE_PMO_META_STRATEGY_LAYER;\n"
+            "  const vault=engineMap.vault?!!engineMap.vault.active:!!s.ENABLE_PMO_VAULT_INTELLIGENCE;\n",
+            1,
+        )
     whynot_state = "  nodeState('whynot',whynot?'amber':'dim');"
     extra_states = (
         "  nodeState('ensemble',ensemble?'cyan':'dim');\n"
@@ -26676,6 +26713,9 @@ def pmo_ai_engine_map_deck_html(html: str) -> str:
         "  nodeState('institutional',institutional?'amber':'dim');\n"
         "  nodeState('deep',deep?'act':'dim');\n"
         "  nodeState('frontier',frontier?'act':'dim');\n"
+        "  nodeState('advanced_ml',advanced_ml?'cyan':'dim');\n"
+        "  nodeState('meta_strategy',meta_strategy?'green':'dim');\n"
+        "  nodeState('vault',vault?'act':'dim');\n"
         "  nodeState('crypto',crypto?'green':'dim');\n"
         "  nodeState('postgate',postgate?'amber':'dim');"
     )
@@ -26688,6 +26728,15 @@ def pmo_ai_engine_map_deck_html(html: str) -> str:
             "  nodeState('frontier',frontier?'act':'dim');\n",
             1,
         )
+    if "nodeState('advanced_ml'" not in html and "nodeState('frontier'" in html:
+        html = html.replace(
+            "  nodeState('frontier',frontier?'act':'dim');\n",
+            "  nodeState('frontier',frontier?'act':'dim');\n"
+            "  nodeState('advanced_ml',advanced_ml?'cyan':'dim');\n"
+            "  nodeState('meta_strategy',meta_strategy?'green':'dim');\n"
+            "  nodeState('vault',vault?'act':'dim');\n",
+            1,
+        )
     html = html.replace(
         "[quantum,learning,warp,asi,signal,watchlist,sector,v112,whynot,agent].filter(Boolean).length",
         "[quantum,learning,warp,asi,signal,watchlist,sector,v112,whynot,ensemble,alpha,institutional,deep,crypto,postgate,agent].filter(Boolean).length",
@@ -26696,8 +26745,13 @@ def pmo_ai_engine_map_deck_html(html: str) -> str:
         "[quantum,learning,warp,asi,signal,watchlist,sector,v112,whynot,ensemble,alpha,institutional,deep,crypto,postgate,agent].filter(Boolean).length",
         "[quantum,learning,warp,asi,signal,watchlist,sector,v112,whynot,ensemble,alpha,institutional,deep,frontier,crypto,postgate,agent].filter(Boolean).length",
     )
+    html = html.replace(
+        "[quantum,learning,warp,asi,signal,watchlist,sector,v112,whynot,ensemble,alpha,institutional,deep,frontier,crypto,postgate,agent].filter(Boolean).length",
+        "[quantum,learning,warp,asi,signal,watchlist,sector,v112,whynot,ensemble,alpha,institutional,deep,frontier,advanced_ml,meta_strategy,vault,crypto,postgate,agent].filter(Boolean).length",
+    )
     html = html.replace("Number(constellation.total):10", "Number(constellation.total):17")
     html = html.replace("Number(constellation.total):16", "Number(constellation.total):17")
+    html = html.replace("Number(constellation.total):17", "Number(constellation.total):20")
     whynot_info = "    whynot:['Why-Not Engine','Records every blocked signal with reason.',[['ENABLE_PMO_WHY_NOT_ENGINE',S('ENABLE_PMO_WHY_NOT_ENGINE'),'var(--amber)'],['Min score',S('PMO_WHY_NOT_MIN_SCORE'),'var(--text2)'],['Min RVOL',S('PMO_WHY_NOT_MIN_RVOL'),'var(--text2)'],['Record audit',S('PMO_WHY_NOT_RECORD_AUDIT'),'var(--text2)']]],"
     extra_info = (
         "\n    ensemble:['Ensemble Voting','Aggregates engine votes before PMO trusts a direction.',[['ENABLE_PMO_ENSEMBLE_VOTING',S('ENABLE_PMO_ENSEMBLE_VOTING'),'var(--cyan)'],['Min bull votes',S('PMO_ENSEMBLE_MIN_BULL_VOTES'),'var(--text2)'],['Min agree ratio',S('PMO_ENSEMBLE_MIN_AGREE_RATIO'),'var(--text2)']]],"
@@ -26705,6 +26759,9 @@ def pmo_ai_engine_map_deck_html(html: str) -> str:
         "\n    institutional:['Institutional Signals','Liquidity vacuum, auction probes, PEAD, VRP, ask prints, and 3:30 discipline.',[['ENABLE_PMO_INSTITUTIONAL_SIGNALS',S('ENABLE_PMO_INSTITUTIONAL_SIGNALS'),'var(--amber)'],['Score influence',S('PMO_INSTITUTIONAL_SCORE_INFLUENCE'),'var(--red)'],['Mode','read-only unless enabled','var(--text3)']]],"
         "\n    deep:['Deep Intelligence','Counterfactual exits, causal trust, Bayesian sizing, attention, and meta-learning.',[['ENABLE_PMO_DEEP_INTELLIGENCE',S('ENABLE_PMO_DEEP_INTELLIGENCE'),'var(--violet)'],['Score influence',S('PMO_DEEP_INTELLIGENCE_SCORE_INFLUENCE'),'var(--red)'],['Status','read-only guidance','var(--text3)']]],"
         "\n    frontier:['Frontier Intelligence','Market consciousness, narrative momentum, reflexivity, engine divergence, temporal memory, Monte Carlo, and supervised self-mod proposals.',[['ENABLE_PMO_FRONTIER_INTELLIGENCE',S('ENABLE_PMO_FRONTIER_INTELLIGENCE'),'var(--violet)'],['Score influence',S('PMO_FRONTIER_SCORE_INFLUENCE'),'var(--red)'],['Mode','read-only guidance','var(--text3)']]],"
+        "\n    advanced_ml:['Advanced ML Intelligence','Regime models, price-action embeddings, Kalman VWAP, RL exits, conformal intervals, dropout uncertainty, walk-forward validation, decay weighting, stacking, Kelly uncertainty, MDL, and synthetic trade generation.',[['ENABLE_PMO_ADVANCED_ML_INTELLIGENCE',S('ENABLE_PMO_ADVANCED_ML_INTELLIGENCE'),'var(--cyan)'],['Score influence',S('PMO_ADVANCED_ML_SCORE_INFLUENCE'),'var(--red)'],['Synthetic rows',S('PMO_ADVANCED_ML_SYNTHETIC_ROWS'),'var(--text2)']]],"
+        "\n    meta_strategy:['Meta Strategy / CFR','Counterfactual regret, shadow trades, confidence calibration, prediction-error trust, regime routing, attention weighting, and alpha decay routing.',[['ENABLE_PMO_META_STRATEGY_LAYER',S('ENABLE_PMO_META_STRATEGY_LAYER'),'var(--green)'],['Score influence',S('PMO_META_STRATEGY_SCORE_INFLUENCE'),'var(--red)'],['Status','read-only guidance','var(--text3)']]],"
+        "\n    vault:['Vault Intelligence','Epigenetic expression, strange attractors, Bayesian surprise, eigenportfolio residuals, symmetry breaking, mutual information, and mechanism-design probes.',[['ENABLE_PMO_VAULT_INTELLIGENCE',S('ENABLE_PMO_VAULT_INTELLIGENCE'),'var(--violet)'],['Score influence',S('PMO_VAULT_SCORE_INFLUENCE'),'var(--red)'],['Max rows',S('PMO_VAULT_MAX_ROWS'),'var(--text2)']]],"
         "\n    crypto:['Crypto Profile','Separate afterhours crypto profile with staged exits and crypto proof tracking.',[['PMO_CRYPTO_PROFILE_ENABLED',S('PMO_CRYPTO_PROFILE_ENABLED'),'var(--green)'],['Allow live after proof',S('PMO_CRYPTO_ALLOW_LIVE_AFTER_PROOF'),'var(--red)'],['Max notional',S('PMO_CRYPTO_MAX_NOTIONAL_USD'),'var(--text2)']]],"
         "\n    postgate:['Post-Gate Equity Proof','Tracks only equity trades generated after the new gates.',[['ENABLE_PMO_POST_GATE_EQUITY_PROOF',S('ENABLE_PMO_POST_GATE_EQUITY_PROOF'),'var(--amber)'],['Min closes',S('PMO_POST_GATE_EQUITY_MIN_CLOSED_TRADES'),'var(--text2)'],['Start',S('PMO_POST_GATE_EQUITY_PROOF_START'),'var(--text3)']]],"
     )
@@ -26715,6 +26772,15 @@ def pmo_ai_engine_map_deck_html(html: str) -> str:
             "\n    deep:['Deep Intelligence','Counterfactual exits, causal trust, Bayesian sizing, attention, and meta-learning.',[['ENABLE_PMO_DEEP_INTELLIGENCE',S('ENABLE_PMO_DEEP_INTELLIGENCE'),'var(--violet)'],['Score influence',S('PMO_DEEP_INTELLIGENCE_SCORE_INFLUENCE'),'var(--red)'],['Status','read-only guidance','var(--text3)']]],",
             "\n    deep:['Deep Intelligence','Counterfactual exits, causal trust, Bayesian sizing, attention, and meta-learning.',[['ENABLE_PMO_DEEP_INTELLIGENCE',S('ENABLE_PMO_DEEP_INTELLIGENCE'),'var(--violet)'],['Score influence',S('PMO_DEEP_INTELLIGENCE_SCORE_INFLUENCE'),'var(--red)'],['Status','read-only guidance','var(--text3)']]],"
             "\n    frontier:['Frontier Intelligence','Market consciousness, narrative momentum, reflexivity, engine divergence, temporal memory, Monte Carlo, and supervised self-mod proposals.',[['ENABLE_PMO_FRONTIER_INTELLIGENCE',S('ENABLE_PMO_FRONTIER_INTELLIGENCE'),'var(--violet)'],['Score influence',S('PMO_FRONTIER_SCORE_INFLUENCE'),'var(--red)'],['Mode','read-only guidance','var(--text3)']]],",
+            1,
+        )
+    if "frontier:['Frontier Intelligence'" in html and "advanced_ml:['Advanced ML Intelligence'" not in html:
+        html = html.replace(
+            "\n    frontier:['Frontier Intelligence','Market consciousness, narrative momentum, reflexivity, engine divergence, temporal memory, Monte Carlo, and supervised self-mod proposals.',[['ENABLE_PMO_FRONTIER_INTELLIGENCE',S('ENABLE_PMO_FRONTIER_INTELLIGENCE'),'var(--violet)'],['Score influence',S('PMO_FRONTIER_SCORE_INFLUENCE'),'var(--red)'],['Mode','read-only guidance','var(--text3)']]],",
+            "\n    frontier:['Frontier Intelligence','Market consciousness, narrative momentum, reflexivity, engine divergence, temporal memory, Monte Carlo, and supervised self-mod proposals.',[['ENABLE_PMO_FRONTIER_INTELLIGENCE',S('ENABLE_PMO_FRONTIER_INTELLIGENCE'),'var(--violet)'],['Score influence',S('PMO_FRONTIER_SCORE_INFLUENCE'),'var(--red)'],['Mode','read-only guidance','var(--text3)']]],"
+            "\n    advanced_ml:['Advanced ML Intelligence','Regime models, price-action embeddings, Kalman VWAP, RL exits, conformal intervals, dropout uncertainty, walk-forward validation, decay weighting, stacking, Kelly uncertainty, MDL, and synthetic trade generation.',[['ENABLE_PMO_ADVANCED_ML_INTELLIGENCE',S('ENABLE_PMO_ADVANCED_ML_INTELLIGENCE'),'var(--cyan)'],['Score influence',S('PMO_ADVANCED_ML_SCORE_INFLUENCE'),'var(--red)'],['Synthetic rows',S('PMO_ADVANCED_ML_SYNTHETIC_ROWS'),'var(--text2)']]],"
+            "\n    meta_strategy:['Meta Strategy / CFR','Counterfactual regret, shadow trades, confidence calibration, prediction-error trust, regime routing, attention weighting, and alpha decay routing.',[['ENABLE_PMO_META_STRATEGY_LAYER',S('ENABLE_PMO_META_STRATEGY_LAYER'),'var(--green)'],['Score influence',S('PMO_META_STRATEGY_SCORE_INFLUENCE'),'var(--red)'],['Status','read-only guidance','var(--text3)']]],"
+            "\n    vault:['Vault Intelligence','Epigenetic expression, strange attractors, Bayesian surprise, eigenportfolio residuals, symmetry breaking, mutual information, and mechanism-design probes.',[['ENABLE_PMO_VAULT_INTELLIGENCE',S('ENABLE_PMO_VAULT_INTELLIGENCE'),'var(--violet)'],['Score influence',S('PMO_VAULT_SCORE_INFLUENCE'),'var(--red)'],['Max rows',S('PMO_VAULT_MAX_ROWS'),'var(--text2)']]],",
             1,
         )
     return html

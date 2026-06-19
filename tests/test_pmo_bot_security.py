@@ -2150,16 +2150,55 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertIn("cn-ensemble", updated)
         self.assertIn("engineMap.deep", updated)
         self.assertIn("engineMap.frontier", updated)
+        self.assertIn("engineMap.advanced_ml", updated)
+        self.assertIn("engineMap.meta_strategy", updated)
+        self.assertIn("engineMap.vault", updated)
         self.assertIn("frontierIntelligencePanel", updated)
-        self.assertIn("Number(constellation.total):17", updated)
+        self.assertIn("Number(constellation.total):20", updated)
         self.assertEqual(updated.count("deepIntelligencePanel"), 1)
         self.assertEqual(updated.count("cn-deep"), 1)
         self.assertEqual(updated.count("frontierIntelligencePanel"), 1)
         self.assertEqual(updated.count("cn-frontier"), 1)
+        self.assertEqual(updated.count("cn-advanced_ml"), 1)
+        self.assertEqual(updated.count("cn-meta_strategy"), 1)
+        self.assertEqual(updated.count("cn-vault"), 1)
         self.assertEqual(self.mod.pmo_deep_intelligence_deck_html(updated).count("deepIntelligencePanel"), 1)
         self.assertEqual(self.mod.pmo_deep_intelligence_deck_html(updated).count("cn-deep"), 1)
         self.assertEqual(self.mod.pmo_deep_intelligence_deck_html(updated).count("frontierIntelligencePanel"), 1)
         self.assertEqual(self.mod.pmo_deep_intelligence_deck_html(updated).count("cn-frontier"), 1)
+        self.assertEqual(self.mod.pmo_deep_intelligence_deck_html(updated).count("cn-advanced_ml"), 1)
+        self.assertEqual(self.mod.pmo_deep_intelligence_deck_html(updated).count("cn-meta_strategy"), 1)
+        self.assertEqual(self.mod.pmo_deep_intelligence_deck_html(updated).count("cn-vault"), 1)
+
+    def test_tracked_orbital_deck_renders_all_twenty_constellation_nodes(self):
+        html = (self.mod.PMO_DIR / "deck" / "pmo_orbital_command_deck.html").read_text(encoding="utf-8")
+        for token in (
+            "cn-quantum",
+            "cn-learning",
+            "cn-warp",
+            "cn-asi",
+            "cn-signal",
+            "cn-watchlist",
+            "cn-sector",
+            "cn-v112",
+            "cn-whynot",
+            "cn-ensemble",
+            "cn-alpha",
+            "cn-institutional",
+            "cn-deep",
+            "cn-frontier",
+            "cn-advanced_ml",
+            "cn-meta_strategy",
+            "cn-vault",
+            "cn-crypto",
+            "cn-postgate",
+            "cn-agent",
+        ):
+            self.assertEqual(html.count(token), 1, token)
+        self.assertIn("Number(constellation.total))?Number(constellation.total):20", html)
+        self.assertIn("advanced_ml:['Advanced ML Intelligence'", html)
+        self.assertIn("meta_strategy:['Meta Strategy / CFR'", html)
+        self.assertIn("vault:['Vault Intelligence'", html)
 
     def test_trade_discipline_blocks_trend_entry_after_three_thirty(self):
         settings = dict(self.mod.DEFAULT_SETTINGS)
