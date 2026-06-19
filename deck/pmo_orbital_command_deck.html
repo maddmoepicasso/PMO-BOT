@@ -1680,7 +1680,7 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
     <div class="truth-step"><b id="truthRowsTotal">-</b><span>Journal Rows</span></div>
     <div class="truth-step"><b id="truthOpenFilled">-</b><span>Unique Open</span></div>
     <div class="truth-step"><b id="truthHitsOpen">-</b><span>Hit Stop/Target</span></div>
-    <div class="truth-step"><b id="truthStillOpen">-</b><span>Duplicate Rows</span></div>
+    <div class="truth-step"><b id="truthStillOpen">-</b><span>Repeated Events</span></div>
     <div class="truth-step"><b id="truthClosedOutcomes">-</b><span>Closed Outcomes</span></div>
   </div>
   <div class="truth-grid">
@@ -5256,7 +5256,7 @@ function updateTradeTruthCockpit(){
   const brokerPositions=Number(firstDefined(brokerRecon.positions_count,snapJournal.broker_positions,0))||0;
   const openFilled=Number(firstDefined(snapJournal.unresolved_unique,snapJournal.open_filled,snapJournal.open_trades,truthJournal.open_trades,journal.open_trades,0))||0;
   const unresolvedRows=Number(firstDefined(snapJournal.unresolved_rows,openFilled,0))||0;
-  const duplicateRows=Number(firstDefined(snapJournal.duplicate_key_count,Math.max(0,unresolvedRows-openFilled),0))||0;
+  const duplicateRows=Number(firstDefined(snapJournal.repeated_lifecycle_rows,snapJournal.repeated_lifecycle_event_count,snapJournal.duplicate_key_count,Math.max(0,unresolvedRows-openFilled),0))||0;
   const closed=Number(firstDefined(snapJournal.closed_trades,snapJournal.closed_outcomes,snapJournal.closed,truthJournal.closed_trades,truthJournal.closed,journal.closed_trades,journal.closed,0))||0;
   const stopOpen=Number(firstDefined(snapJournal.stop_reached_open,truthJournal.stop_reached_open,journal.stop_reached_open,0))||0;
   const targetOpen=Number(firstDefined(snapJournal.target_reached_open,truthJournal.target_reached_open,journal.target_reached_open,0))||0;

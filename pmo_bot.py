@@ -31073,7 +31073,16 @@ def api_deck_snapshot():
         key = journal_trade_key(row)
         if key:
             all_trade_keys[key] = all_trade_keys.get(key, 0) + 1
-    duplicate_trade_keys = sorted(key for key, count in all_trade_keys.items() if count > 1)
+    lifecycle_trade_keys = sorted(key for key, count in all_trade_keys.items() if count > 1)
+    key_status_counts: Dict[str, int] = {}
+    for row in trade_rows:
+        key = journal_trade_key(row)
+        if not key:
+            continue
+        status_key = f"{key}|{str(row.get('status') or row.get('result') or row.get('outcome') or 'UNKNOWN').strip().upper()}"
+        key_status_counts[status_key] = key_status_counts.get(status_key, 0) + 1
+    repeated_lifecycle_events = sorted(key for key, count in key_status_counts.items() if count > 1)
+    repeated_lifecycle_rows = sum(count - 1 for count in key_status_counts.values() if count > 1)
     terminal_trade_keys = {
         journal_trade_key(row)
         for row in trade_rows
@@ -31359,8 +31368,13 @@ def api_deck_snapshot():
             "stop_target_open": not_yet_closed,
             "unresolved_unique": len(latest_unresolved_by_key),
             "unresolved_rows": len(unresolved_trade_rows),
-            "duplicate_key_count": len(duplicate_trade_keys),
-            "duplicate_keys": duplicate_trade_keys[:20],
+            "lifecycle_key_count": len(lifecycle_trade_keys),
+            "lifecycle_keys": lifecycle_trade_keys[:20],
+            "repeated_lifecycle_event_count": len(repeated_lifecycle_events),
+            "repeated_lifecycle_rows": repeated_lifecycle_rows,
+            "repeated_lifecycle_events": repeated_lifecycle_events[:20],
+            "duplicate_key_count": len(repeated_lifecycle_events),
+            "duplicate_keys": repeated_lifecycle_events[:20],
             "broker_positions": len(broker_positions),
             "broker_position_symbols": broker_reconciliation.get("position_symbols", []),
         },
