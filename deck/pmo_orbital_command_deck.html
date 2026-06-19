@@ -1843,6 +1843,7 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
     <div class="ca" onclick="apiCmd('POST','/api/crypto/paper/enable',{},'Enable Crypto Paper','Routes crypto signals to paper executor.')"><span class="ca-ico">CRYP</span><div class="ca-info"><div class="ca-nm">Enable Crypto Paper Only</div><div class="ca-desc">/api/crypto/paper/enable</div></div></div>
     <div class="ca" onclick="apiCmd('POST','/api/background-paper/start',{},'Start BG Scheduler','Starts background paper scheduler thread.')"><span class="ca-ico">BG</span><div class="ca-info"><div class="ca-nm">Start BG Paper Scheduler</div><div class="ca-desc">/api/background-paper/start</div></div></div>
     <div class="ca" onclick="enableDataCollectionMode()"><span class="ca-ico">DATA</span><div class="ca-info"><div class="ca-nm">Enable Data Collection Mode</div><div class="ca-desc">Temporary relaxed paper gates. Live stays locked.</div></div></div>
+    <div class="ca" onclick="confirmLeveragedEtfPaper()"><span class="ca-ico">LETF</span><div class="ca-info"><div class="ca-nm">Confirm Leveraged ETF Paper</div><div class="ca-desc">Approves TQQQ, SQQQ, UPRO for paper review only. Live stays locked.</div></div><span class="ca-lock">ADMIN</span></div>
     <div class="cgt">Intelligence Operations</div>
     <div class="ca" onclick="apiCmd('POST','/api/warp/review',{},'Run WARP Review','WARP SMART engine reviews watchlist. OWNER_REVIEW mode.')"><span class="ca-ico">WARP</span><div class="ca-info"><div class="ca-nm">Run WARP Review</div><div class="ca-desc">/api/warp/review</div></div></div>
     <div class="ca" onclick="apiCmd('POST','/api/learning/refresh',{},'Refresh Learning Memory','Reloads pmo_learning_memory.json and recalculates weights.')"><span class="ca-ico">LM</span><div class="ca-info"><div class="ca-nm">Refresh Learning Memory</div><div class="ca-desc">/api/learning/refresh</div></div></div>
@@ -7031,6 +7032,25 @@ async function disableDataCollectionMode(){
   }catch(e){showToast('Data Collection disable failed: '+e.message);}
 }
 window.addEventListener('DOMContentLoaded',()=>{setTimeout(loadDataCollectionStatus,1500);setInterval(loadDataCollectionStatus,15000);});
+
+async function confirmLeveragedEtfPaper(){
+  const token=getWizardAdminToken(false);
+  if(!token){showToast('Admin token required for leveraged ETF paper confirmation');return;}
+  const phrase='PMO CONFIRM LEVERAGED ETF PAPER';
+  const typed=prompt('Type '+phrase+' to confirm TQQQ, SQQQ, and UPRO for PAPER review only. Live trading remains locked.');
+  if(!typed)return;
+  try{
+    const data=await wizardFetch('POST','/api/leveraged-etf/confirm-paper',{
+      symbols:['TQQQ','SQQQ','UPRO'],
+      confirm_text:typed
+    });
+    const approved=(data.approved_symbols||[]).join(', ');
+    showToast('Leveraged ETF paper confirmation saved: '+approved);
+    scheduleInstantRefresh();
+  }catch(e){
+    showToast('Leveraged ETF confirmation failed: '+e.message);
+  }
+}
 
 async function apiCmd(method,path,body,name,desc){
   trigCmd(name,desc+'\n\nEndpoint: '+method+' '+BOT_HOST+path,false,async()=>{

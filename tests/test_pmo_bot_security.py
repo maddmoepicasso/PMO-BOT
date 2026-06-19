@@ -2666,6 +2666,47 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertFalse(result["approval"]["live_order_allowed"])
         self.assertTrue(any("PAPER_ALPACA" in item for item in result["approval"]["blocked"]))
 
+    def test_leveraged_etf_paper_confirmation_requires_admin(self):
+        response = self.client.post(
+            "/api/leveraged-etf/confirm-paper",
+            json={"symbols": ["TQQQ", "SQQQ", "UPRO"], "confirm_text": "PMO CONFIRM LEVERAGED ETF PAPER"},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(response.get_json()["locked"])
+
+    def test_leveraged_etf_paper_confirmation_is_paper_only(self):
+        settings = dict(self.mod.DEFAULT_SETTINGS)
+        settings.update({
+            "ALPACA_PAPER": True,
+            "PMO_ALLOW_LIVE_TRADING": False,
+            "PMO_LIVE_TRADING_ENABLED": False,
+            "PMO_LEVERAGED_ETF_PAPER_APPROVED_SYMBOLS": [],
+        })
+        before = self.mod.pmo_leveraged_etf_approval_required("TQQQ", settings, execution_mode="PAPER_ALPACA")
+        self.assertTrue(before)
+
+        result = self.mod.pmo_confirm_leveraged_etf_paper_approval(
+            {"symbols": ["TQQQ", "SQQQ", "UPRO"], "confirm_text": "PMO CONFIRM LEVERAGED ETF PAPER"},
+            settings,
+            record=False,
+        )
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["orders_placed"])
+        self.assertFalse(result["live_unlocked"])
+        self.assertIn("TQQQ", result["approved_symbols"])
+
+        updated = dict(settings)
+        updated["PMO_LEVERAGED_ETF_PAPER_APPROVED_SYMBOLS"] = result["approved_symbols"]
+        self.assertFalse(self.mod.pmo_leveraged_etf_approval_required("TQQQ", updated, execution_mode="PAPER_ALPACA"))
+        self.assertTrue(self.mod.pmo_leveraged_etf_approval_required("TQQQ", updated, execution_mode="LIVE_ALPACA"))
+        self.assertTrue(self.mod.pmo_leveraged_etf_approval_required("SQQQ", updated, execution_mode="LIVE_ALPACA"))
+
+    def test_leveraged_etf_desktop_button_exists(self):
+        html = (self.mod.PMO_DIR / "deck" / "pmo_orbital_command_deck.html").read_text(encoding="utf-8")
+        self.assertIn("Confirm Leveraged ETF Paper", html)
+        self.assertIn("confirmLeveragedEtfPaper", html)
+        self.assertIn("PMO CONFIRM LEVERAGED ETF PAPER", html)
+
     def test_firewall_status_route_is_read_only(self):
         bot = self.mod.bot
         original_account_snapshot = bot.account_snapshot

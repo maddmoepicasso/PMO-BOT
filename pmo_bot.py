@@ -712,6 +712,7 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "PMO_DRAWDOWN_REDUCED_APPROVAL_SCALE": 0.5,
     "PMO_REQUIRE_PAYLOAD_SCORE_FOR_SIGNAL_APPROVAL": True,
     "PMO_REQUIRE_OWNER_APPROVAL_FOR_LEVERAGED_ETF": True,
+    "PMO_LEVERAGED_ETF_PAPER_APPROVED_SYMBOLS": [],
     "ENABLE_PMO_PROTECTIVE_EXIT_ENGINE": True,
     "PMO_REQUIRE_PROTECTIVE_EXIT_PLAN": True,
     "ENABLE_PMO_PAPER_AUTO_CLOSE_ON_TARGET_STOP": True,
@@ -1414,6 +1415,7 @@ EDITABLE_SETTINGS: Dict[str, Dict[str, Any]] = {
     "PMO_DRAWDOWN_REDUCED_APPROVAL_SCALE": {"type": "float", "min": 0.0, "max": 1.0},
     "PMO_REQUIRE_PAYLOAD_SCORE_FOR_SIGNAL_APPROVAL": {"type": "bool"},
     "PMO_REQUIRE_OWNER_APPROVAL_FOR_LEVERAGED_ETF": {"type": "bool"},
+    "PMO_LEVERAGED_ETF_PAPER_APPROVED_SYMBOLS": {"type": "text"},
     "ENABLE_PMO_PROTECTIVE_EXIT_ENGINE": {"type": "bool"},
     "PMO_REQUIRE_PROTECTIVE_EXIT_PLAN": {"type": "bool"},
     "ENABLE_PMO_PAPER_AUTO_CLOSE_ON_TARGET_STOP": {"type": "bool"},
@@ -7017,7 +7019,7 @@ class PMOBot:
                 blocked.append(f"unsupported option order bias {side or 'missing'}; executor buys explicit option contracts only")
         elif side not in {"LONG", "BUY"}:
             blocked.append(f"unsupported broker order side {side or 'missing'}; executor currently supports guarded BUY/LONG only")
-        if pmo_leveraged_etf_approval_required(symbol, settings):
+        if pmo_leveraged_etf_approval_required(symbol, settings, execution_mode=mode):
             blocked.append(f"leveraged ETF {symbol} requires owner approval; automatic broker submission is blocked")
         if score < effective_min_score:
             blocked.append(f"score {score} is below effective executor min score {effective_min_score} for {mode}")
@@ -13558,9 +13560,112 @@ def pmo_is_leveraged_etf(symbol: str, settings: Optional[Dict[str, Any]] = None)
     return bool(clean and clean in pmo_leveraged_etf_symbols(settings))
 
 
-def pmo_leveraged_etf_approval_required(symbol: str, settings: Optional[Dict[str, Any]] = None) -> bool:
+PMO_LEVERAGED_ETF_PAPER_CONFIRM_PHRASE = "PMO CONFIRM LEVERAGED ETF PAPER"
+
+
+def pmo_leveraged_etf_paper_approved_symbols(settings: Optional[Dict[str, Any]] = None) -> set:
     settings = settings or load_settings()
-    return bool(settings.get("PMO_REQUIRE_OWNER_APPROVAL_FOR_LEVERAGED_ETF", True)) and pmo_is_leveraged_etf(symbol, settings)
+    configured = settings.get("PMO_LEVERAGED_ETF_PAPER_APPROVED_SYMBOLS", [])
+    return set(pmo_profile_list(configured))
+
+
+def pmo_leveraged_etf_paper_approved(symbol: str, settings: Optional[Dict[str, Any]] = None) -> bool:
+    clean = str(symbol or "").strip().upper()
+    if not clean:
+        return False
+    settings = settings or load_settings()
+    return clean in pmo_leveraged_etf_paper_approved_symbols(settings)
+
+
+def pmo_leveraged_etf_approval_required(symbol: str, settings: Optional[Dict[str, Any]] = None, execution_mode: str = "") -> bool:
+    settings = settings or load_settings()
+    clean = str(symbol or "").strip().upper()
+    if not bool(settings.get("PMO_REQUIRE_OWNER_APPROVAL_FOR_LEVERAGED_ETF", True)):
+        return False
+    if not pmo_is_leveraged_etf(clean, settings):
+        return False
+    if str(execution_mode or settings.get("PMO_ORDER_EXECUTION_MODE", "")).upper() == "LIVE_ALPACA":
+        return True
+    if bool(settings.get("ALPACA_PAPER", True)) and not bool(settings.get("PMO_ALLOW_LIVE_TRADING", False)) and not bool(settings.get("PMO_LIVE_TRADING_ENABLED", False)):
+        return not pmo_leveraged_etf_paper_approved(clean, settings)
+    return True
+
+
+def pmo_leveraged_etf_paper_approval_status(settings: Optional[Dict[str, Any]] = None, symbols: Optional[Iterable[Any]] = None) -> Dict[str, Any]:
+    settings = settings or load_settings()
+    requested = unique_symbols(symbols or ["TQQQ", "SQQQ", "UPRO"])
+    approved = pmo_leveraged_etf_paper_approved_symbols(settings)
+    rows = []
+    for symbol in requested:
+        rows.append({
+            "symbol": symbol,
+            "is_leveraged_etf": pmo_is_leveraged_etf(symbol, settings),
+            "is_inverse_etf": pmo_is_inverse_etf(symbol, settings),
+            "paper_approved": symbol in approved,
+            "approval_required": pmo_leveraged_etf_approval_required(symbol, settings, execution_mode="PAPER_ALPACA"),
+            "live_order_allowed": False,
+            "note": "Paper-only owner confirmation; live remains blocked by proof and live locks.",
+        })
+    return {
+        "ok": True,
+        "symbols": requested,
+        "approved_symbols": sorted(approved),
+        "rows": rows,
+        "paper_only": True,
+        "live_unlocked": False,
+        "orders_placed": False,
+        "confirm_phrase": PMO_LEVERAGED_ETF_PAPER_CONFIRM_PHRASE,
+    }
+
+
+def pmo_confirm_leveraged_etf_paper_approval(payload: Dict[str, Any], settings: Optional[Dict[str, Any]] = None, *, record: bool = False) -> Dict[str, Any]:
+    settings = dict(settings or load_settings())
+    phrase = str(payload.get("confirm_text") or payload.get("confirm_phrase") or "").strip().upper()
+    raw_symbols = payload.get("symbols", None)
+    if raw_symbols is None:
+        raw_symbols = payload.get("symbol", None)
+    symbols = unique_symbols(raw_symbols if isinstance(raw_symbols, (list, tuple, set)) else str(raw_symbols or "TQQQ,SQQQ,UPRO").replace(",", " ").split())
+    blockers = []
+    if phrase != PMO_LEVERAGED_ETF_PAPER_CONFIRM_PHRASE:
+        blockers.append(f"typed confirmation required: {PMO_LEVERAGED_ETF_PAPER_CONFIRM_PHRASE}")
+    if not symbols:
+        blockers.append("at least one symbol is required")
+    invalid = [symbol for symbol in symbols if not pmo_is_leveraged_etf(symbol, settings)]
+    if invalid:
+        blockers.append("not leveraged ETF symbols: " + ", ".join(invalid))
+    if bool(settings.get("PMO_ALLOW_LIVE_TRADING", False)) or bool(settings.get("PMO_LIVE_TRADING_ENABLED", False)):
+        blockers.append("live trading switches must be OFF before leveraged ETF paper approval")
+    if not bool(settings.get("ALPACA_PAPER", True)):
+        blockers.append("ALPACA_PAPER must be True before leveraged ETF paper approval")
+    if blockers:
+        return {
+            "ok": False,
+            "status": "BLOCKED",
+            "blocked": blockers,
+            "paper_only": True,
+            "live_unlocked": False,
+            "orders_placed": False,
+        }
+    approved = unique_symbols(settings.get("PMO_LEVERAGED_ETF_PAPER_APPROVED_SYMBOLS", []), symbols)
+    settings["PMO_LEVERAGED_ETF_PAPER_APPROVED_SYMBOLS"] = approved
+    if record:
+        write_settings(settings)
+        bot.reload()
+        csv_append(PMO_BOT_OWNER_COMMANDS_FILE, {
+            "timestamp": now_et().isoformat(),
+            "action": "leveraged_etf_paper_approval",
+            "target": ", ".join(symbols),
+            "notes": "Owner confirmed account permissions and PMO settings for paper-only leveraged ETF review.",
+            "status": "APPROVED_PAPER_ONLY",
+            "safe_note": "Live remains locked; this does not approve live leveraged ETF trading.",
+        })
+    status = pmo_leveraged_etf_paper_approval_status(settings, symbols)
+    status.update({
+        "status": "APPROVED_PAPER_ONLY",
+        "settings_changed": bool(record),
+        "approved_symbols": approved,
+    })
+    return status
 
 
 def pmo_micro_mode_enabled(settings: Optional[Dict[str, Any]] = None) -> bool:
@@ -27955,6 +28060,26 @@ def api_admin_verify():
     if locked:
         return locked, 403
     return jsonify({"ok": True, "message": "PMO Bot admin token accepted.", "admin": pmo_admin_security_state()})
+
+
+@app.route("/api/leveraged-etf/approval", methods=["GET"])
+@app.route("/api/leveraged-etf/status", methods=["GET"])
+def api_leveraged_etf_approval_status():
+    settings = load_settings()
+    symbols = request.args.get("symbols")
+    requested = str(symbols or "TQQQ,SQQQ,UPRO").replace(",", " ").split()
+    return jsonify(pmo_leveraged_etf_paper_approval_status(settings, requested))
+
+
+@app.route("/api/leveraged-etf/confirm-paper", methods=["POST"])
+@app.route("/api/leveraged-etf/confirm", methods=["POST"])
+def api_leveraged_etf_confirm_paper():
+    payload = request.get_json(force=True, silent=True) or {}
+    locked = pmo_require_admin(payload)
+    if locked:
+        return locked, 403
+    result = pmo_confirm_leveraged_etf_paper_approval(payload, record=True)
+    return jsonify(result), 200 if result.get("ok") else 400
 
 
 @app.route("/api/data-collection/status", methods=["GET"])
