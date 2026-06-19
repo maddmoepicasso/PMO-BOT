@@ -237,6 +237,7 @@
                 gap:6px;
                 flex-wrap:wrap;
                 width:max-content;
+                min-width:0;
                 max-width:calc(100vw - 24px);
                 padding:6px;
                 background:linear-gradient(180deg, rgba(13,20,32,.96), rgba(4,8,14,.94));
@@ -246,13 +247,29 @@
                 backdrop-filter:blur(10px);
             }
             .pmo-layout-toolbar.is-collapsed {
-                gap:5px;
-                padding:5px;
-                max-width:260px;
+                gap:4px;
+                padding:4px;
+                width:auto !important;
+                min-width:0 !important;
+                max-width:148px;
+                overflow:hidden;
             }
             .pmo-layout-toolbar.is-collapsed [data-toolbar-control],
             .pmo-layout-toolbar.is-collapsed .pmo-status {
                 display:none !important;
+            }
+            .pmo-layout-toolbar.is-collapsed .pmo-toolbar-drag-handle {
+                max-width:96px;
+                min-height:24px;
+                padding:3px 7px;
+                gap:5px;
+                font-size:11px;
+            }
+            .pmo-layout-toolbar.is-collapsed button[data-action="toggle-toolbar-compact"] {
+                min-width:28px;
+                width:28px !important;
+                height:28px;
+                padding:0;
             }
             .pmo-toolbar-drag-handle {
                 display:inline-flex;
@@ -297,6 +314,8 @@
                 padding:4px 8px;
                 font:inherit;
                 font-size:11px;
+                width:auto;
+                min-width:0;
             }
             .pmo-layout-toolbar select {
                 max-width:138px;
@@ -423,9 +442,20 @@
                     right:auto;
                     top:8px;
                     gap:5px;
+                    width:auto !important;
                     max-width:calc(100vw - 16px);
                     max-height:36vh;
                     overflow:auto;
+                }
+                .pmo-layout-toolbar button,
+                .pmo-layout-toolbar select {
+                    width:auto !important;
+                    min-width:0 !important;
+                }
+                .pmo-layout-toolbar.is-collapsed {
+                    max-width:148px;
+                    max-height:38px;
+                    overflow:hidden;
                 }
                 .pmo-layout-toolbar .pmo-status {
                     width:100%;
@@ -941,7 +971,7 @@
             toolbar.style.left = '';
             toolbar.style.right = '';
             toolbar.style.top = '';
-            toolbar.style.width = '';
+            toolbar.style.width = saved.collapsed ? 'auto' : '';
             toolbar.classList.toggle('is-collapsed', Boolean(saved.collapsed));
             return;
         }
@@ -950,7 +980,7 @@
         toolbar.style.left = next.x + 'px';
         toolbar.style.top = next.y + 'px';
         toolbar.style.right = 'auto';
-        toolbar.style.width = Math.max(toolbarMinWidth(next.collapsed), next.width || Math.min(window.innerWidth - 24, 720)) + 'px';
+        toolbar.style.width = next.collapsed ? 'auto' : Math.max(toolbarMinWidth(false), next.width || Math.min(window.innerWidth - 24, 720)) + 'px';
         toolbar.classList.toggle('is-collapsed', Boolean(next.collapsed));
     }
 
@@ -958,7 +988,8 @@
         const margin = 8;
         const collapsed = Boolean(position.collapsed);
         const minWidth = toolbarMinWidth(collapsed);
-        const width = Math.min(Math.max(minWidth, Number(position.width || toolbar?.offsetWidth || 420)), Math.max(minWidth, window.innerWidth - (margin * 2)));
+        const defaultWidth = collapsed ? minWidth : Number(position.width || toolbar?.offsetWidth || 420);
+        const width = collapsed ? minWidth : Math.min(Math.max(minWidth, defaultWidth), Math.max(minWidth, window.innerWidth - (margin * 2)));
         const maxX = Math.max(margin, window.innerWidth - width - margin);
         const maxY = Math.max(margin, window.innerHeight - 52);
         return {
@@ -970,7 +1001,7 @@
     }
 
     function toolbarMinWidth(collapsed) {
-        return collapsed ? 104 : 220;
+        return collapsed ? 148 : 220;
     }
 
     function resetToolbarPosition(event) {
@@ -1020,6 +1051,9 @@
         } else if (action === 'toggle-toolbar-compact') {
             const current = state.toolbar && typeof state.toolbar === 'object' ? state.toolbar : {};
             state.toolbar = Object.assign({}, current, { collapsed: !current.collapsed });
+            if (state.toolbar.collapsed) {
+                delete state.toolbar.width;
+            }
             applyToolbarPosition(true);
             updateToolbar();
             setStatus(state.toolbar.collapsed ? 'Shrunk' : 'Expanded');

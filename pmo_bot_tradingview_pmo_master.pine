@@ -25,10 +25,16 @@ bbLength = input.int(20, "Bollinger Length", minval=1, group=groupRisk)
 bbMult = input.float(2.0, "Bollinger Mult", minval=0.1, step=0.1, group=groupRisk)
 atrLength = input.int(14, "ATR Length", minval=1, group=groupRisk)
 kcMult = input.float(1.5, "Squeeze KC Mult", minval=0.1, step=0.1, group=groupRisk)
-showBasicSignals = input.bool(true, "Show LONG/SHORT Labels", group=groupDisplay)
-showOptionSignals = input.bool(true, "Show CALL/PUT Readiness", group=groupDisplay)
-showPredictionCandle = input.bool(true, "Show PMO Prediction Candle", group=groupDisplay)
+visualMode = input.string("Clean", "Visual Mode", options=["Clean", "Full", "Alerts Only"], group=groupDisplay)
+showTrendLines = input.bool(true, "Show EMA/VWAP Lines", group=groupDisplay)
+showVolatilityBands = input.bool(false, "Show Bollinger Bands", group=groupDisplay)
+showBasicSignals = input.bool(false, "Show LONG/SHORT Markers", group=groupDisplay)
+showOptionSignals = input.bool(true, "Show CALL/PUT Markers", group=groupDisplay)
+showPredictionCandle = input.bool(true, "Show Last-Bar Prediction Candle", group=groupDisplay)
+showPredictionMarkers = input.bool(false, "Show Historical Prediction Dots", group=groupDisplay)
 showBackground = input.bool(true, "Show Trend Background", group=groupDisplay)
+backgroundOpacity = input.int(94, "Background Opacity", minval=80, maxval=100, group=groupDisplay)
+minSignalSpacingBars = input.int(5, "Min Bars Between Chart Markers", minval=0, maxval=100, group=groupDisplay)
 showDashboard = input.bool(true, "Show PMO Dashboard Table", group=groupDisplay)
 sendDynamicAlerts = input.bool(true, "Enable Dynamic Webhook alert() Messages", group=groupDisplay)
 
@@ -74,27 +80,42 @@ predictionText = bullPrediction ? "BULLISH_PREDICTION" : bearPrediction ? "BEARI
 biasText = callOptionPower ? "CALL READY" : putOptionPower ? "PUT READY" : sniperLong ? "SNIPER LONG" : sniperShort ? "SNIPER SHORT" : basicLong ? "LONG" : basicShort ? "SHORT" : predictionText
 optionText = callOptionPower ? "CALL" : putOptionPower ? "PUT" : "WAIT"
 
-plot(fastEma, "PMO EMA Fast", color=color.new(color.lime, 0))
-plot(slowEma, "PMO EMA Slow", color=color.new(color.orange, 0))
-plot(trendEma, "PMO EMA Trend", color=color.new(color.blue, 0))
-plot(vwapValue, "PMO VWAP", color=color.new(color.purple, 0))
-plot(bbUpper, "PMO Bollinger Upper", color=color.new(color.gray, 65))
-plot(bbBasis, "PMO Bollinger Basis", color=color.new(color.gray, 80))
-plot(bbLower, "PMO Bollinger Lower", color=color.new(color.gray, 65))
+alertsOnly = visualMode == "Alerts Only"
+drawTrendLines = showTrendLines and not alertsOnly
+drawVolatilityBands = showVolatilityBands and not alertsOnly
+drawBasicSignals = showBasicSignals and not alertsOnly
+drawOptionSignals = showOptionSignals and not alertsOnly
+drawPredictionCandle = showPredictionCandle and not alertsOnly
+drawPredictionMarkers = showPredictionMarkers and not alertsOnly
+
+var int lastSignalMarkerBar = na
+signalSpacingOk = na(lastSignalMarkerBar) or bar_index - lastSignalMarkerBar >= minSignalSpacingBars
+longSignalEvent = mergedLong and not mergedLong[1] and signalSpacingOk
+shortSignalEvent = mergedShort and not mergedShort[1] and signalSpacingOk
+
+plot(fastEma, "PMO EMA Fast", color=drawTrendLines ? color.new(color.lime, 18) : na)
+plot(slowEma, "PMO EMA Slow", color=drawTrendLines ? color.new(color.orange, 18) : na)
+plot(trendEma, "PMO EMA Trend", color=drawTrendLines ? color.new(color.blue, 28) : na)
+plot(vwapValue, "PMO VWAP", color=drawTrendLines ? color.new(color.purple, 20) : na)
+plot(bbUpper, "PMO Bollinger Upper", color=drawVolatilityBands ? color.new(color.gray, 78) : na)
+plot(bbBasis, "PMO Bollinger Basis", color=drawVolatilityBands ? color.new(color.gray, 88) : na)
+plot(bbLower, "PMO Bollinger Lower", color=drawVolatilityBands ? color.new(color.gray, 78) : na)
 plot(pmoScore, "PMO Score", display=display.none)
 plot(bullPrediction ? 1 : bearPrediction ? -1 : 0, "PMO Prediction Direction", display=display.none)
-bgcolor(showBackground ? bullTrend ? color.new(color.green, 88) : bearTrend ? color.new(color.red, 88) : color.new(color.gray, 92) : na)
+bgcolor(showBackground and not alertsOnly ? bullTrend ? color.new(color.green, backgroundOpacity) : bearTrend ? color.new(color.red, backgroundOpacity) : color.new(color.gray, 98) : na)
 
-plotshape(showBasicSignals and basicLong and not callOptionPower, title="PMO LONG", style=shape.triangleup, text="PMO LONG", location=location.belowbar, color=color.new(color.green, 0), textcolor=color.white, size=size.small)
-plotshape(showBasicSignals and basicShort and not putOptionPower, title="PMO SHORT", style=shape.triangledown, text="PMO SHORT", location=location.abovebar, color=color.new(color.red, 0), textcolor=color.white, size=size.small)
-plotshape(showBasicSignals and sniperLong, title="PMO Sniper LONG", style=shape.labelup, text="SNIPER LONG", location=location.belowbar, color=color.new(color.teal, 0), textcolor=color.white)
-plotshape(showBasicSignals and sniperShort, title="PMO Sniper SHORT", style=shape.labeldown, text="SNIPER SHORT", location=location.abovebar, color=color.new(color.maroon, 0), textcolor=color.white)
-plotshape(showOptionSignals and callOptionPower, title="PMO CALL Readiness", style=shape.labelup, text="PMO CALL", location=location.belowbar, color=color.new(color.lime, 0), textcolor=color.black)
-plotshape(showOptionSignals and putOptionPower, title="PMO PUT Readiness", style=shape.labeldown, text="PMO PUT", location=location.abovebar, color=color.new(color.red, 0), textcolor=color.white)
+plotshape(drawBasicSignals and longSignalEvent and basicLong and not callOptionPower, title="PMO LONG", style=shape.triangleup, text="L", location=location.belowbar, color=color.new(color.green, 0), textcolor=color.white, size=size.tiny)
+plotshape(drawBasicSignals and shortSignalEvent and basicShort and not putOptionPower, title="PMO SHORT", style=shape.triangledown, text="S", location=location.abovebar, color=color.new(color.red, 0), textcolor=color.white, size=size.tiny)
+plotshape(drawBasicSignals and longSignalEvent and sniperLong, title="PMO Sniper LONG", style=shape.triangleup, text="SL", location=location.belowbar, color=color.new(color.teal, 0), textcolor=color.white, size=size.tiny)
+plotshape(drawBasicSignals and shortSignalEvent and sniperShort, title="PMO Sniper SHORT", style=shape.triangledown, text="SS", location=location.abovebar, color=color.new(color.maroon, 0), textcolor=color.white, size=size.tiny)
+plotshape(drawOptionSignals and longSignalEvent and callOptionPower, title="PMO CALL Readiness", style=shape.labelup, text="CALL", location=location.belowbar, color=color.new(color.lime, 0), textcolor=color.black, size=size.tiny)
+plotshape(drawOptionSignals and shortSignalEvent and putOptionPower, title="PMO PUT Readiness", style=shape.labeldown, text="PUT", location=location.abovebar, color=color.new(color.red, 0), textcolor=color.white, size=size.tiny)
+if longSignalEvent or shortSignalEvent
+    lastSignalMarkerBar := bar_index
 
 var box predBox = na
 var label predLabel = na
-if barstate.islast and showPredictionCandle
+if barstate.islast and drawPredictionCandle
     box.delete(predBox)
     label.delete(predLabel)
     predColor = bullPrediction ? color.new(color.lime, 20) : bearPrediction ? color.new(color.red, 20) : color.new(color.gray, 62)
@@ -103,11 +124,11 @@ if barstate.islast and showPredictionCandle
     predBottom = bullPrediction ? close : bearPrediction ? close - atr * 0.65 : close - atr * 0.25
     predBox := box.new(bar_index + 1, predTop, bar_index + 2, predBottom, bgcolor=predColor, border_color=predBorder)
     predY = bullPrediction ? predTop : bearPrediction ? predBottom : close
-    predLabel := label.new(bar_index + 2, predY, "PMO Prediction Candle\n" + predictionText + "\nScore " + str.tostring(pmoScore, "#.##") + "\nBias only - not guaranteed", style=label.style_label_left, color=color.new(predBorder, 0), textcolor=color.white)
+    predLabel := label.new(bar_index + 2, predY, "PMO\n" + (bullPrediction ? "BULL" : bearPrediction ? "BEAR" : "WAIT") + "\n" + str.tostring(pmoScore, "#"), style=label.style_label_left, color=color.new(predBorder, 10), textcolor=color.white, size=size.small)
 
-plotshape(showPredictionCandle and bullPrediction and barstate.isconfirmed, title="PMO Bullish Prediction", style=shape.circle, text="PRED BULL", location=location.belowbar, color=color.new(color.lime, 0), textcolor=color.black, size=size.tiny)
-plotshape(showPredictionCandle and bearPrediction and barstate.isconfirmed, title="PMO Bearish Prediction", style=shape.circle, text="PRED BEAR", location=location.abovebar, color=color.new(color.red, 0), textcolor=color.white, size=size.tiny)
-plotshape(showPredictionCandle and neutralPrediction and barstate.isconfirmed, title="PMO Neutral Prediction", style=shape.circle, text="WAIT", location=location.bottom, color=color.new(color.gray, 20), textcolor=color.white, size=size.tiny)
+plotshape(drawPredictionMarkers and bullPrediction and not bullPrediction[1] and barstate.isconfirmed, title="PMO Bullish Prediction", style=shape.circle, text="B", location=location.belowbar, color=color.new(color.lime, 0), textcolor=color.black, size=size.tiny)
+plotshape(drawPredictionMarkers and bearPrediction and not bearPrediction[1] and barstate.isconfirmed, title="PMO Bearish Prediction", style=shape.circle, text="R", location=location.abovebar, color=color.new(color.red, 0), textcolor=color.white, size=size.tiny)
+plotshape(drawPredictionMarkers and neutralPrediction and not neutralPrediction[1] and barstate.isconfirmed, title="PMO Neutral Prediction", style=shape.circle, text="W", location=location.bottom, color=color.new(color.gray, 35), textcolor=color.white, size=size.tiny)
 
 alertcondition(mergedLong, title="PMO BOT MASTER LONG/CALL", message='{"secret":"PMO_TV_b5e29de2a27142e58e64053a98590d67","ticker":"{{ticker}}","symbol":"{{ticker}}","action":"BUY","side":"LONG","option_type":"CALL","price":{{close}},"close":{{close}},"open":{{open}},"high":{{high}},"low":{{low}},"volume":{{volume}},"time":"{{time}}","timenow":"{{timenow}}","interval":"{{interval}}","timeframe":"{{interval}}","exchange":"{{exchange}}","bar_index":{{bar_index}},"strategy":"PMO BOT Master Signal Suite","message":"PMO BOT LONG/CALL setup. Use PMO BOT webhook review before any Alpaca action."}')
 alertcondition(mergedShort, title="PMO BOT MASTER SHORT/PUT", message='{"secret":"PMO_TV_b5e29de2a27142e58e64053a98590d67","ticker":"{{ticker}}","symbol":"{{ticker}}","action":"SELL","side":"SHORT","option_type":"PUT","price":{{close}},"close":{{close}},"open":{{open}},"high":{{high}},"low":{{low}},"volume":{{volume}},"time":"{{time}}","timenow":"{{timenow}}","interval":"{{interval}}","timeframe":"{{interval}}","exchange":"{{exchange}}","bar_index":{{bar_index}},"strategy":"PMO BOT Master Signal Suite","message":"PMO BOT SHORT/PUT setup. Use PMO BOT webhook review before any Alpaca action."}')

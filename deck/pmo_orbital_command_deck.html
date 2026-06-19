@@ -110,11 +110,18 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
 .voice-btn.listen{background:var(--abg);border-color:var(--ad);color:var(--amber)}
 
 /* METRICS ROW */
-.mrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
-.mbox{background:rgba(7,12,26,.97);padding:8px 10px;min-width:0}
+.mrow{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:1px;background:var(--border);border-bottom:1px solid var(--border);align-items:stretch}
+.mbox{background:rgba(7,12,26,.97);padding:8px 10px;min-width:0;min-height:86px;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
 .ml{font-size:8px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--text3);margin-bottom:2px}
-.mv{font-size:16px;font-weight:700;font-family:var(--mono);line-height:1;transition:all .4s}
-.ms{font-size:8px;color:var(--text3);margin-top:2px}
+.mv{font-size:16px;font-weight:700;font-family:var(--mono);line-height:1;transition:all .4s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms{font-size:8px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-mrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--border);border-bottom:1px solid var(--border);align-items:stretch}
+.account-mini{background:rgba(7,12,26,.97);padding:8px 10px;min-width:0;min-height:86px;border-top:1px solid rgba(255,255,255,.03);display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+.account-mini.whale{background:linear-gradient(180deg,rgba(255,176,32,.12),rgba(7,12,26,.97));box-shadow:inset 0 1px 0 rgba(255,176,32,.2)}
+.account-mini-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:8px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-mini-status{font-family:var(--mono);font-size:8px}
+.account-mini-value{font-family:var(--mono);font-size:15px;font-weight:800;line-height:1.05;margin-top:3px}
+.account-mini-sub{font-size:8px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* MAIN GRID */
 .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border)}
@@ -349,7 +356,8 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
 @media(max-width:920px){
   .grid{grid-template-columns:1fr}
   .sp2,.sp3{grid-column:span 1}
-  .mrow,.log-strip{flex-direction:column}
+  .mrow{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .log-strip{flex-direction:column}
   .wiz-grid,.data-grid,.fw-grid,.sec-grid,.org-grid,.swb-grid,.pay-summary,.pmoai-summary{grid-template-columns:1fr 1fr}
   .swb-tools{grid-template-columns:1fr 1fr}
   .admin-token-strip{grid-template-columns:1fr 1fr}.admin-token-status{justify-self:start;text-align:left}.tv-head{grid-template-columns:1fr 1fr 1fr}.alpaca-chart-wrap{height:330px;min-height:330px}
@@ -360,6 +368,7 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
   .journal-row{grid-template-columns:86px 50px 44px 52px 66px minmax(0,1fr);gap:5px;font-size:8px}
   .topnav{flex-wrap:wrap;gap:10px}
   .nav-pills{flex-wrap:wrap}
+  .account-mrow{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:560px){
   .wiz-grid,.data-grid,.fw-grid,.sec-grid,.org-grid,.swb-grid,.pay-summary,.pmoai-summary{grid-template-columns:1fr}
@@ -368,6 +377,8 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
   .pay-form{grid-template-columns:1fr}
   .pay-row,.pmoai-row{grid-template-columns:1fr}
   .journal-row{grid-template-columns:1fr 1fr;gap:4px}
+  .mrow{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .account-mrow{grid-template-columns:1fr 1fr}
 }
 
 /* LOADING OVERLAY PER PANEL */
@@ -648,6 +659,13 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
   <div class="mbox"><div class="ml">Bot Mode</div><div class="mv" id="mBotMode" style="font-size:13px;padding-top:3px">--</div><div class="ms" id="mBotModeSub">--</div></div>
   <div class="mbox"><div class="ml">Paper Proof</div><div class="mv" id="mProof" style="color:var(--blue)">--</div><div class="ms" id="mProofSub">--</div></div>
   <div class="mbox"><div class="ml">Live Lock</div><div class="mv" id="mLiveLock" style="color:var(--steel);font-size:12px;padding-top:4px">--</div><div class="ms" id="mLiveLockSub">--</div></div>
+</div>
+<div class="account-mrow" id="accountProfileRow">
+  <div class="account-mini">
+    <div class="account-mini-head"><span>Accounts</span><span class="account-mini-status" style="color:var(--amber)">SYNC</span></div>
+    <div class="account-mini-value" style="color:var(--text3)">--</div>
+    <div class="account-mini-sub">Awaiting /api/deck/snapshot</div>
+  </div>
 </div>
 
 <!-- ADMIN TOKEN -->
@@ -1536,6 +1554,7 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
     <button class="wiz-btn" onclick="runMarketDataAdjustment()">Version What-If</button>
     <button class="wiz-btn" onclick="explainMarketData()">Explain Data</button>
     <button class="wiz-btn" onclick="loadStrategyLabStatus()">Strategy Status</button>
+    <button class="wiz-btn" onclick="loadStrategyCatalog()">Strategy Catalog</button>
     <button class="wiz-btn" onclick="generateAiStrategy()">AI Strategy</button>
     <button class="wiz-btn" onclick="runStrategyBacktest()">Backtest Strategy</button>
     <button class="wiz-btn" onclick="optimizeStrategyLab()">Optimize Strategy</button>
@@ -2927,12 +2946,41 @@ function updateMetrics(){
   set('mLiveLock',locked?'LOCKED':'UNLOCKED');
   document.getElementById('mLiveLock').style.color=locked?'var(--steel)':'var(--red)';
   set('mLiveLockSub',locked?'Admin token required':'Live orders possible!');
+  renderAccountProfiles();
 
   set('mDayLoss','$0.00');
   set('mDayLossSub','of $'+(s.PMO_MICRO_CAUTION_LOSS_USD||1.5)+' caution');
 }
 
 function set(id,val){const el=document.getElementById(id);if(el)el.textContent=val;}
+
+function renderAccountProfiles(){
+  const holder=document.getElementById('accountProfileRow');
+  if(!holder)return;
+  const rows=Array.isArray(liveData.account_profiles)&&liveData.account_profiles.length?liveData.account_profiles:[{
+    label:(liveData.account&&liveData.account.profile)||'DEFAULT',
+    status:(liveData.account&&liveData.account.status)||'SYNC',
+    ok:!!(liveData.account&&liveData.account.ok),
+    equity:numVal(liveData.account&&liveData.account.equity,liveData.account&&liveData.account.portfolio_value,0)||0,
+    buying_power:numVal(liveData.account&&liveData.account.buying_power,0)||0,
+    day_pnl:numVal(liveData.account&&liveData.account.day_pnl,0)||0
+  }];
+  const visibleRows=rows.slice(0,4);
+  holder.style.gridTemplateColumns=`repeat(${Math.max(1, visibleRows.length)}, minmax(0, 1fr))`;
+  holder.innerHTML=visibleRows.map(row=>{
+    const pnl=numVal(row.day_pnl,0)||0;
+    const equity=numVal(row.equity,row.portfolio_value,0)||0;
+    const bp=numVal(row.buying_power,0)||0;
+    const ok=!!row.ok;
+    const whale=!!row.is_whale||String(row.profile||row.label||'').toUpperCase().includes('WHALE');
+    const status=String(row.status||(ok?'ACTIVE':'SETUP')).toUpperCase();
+    return `<div class="account-mini ${whale?'whale':''}">
+      <div class="account-mini-head"><span>${esc(row.label||row.profile||'ACCOUNT')}</span><span class="account-mini-status" style="color:${ok?'var(--green)':'var(--amber)'}">${esc(status)}</span></div>
+      <div class="account-mini-value" style="color:${pnl>=0?'var(--green)':'var(--red)'}">${money(equity)}</div>
+      <div class="account-mini-sub">BP ${money(bp)} | Day ${money(pnl)}</div>
+    </div>`;
+  }).join('');
+}
 
 // ORBITAL
 function updateOrbital(){
@@ -4660,6 +4708,32 @@ async function loadStrategyLabStatus(){
   }
 }
 
+async function loadStrategyCatalog(){
+  const out=document.getElementById('finDatasetOut');
+  if(out)out.textContent='Loading 100-strategy PMO catalog...';
+  try{
+    const result=await fetchJsonTimed('/api/strategy-catalog?limit=100',15000);
+    const catalog=result.data||result;
+    const counts=catalog.status_counts||{};
+    const top=Array.isArray(catalog.highest_probability_institutional)?catalog.highest_probability_institutional:[];
+    const rows=Array.isArray(catalog.rows)?catalog.rows:[];
+    set('finStrategyLab',String(catalog.total||rows.length||'READY'));
+    if(out)out.textContent=[
+      `PMO Strategy Catalog: ${catalog.total||rows.length||0} strategies`,
+      `Institutional: ${catalog.institutional_total||0} | TradingView: ${catalog.tradingview_total||0}`,
+      `Coverage: ACTIVE ${counts.ACTIVE||0} | PARTIAL ${counts.PARTIAL||0} | RESEARCH_ONLY ${counts.RESEARCH_ONLY||0} | TODO ${counts.TODO||0}`,
+      `Top institutional priority: ${top.slice(0,10).join(', ')}`,
+      `Validation: ${JSON.stringify(catalog.recommended_validation||{})}`,
+      '',
+      rows.slice(0,30).map(r=>`${r.rank}. [${r.catalog}] ${r.name} - ${r.implementation_status} - ${r.automation}`).join('\n')
+    ].join('\n');
+    showToast('Strategy catalog loaded');
+  }catch(e){
+    if(out)out.textContent='Strategy catalog failed: '+e.message;
+    showToast('Strategy catalog failed');
+  }
+}
+
 function strategyPrompt(){
   const input=document.getElementById('strategyNlInput');
   return (input&&input.value)||'VWAP pullback with RVOL confirmation, 3% target, 2% stop';
@@ -4710,6 +4784,7 @@ Object.assign(window,{
   runMarketDataAdjustment,
   explainMarketData,
   loadStrategyLabStatus,
+  loadStrategyCatalog,
   generateAiStrategy,
   runStrategyBacktest,
   optimizeStrategyLab

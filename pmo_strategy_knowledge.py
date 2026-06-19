@@ -14,6 +14,149 @@ from typing import Any, Dict, List, Optional
 PMO_STRATEGY_KNOWLEDGE_VERSION = "pmo_strategy_knowledge_v1"
 
 
+INSTITUTIONAL_STRATEGY_ROWS = [
+    ("50/200 EMA Trend Following", 1, "Very Easy", "trend_following"),
+    ("Donchian Channel Breakout", 1, "Very Easy", "breakout"),
+    ("Turtle Trading", 1, "Very Easy", "trend_following"),
+    ("Moving Average Ribbon", 1, "Very Easy", "trend_following"),
+    ("Dual Momentum", 1, "Very Easy", "momentum"),
+    ("RSI Mean Reversion", 1, "Very Easy", "mean_reversion"),
+    ("Bollinger Band Mean Reversion", 1, "Very Easy", "mean_reversion"),
+    ("Keltner Channel Breakout", 1, "Very Easy", "breakout"),
+    ("MACD Momentum", 1, "Very Easy", "momentum"),
+    ("ADX Trend Strength Filter", 1, "Very Easy", "regime_filter"),
+    ("Volatility-Adjusted Trend Following", 2, "Easy", "trend_following"),
+    ("ATR Breakout", 2, "Easy", "breakout"),
+    ("Opening Range Breakout", 2, "Easy", "breakout"),
+    ("VWAP Trend Following", 2, "Easy", "trend_following"),
+    ("VWAP Mean Reversion", 2, "Easy", "mean_reversion"),
+    ("Relative Strength Rotation", 2, "Easy", "rotation"),
+    ("Sector Momentum Rotation", 2, "Easy", "rotation"),
+    ("Time-Series Momentum", 2, "Easy", "momentum"),
+    ("Cross-Asset Momentum", 2, "Easy", "cross_asset"),
+    ("Multi-Timeframe Trend Alignment", 2, "Easy", "trend_following"),
+    ("Volatility Targeting", 3, "Intermediate", "risk_management"),
+    ("Dynamic Position Sizing", 3, "Intermediate", "risk_management"),
+    ("Risk-Parity Portfolio", 3, "Intermediate", "portfolio"),
+    ("Equal-Risk Contribution", 3, "Intermediate", "portfolio"),
+    ("Adaptive Moving Average Systems", 3, "Intermediate", "adaptive"),
+    ("Regime Detection Models", 3, "Intermediate", "regime_model"),
+    ("Trend + Mean Reversion Switching", 3, "Intermediate", "regime_switching"),
+    ("Market Breadth Models", 3, "Intermediate", "breadth"),
+    ("Advance/Decline Momentum", 3, "Intermediate", "breadth"),
+    ("Volatility Expansion Systems", 3, "Intermediate", "volatility"),
+    ("Pairs Trading", 4, "Advanced", "stat_arb"),
+    ("Cointegration Trading", 4, "Advanced", "stat_arb"),
+    ("Statistical Arbitrage", 4, "Advanced", "stat_arb"),
+    ("Index Arbitrage", 4, "Advanced", "arbitrage"),
+    ("Futures Calendar Spread Trading", 4, "Advanced", "spread"),
+    ("Intermarket Spread Trading", 4, "Advanced", "spread"),
+    ("Yield Curve Trading", 4, "Advanced", "rates"),
+    ("Cross-Asset Relative Value", 4, "Advanced", "relative_value"),
+    ("Volatility Carry", 4, "Advanced", "carry"),
+    ("Futures Carry Strategy", 4, "Advanced", "carry"),
+    ("Global Macro Systematic", 5, "Institutional Quant", "macro"),
+    ("Factor Investing (Value + Momentum)", 5, "Institutional Quant", "factor"),
+    ("Smart Beta Rotation", 5, "Institutional Quant", "factor"),
+    ("Multi-Factor Equity Models", 5, "Institutional Quant", "factor"),
+    ("CTA Portfolio Replication", 5, "Institutional Quant", "cta"),
+    ("Adaptive Risk-Parity + Trend", 5, "Institutional Quant", "portfolio"),
+    ("Alternative Data Models", 5, "Institutional Quant", "alternative_data"),
+    ("Machine Learning Classification Models", 5, "Institutional Quant", "machine_learning"),
+    ("Reinforcement Learning Trading Systems", 5, "Institutional Quant", "reinforcement_learning"),
+    ("High-Frequency Market Making", 5, "Institutional Quant", "market_making"),
+]
+
+
+TRADINGVIEW_STRATEGY_ROWS = [
+    ("50 EMA / 200 EMA Golden Cross", "Trend Following"),
+    ("20 EMA Pullback Trend Strategy", "Trend Following"),
+    ("9 EMA / 21 EMA Crossover", "Trend Following"),
+    ("Triple Moving Average Alignment", "Trend Following"),
+    ("Supertrend Trend Following", "Trend Following"),
+    ("Donchian Channel Trend Following", "Trend Following"),
+    ("ADX + Moving Average Trend Filter", "Trend Following"),
+    ("Gaussian Channel Trend Strategy", "Trend Following"),
+    ("Hull Moving Average Trend Strategy", "Trend Following"),
+    ("Long-Term Turtle Trading System", "Trend Following"),
+    ("Opening Range Breakout", "Breakout"),
+    ("Donchian Channel Breakout", "Breakout"),
+    ("Bollinger Band Squeeze Breakout", "Breakout"),
+    ("Volatility Expansion Breakout", "Breakout"),
+    ("Trendline Breakout", "Breakout"),
+    ("Support Resistance Breakout", "Breakout"),
+    ("Consolidation Box Breakout", "Breakout"),
+    ("High-of-Day Breakout", "Breakout"),
+    ("52-Week High Breakout", "Breakout"),
+    ("ATR Breakout Strategy", "Breakout"),
+    ("RSI(2) Mean Reversion", "Mean Reversion"),
+    ("RSI Oversold Bounce", "Mean Reversion"),
+    ("Bollinger Band Reversion", "Mean Reversion"),
+    ("VWAP Reversion", "Mean Reversion"),
+    ("Keltner Channel Reversion", "Mean Reversion"),
+    ("Gap Fill Strategy", "Mean Reversion"),
+    ("Three Red Candles Reversal", "Mean Reversion"),
+    ("Extreme Deviation Reversion", "Mean Reversion"),
+    ("Z-Score Mean Reversion", "Mean Reversion"),
+    ("Moving Average Reversion Strategy", "Mean Reversion"),
+    ("MACD Crossover", "Momentum"),
+    ("RSI + MACD Confirmation", "Momentum"),
+    ("Stochastic Momentum Strategy", "Momentum"),
+    ("Momentum Ignition Breakout", "Momentum"),
+    ("Relative Strength Rotation", "Momentum"),
+    ("Rate of Change (ROC) Strategy", "Momentum"),
+    ("Price Momentum Ranking", "Momentum"),
+    ("Volume + Momentum Confirmation", "Momentum"),
+    ("Multi-Timeframe Momentum", "Momentum"),
+    ("Trend + Momentum Hybrid", "Momentum"),
+    ("Volume Spike Reversal", "Volume"),
+    ("OBV Trend Confirmation", "Volume"),
+    ("VWAP Trend Strategy", "Volume"),
+    ("Accumulation/Distribution Breakout", "Volume"),
+    ("High Relative Volume Momentum", "Volume"),
+    ("EMA + RSI + Volume Filter", "Advanced / Hybrid"),
+    ("ADX Regime Switching Strategy", "Advanced / Hybrid"),
+    ("Breakout + Pullback + Momentum System", "Advanced / Hybrid"),
+    ("Trend Following + Mean Reversion Hybrid", "Advanced / Hybrid"),
+    ("AI Regime Adaptive Strategy", "Advanced / Hybrid"),
+]
+
+
+HIGHEST_PROBABILITY_INSTITUTIONAL = [
+    "Time-Series Momentum",
+    "Trend Following CTA",
+    "Donchian Breakouts",
+    "Risk-Parity + Trend",
+    "Volatility Targeting",
+    "Relative Strength Rotation",
+    "Futures Carry",
+    "Cross-Asset Momentum",
+    "Sector Rotation",
+    "Statistical Arbitrage",
+]
+
+
+PMO_STRATEGY_COVERAGE_KEYWORDS = {
+    "ACTIVE": [
+        "ema", "moving average", "macd", "rsi", "bollinger", "keltner", "atr",
+        "opening range", "vwap", "relative strength", "sector momentum",
+        "multi-timeframe", "regime", "market breadth", "volatility expansion",
+        "dynamic position sizing", "volatility targeting", "machine learning",
+        "reinforcement learning", "ai regime", "volume", "rvol",
+    ],
+    "PARTIAL": [
+        "donchian", "turtle", "dual momentum", "cross-asset", "risk-parity",
+        "equal-risk", "factor", "smart beta", "cta", "pairs", "statistical arbitrage",
+        "z-score", "gap fill", "support resistance", "trendline", "52-week",
+    ],
+    "RESEARCH_ONLY": [
+        "futures", "yield curve", "carry", "calendar spread", "intermarket",
+        "index arbitrage", "high-frequency", "market making", "alternative data",
+        "global macro", "relative value",
+    ],
+}
+
+
 def _clean_text(value: Any) -> str:
     return str(value or "").strip()
 
@@ -37,6 +180,109 @@ def _has_any(row: Dict[str, Any], keys: List[str]) -> bool:
         if value not in (None, "", "None", "nan", "NaN"):
             return True
     return False
+
+
+def _slug(value: Any) -> str:
+    cleaned = _clean_text(value).lower()
+    cleaned = "".join(ch if ch.isalnum() else "_" for ch in cleaned)
+    while "__" in cleaned:
+        cleaned = cleaned.replace("__", "_")
+    return cleaned.strip("_") or "strategy"
+
+
+def _coverage_status(name: str) -> str:
+    lowered = name.lower()
+    for status in ("RESEARCH_ONLY", "ACTIVE", "PARTIAL"):
+        if any(keyword in lowered for keyword in PMO_STRATEGY_COVERAGE_KEYWORDS[status]):
+            return status
+    return "TODO"
+
+
+def _strategy_notes(status: str) -> str:
+    if status == "ACTIVE":
+        return "PMO already has related signal, filter, risk, or intelligence components. Still requires walk-forward proof before live use."
+    if status == "PARTIAL":
+        return "PMO has adjacent data or logic, but this exact strategy needs a dedicated template and backtest report."
+    if status == "RESEARCH_ONLY":
+        return "Institutional concept recorded for research. Execution remains blocked until data, broker support, costs, and risk model exist."
+    return "Cataloged idea. Needs Pine/Python template, historical data, and validation before PMO can use it."
+
+
+def pmo_strategy_catalog_snapshot(max_rows: Optional[int] = None) -> Dict[str, Any]:
+    """Return PMO's read-only catalog of institutional and TradingView strategy ideas."""
+    institutional_rows: List[Dict[str, Any]] = []
+    for index, (name, tier, difficulty, family) in enumerate(INSTITUTIONAL_STRATEGY_ROWS, start=1):
+        status = _coverage_status(name)
+        institutional_rows.append({
+            "rank": index,
+            "id": "inst_" + _slug(name),
+            "name": name,
+            "catalog": "institutional",
+            "tier": tier,
+            "difficulty": difficulty,
+            "family": family,
+            "implementation_status": status,
+            "automation": "TRADINGVIEW_READY" if tier <= 2 else "PYTHON_RESEARCH" if tier <= 4 else "INSTITUTIONAL_RESEARCH",
+            "research_only": True,
+            "orders_placed": False,
+            "live_unlocked": False,
+            "notes": _strategy_notes(status),
+        })
+
+    tradingview_rows: List[Dict[str, Any]] = []
+    for index, (name, category) in enumerate(TRADINGVIEW_STRATEGY_ROWS, start=1):
+        status = _coverage_status(name)
+        tradingview_rows.append({
+            "rank": index,
+            "id": "tv_" + _slug(name),
+            "name": name,
+            "catalog": "tradingview",
+            "category": category,
+            "tier": 1 if index <= 20 else 2 if index <= 45 else 3,
+            "difficulty": "TradingView Ready" if index <= 45 else "Hybrid",
+            "family": _slug(category),
+            "implementation_status": status,
+            "automation": "PINE_TEMPLATE_READY" if index <= 45 else "PINE_PLUS_PYTHON",
+            "research_only": True,
+            "orders_placed": False,
+            "live_unlocked": False,
+            "notes": _strategy_notes(status),
+        })
+
+    rows = institutional_rows + tradingview_rows
+    if max_rows is not None:
+        rows = rows[: max(0, int(max_rows))]
+
+    status_counts: Dict[str, int] = {}
+    family_counts: Dict[str, int] = {}
+    for row in institutional_rows + tradingview_rows:
+        status_counts[row["implementation_status"]] = status_counts.get(row["implementation_status"], 0) + 1
+        family_counts[row["family"]] = family_counts.get(row["family"], 0) + 1
+
+    return {
+        "ok": True,
+        "version": PMO_STRATEGY_KNOWLEDGE_VERSION,
+        "name": "PMO Institutional + TradingView Strategy Catalog",
+        "mode": "READ_ONLY_RESEARCH_CATALOG",
+        "research_only": True,
+        "orders_placed": False,
+        "live_unlocked": False,
+        "total": len(institutional_rows) + len(tradingview_rows),
+        "institutional_total": len(institutional_rows),
+        "tradingview_total": len(tradingview_rows),
+        "status_counts": status_counts,
+        "family_counts": family_counts,
+        "highest_probability_institutional": HIGHEST_PROBABILITY_INSTITUTIONAL,
+        "recommended_validation": {
+            "minimum_trades": 2000,
+            "symbols": ["SPY", "QQQ", "ES", "NQ", "BTCUSD", "ETHUSD", "EURUSD", "GC"],
+            "timeframes": ["5m", "15m", "1H", "4H", "1D"],
+            "metrics": ["win_rate", "profit_factor", "expectancy", "sharpe", "sortino", "max_drawdown", "calmar", "cagr"],
+            "controls": ["walk_forward", "monte_carlo", "realistic_commissions", "realistic_slippage", "overfit_check"],
+        },
+        "portfolio_prompt_summary": "Backtest the top institutional strategy families with volatility targeting, risk parity sizing, walk-forward validation, Monte Carlo simulation, realistic costs, and dynamic regime allocation across trend, momentum, carry, and stat-arb.",
+        "rows": rows,
+    }
 
 
 def high_probability_setup_knowledge() -> Dict[str, Any]:

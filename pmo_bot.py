@@ -345,6 +345,7 @@ try:
     from pmo_strategy_knowledge import (
         high_probability_setup_knowledge,
         pmo_broker_guide_knowledge,
+        pmo_strategy_catalog_snapshot,
         pmo_strategy_confluence_check,
         pmo_strategy_knowledge_summary,
     )
@@ -354,6 +355,7 @@ try:
 except Exception as exc:  # pragma: no cover - strategy knowledge must not block PMO startup
     high_probability_setup_knowledge = None
     pmo_broker_guide_knowledge = None
+    pmo_strategy_catalog_snapshot = None
     pmo_strategy_confluence_check = None
     pmo_strategy_knowledge_summary = None
     PMO_STRATEGY_KNOWLEDGE_AVAILABLE = False
@@ -7411,10 +7413,16 @@ bbLength = input.int(20, "Bollinger Length", minval=1, group=groupRisk)
 bbMult = input.float(2.0, "Bollinger Mult", minval=0.1, step=0.1, group=groupRisk)
 atrLength = input.int(14, "ATR Length", minval=1, group=groupRisk)
 kcMult = input.float(1.5, "Squeeze KC Mult", minval=0.1, step=0.1, group=groupRisk)
-showBasicSignals = input.bool(true, "Show LONG/SHORT Labels", group=groupDisplay)
-showOptionSignals = input.bool(true, "Show CALL/PUT Readiness", group=groupDisplay)
-showPredictionCandle = input.bool(true, "Show PMO Prediction Candle", group=groupDisplay)
+visualMode = input.string("Clean", "Visual Mode", options=["Clean", "Full", "Alerts Only"], group=groupDisplay)
+showTrendLines = input.bool(true, "Show EMA/VWAP Lines", group=groupDisplay)
+showVolatilityBands = input.bool(false, "Show Bollinger Bands", group=groupDisplay)
+showBasicSignals = input.bool(false, "Show LONG/SHORT Markers", group=groupDisplay)
+showOptionSignals = input.bool(true, "Show CALL/PUT Markers", group=groupDisplay)
+showPredictionCandle = input.bool(true, "Show Last-Bar Prediction Candle", group=groupDisplay)
+showPredictionMarkers = input.bool(false, "Show Historical Prediction Dots", group=groupDisplay)
 showBackground = input.bool(true, "Show Trend Background", group=groupDisplay)
+backgroundOpacity = input.int(94, "Background Opacity", minval=80, maxval=100, group=groupDisplay)
+minSignalSpacingBars = input.int(5, "Min Bars Between Chart Markers", minval=0, maxval=100, group=groupDisplay)
 showDashboard = input.bool(true, "Show PMO Dashboard Table", group=groupDisplay)
 sendDynamicAlerts = input.bool(true, "Enable Dynamic Webhook alert() Messages", group=groupDisplay)
 
@@ -7460,27 +7468,42 @@ predictionText = bullPrediction ? "BULLISH_PREDICTION" : bearPrediction ? "BEARI
 biasText = callOptionPower ? "CALL READY" : putOptionPower ? "PUT READY" : sniperLong ? "SNIPER LONG" : sniperShort ? "SNIPER SHORT" : basicLong ? "LONG" : basicShort ? "SHORT" : predictionText
 optionText = callOptionPower ? "CALL" : putOptionPower ? "PUT" : "WAIT"
 
-plot(fastEma, "PMO EMA Fast", color=color.new(color.lime, 0))
-plot(slowEma, "PMO EMA Slow", color=color.new(color.orange, 0))
-plot(trendEma, "PMO EMA Trend", color=color.new(color.blue, 0))
-plot(vwapValue, "PMO VWAP", color=color.new(color.purple, 0))
-plot(bbUpper, "PMO Bollinger Upper", color=color.new(color.gray, 65))
-plot(bbBasis, "PMO Bollinger Basis", color=color.new(color.gray, 80))
-plot(bbLower, "PMO Bollinger Lower", color=color.new(color.gray, 65))
+alertsOnly = visualMode == "Alerts Only"
+drawTrendLines = showTrendLines and not alertsOnly
+drawVolatilityBands = showVolatilityBands and not alertsOnly
+drawBasicSignals = showBasicSignals and not alertsOnly
+drawOptionSignals = showOptionSignals and not alertsOnly
+drawPredictionCandle = showPredictionCandle and not alertsOnly
+drawPredictionMarkers = showPredictionMarkers and not alertsOnly
+
+var int lastSignalMarkerBar = na
+signalSpacingOk = na(lastSignalMarkerBar) or bar_index - lastSignalMarkerBar >= minSignalSpacingBars
+longSignalEvent = mergedLong and not mergedLong[1] and signalSpacingOk
+shortSignalEvent = mergedShort and not mergedShort[1] and signalSpacingOk
+
+plot(fastEma, "PMO EMA Fast", color=drawTrendLines ? color.new(color.lime, 18) : na)
+plot(slowEma, "PMO EMA Slow", color=drawTrendLines ? color.new(color.orange, 18) : na)
+plot(trendEma, "PMO EMA Trend", color=drawTrendLines ? color.new(color.blue, 28) : na)
+plot(vwapValue, "PMO VWAP", color=drawTrendLines ? color.new(color.purple, 20) : na)
+plot(bbUpper, "PMO Bollinger Upper", color=drawVolatilityBands ? color.new(color.gray, 78) : na)
+plot(bbBasis, "PMO Bollinger Basis", color=drawVolatilityBands ? color.new(color.gray, 88) : na)
+plot(bbLower, "PMO Bollinger Lower", color=drawVolatilityBands ? color.new(color.gray, 78) : na)
 plot(pmoScore, "PMO Score", display=display.none)
 plot(bullPrediction ? 1 : bearPrediction ? -1 : 0, "PMO Prediction Direction", display=display.none)
-bgcolor(showBackground ? bullTrend ? color.new(color.green, 88) : bearTrend ? color.new(color.red, 88) : color.new(color.gray, 92) : na)
+bgcolor(showBackground and not alertsOnly ? bullTrend ? color.new(color.green, backgroundOpacity) : bearTrend ? color.new(color.red, backgroundOpacity) : color.new(color.gray, 98) : na)
 
-plotshape(showBasicSignals and basicLong and not callOptionPower, title="PMO LONG", style=shape.triangleup, text="PMO LONG", location=location.belowbar, color=color.new(color.green, 0), textcolor=color.white, size=size.small)
-plotshape(showBasicSignals and basicShort and not putOptionPower, title="PMO SHORT", style=shape.triangledown, text="PMO SHORT", location=location.abovebar, color=color.new(color.red, 0), textcolor=color.white, size=size.small)
-plotshape(showBasicSignals and sniperLong, title="PMO Sniper LONG", style=shape.labelup, text="SNIPER LONG", location=location.belowbar, color=color.new(color.teal, 0), textcolor=color.white)
-plotshape(showBasicSignals and sniperShort, title="PMO Sniper SHORT", style=shape.labeldown, text="SNIPER SHORT", location=location.abovebar, color=color.new(color.maroon, 0), textcolor=color.white)
-plotshape(showOptionSignals and callOptionPower, title="PMO CALL Readiness", style=shape.labelup, text="PMO CALL", location=location.belowbar, color=color.new(color.lime, 0), textcolor=color.black)
-plotshape(showOptionSignals and putOptionPower, title="PMO PUT Readiness", style=shape.labeldown, text="PMO PUT", location=location.abovebar, color=color.new(color.red, 0), textcolor=color.white)
+plotshape(drawBasicSignals and longSignalEvent and basicLong and not callOptionPower, title="PMO LONG", style=shape.triangleup, text="L", location=location.belowbar, color=color.new(color.green, 0), textcolor=color.white, size=size.tiny)
+plotshape(drawBasicSignals and shortSignalEvent and basicShort and not putOptionPower, title="PMO SHORT", style=shape.triangledown, text="S", location=location.abovebar, color=color.new(color.red, 0), textcolor=color.white, size=size.tiny)
+plotshape(drawBasicSignals and longSignalEvent and sniperLong, title="PMO Sniper LONG", style=shape.triangleup, text="SL", location=location.belowbar, color=color.new(color.teal, 0), textcolor=color.white, size=size.tiny)
+plotshape(drawBasicSignals and shortSignalEvent and sniperShort, title="PMO Sniper SHORT", style=shape.triangledown, text="SS", location=location.abovebar, color=color.new(color.maroon, 0), textcolor=color.white, size=size.tiny)
+plotshape(drawOptionSignals and longSignalEvent and callOptionPower, title="PMO CALL Readiness", style=shape.labelup, text="CALL", location=location.belowbar, color=color.new(color.lime, 0), textcolor=color.black, size=size.tiny)
+plotshape(drawOptionSignals and shortSignalEvent and putOptionPower, title="PMO PUT Readiness", style=shape.labeldown, text="PUT", location=location.abovebar, color=color.new(color.red, 0), textcolor=color.white, size=size.tiny)
+if longSignalEvent or shortSignalEvent
+    lastSignalMarkerBar := bar_index
 
 var box predBox = na
 var label predLabel = na
-if barstate.islast and showPredictionCandle
+if barstate.islast and drawPredictionCandle
     box.delete(predBox)
     label.delete(predLabel)
     predColor = bullPrediction ? color.new(color.lime, 20) : bearPrediction ? color.new(color.red, 20) : color.new(color.gray, 62)
@@ -7489,11 +7512,11 @@ if barstate.islast and showPredictionCandle
     predBottom = bullPrediction ? close : bearPrediction ? close - atr * 0.65 : close - atr * 0.25
     predBox := box.new(bar_index + 1, predTop, bar_index + 2, predBottom, bgcolor=predColor, border_color=predBorder)
     predY = bullPrediction ? predTop : bearPrediction ? predBottom : close
-    predLabel := label.new(bar_index + 2, predY, "PMO Prediction Candle\n" + predictionText + "\nScore " + str.tostring(pmoScore, "#.##") + "\nBias only - not guaranteed", style=label.style_label_left, color=color.new(predBorder, 0), textcolor=color.white)
+    predLabel := label.new(bar_index + 2, predY, "PMO\n" + (bullPrediction ? "BULL" : bearPrediction ? "BEAR" : "WAIT") + "\n" + str.tostring(pmoScore, "#"), style=label.style_label_left, color=color.new(predBorder, 10), textcolor=color.white, size=size.small)
 
-plotshape(showPredictionCandle and bullPrediction and barstate.isconfirmed, title="PMO Bullish Prediction", style=shape.circle, text="PRED BULL", location=location.belowbar, color=color.new(color.lime, 0), textcolor=color.black, size=size.tiny)
-plotshape(showPredictionCandle and bearPrediction and barstate.isconfirmed, title="PMO Bearish Prediction", style=shape.circle, text="PRED BEAR", location=location.abovebar, color=color.new(color.red, 0), textcolor=color.white, size=size.tiny)
-plotshape(showPredictionCandle and neutralPrediction and barstate.isconfirmed, title="PMO Neutral Prediction", style=shape.circle, text="WAIT", location=location.bottom, color=color.new(color.gray, 20), textcolor=color.white, size=size.tiny)
+plotshape(drawPredictionMarkers and bullPrediction and not bullPrediction[1] and barstate.isconfirmed, title="PMO Bullish Prediction", style=shape.circle, text="B", location=location.belowbar, color=color.new(color.lime, 0), textcolor=color.black, size=size.tiny)
+plotshape(drawPredictionMarkers and bearPrediction and not bearPrediction[1] and barstate.isconfirmed, title="PMO Bearish Prediction", style=shape.circle, text="R", location=location.abovebar, color=color.new(color.red, 0), textcolor=color.white, size=size.tiny)
+plotshape(drawPredictionMarkers and neutralPrediction and not neutralPrediction[1] and barstate.isconfirmed, title="PMO Neutral Prediction", style=shape.circle, text="W", location=location.bottom, color=color.new(color.gray, 35), textcolor=color.white, size=size.tiny)
 
 alertcondition(mergedLong, title="PMO BOT MASTER LONG/CALL", message='{"secret":"CHANGE_ME_SECRET","ticker":"{{ticker}}","symbol":"{{ticker}}","action":"BUY","side":"LONG","option_type":"CALL","price":{{close}},"close":{{close}},"open":{{open}},"high":{{high}},"low":{{low}},"volume":{{volume}},"time":"{{time}}","timenow":"{{timenow}}","interval":"{{interval}}","timeframe":"{{interval}}","exchange":"{{exchange}}","bar_index":{{bar_index}},"strategy":"PMO BOT Master Signal Suite","message":"PMO BOT LONG/CALL setup. Use PMO BOT webhook review before any Alpaca action."}')
 alertcondition(mergedShort, title="PMO BOT MASTER SHORT/PUT", message='{"secret":"CHANGE_ME_SECRET","ticker":"{{ticker}}","symbol":"{{ticker}}","action":"SELL","side":"SHORT","option_type":"PUT","price":{{close}},"close":{{close}},"open":{{open}},"high":{{high}},"low":{{low}},"volume":{{volume}},"time":"{{time}}","timenow":"{{timenow}}","interval":"{{interval}}","timeframe":"{{interval}}","exchange":"{{exchange}}","bar_index":{{bar_index}},"strategy":"PMO BOT Master Signal Suite","message":"PMO BOT SHORT/PUT setup. Use PMO BOT webhook review before any Alpaca action."}')
@@ -22497,6 +22520,14 @@ RICH_CONTROL_TEMPLATE = """
         header { padding:14px 20px; background:rgba(9,14,21,.94); border-bottom:1px solid rgba(245,158,11,.22); display:grid; grid-template-columns:minmax(280px,1fr) auto; gap:16px; align-items:center; backdrop-filter:blur(18px); position:sticky; top:0; z-index:30; }
         .brand { display:flex; align-items:center; gap:16px; min-width:0; }
         .logo { width:84px; height:84px; object-fit:contain; flex-shrink:0; filter:drop-shadow(0 0 12px rgba(245,158,11,.2)); }
+        .header-actions { display:flex; flex-direction:column; gap:8px; align-items:flex-end; min-width:0; }
+        .header-pills { display:flex; flex-wrap:wrap; gap:4px; justify-content:flex-end; align-items:center; }
+        .account-strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(154px,1fr)); gap:6px; width:min(920px,100%); }
+        .account-chip { background:rgba(11,17,26,.92); border:1px solid rgba(122,183,255,.24); border-radius:8px; padding:7px 9px; min-width:0; box-shadow:inset 0 1px 0 rgba(255,255,255,.04); }
+        .account-chip.whale { border-color:rgba(245,158,11,.62); box-shadow:0 0 0 1px rgba(245,158,11,.08), inset 0 1px 0 rgba(255,255,255,.04); }
+        .account-chip-head { display:flex; justify-content:space-between; gap:8px; align-items:center; color:#dbe9fa; font-size:11px; font-weight:bold; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .account-chip-value { margin-top:3px; font-size:17px; font-weight:bold; line-height:1.1; }
+        .account-chip-meta { margin-top:2px; color:var(--muted); font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         h1 { color:#f4f7fb; margin:0 0 6px 0; font-size:28px; letter-spacing:0; }
         h2 { margin:0 0 10px 0; font-size:18px; letter-spacing:0; }
         h3 { margin:0 0 10px 0; font-size:15px; letter-spacing:0; }
@@ -22607,7 +22638,7 @@ RICH_CONTROL_TEMPLATE = """
         body.pmo-tab-overview #pmoSafetyModePanel,
         body.pmo-tab-overview #quick-safety-controls { display:grid; }
         .toast { position:fixed; right:18px; bottom:18px; background:#102030; border:1px solid var(--line); border-radius:8px; padding:10px 12px; color:var(--text); display:none; max-width:360px; z-index:20; }
-        @media(max-width:860px){ header,.live-master,.top-command-grid{grid-template-columns:1fr;} .logo{width:88px;height:88px;} h1{font-size:28px;} .pmo-command-tabs{top:0;} header{position:relative;} .pmo-command-note{display:none;} }
+        @media(max-width:860px){ header,.live-master,.top-command-grid{grid-template-columns:1fr;} .logo{width:88px;height:88px;} h1{font-size:28px;} .pmo-command-tabs{top:0;} header{position:relative;} .pmo-command-note{display:none;} .header-actions{align-items:stretch;} .header-pills{justify-content:flex-start;} .account-strip{width:100%; grid-template-columns:repeat(auto-fit,minmax(140px,1fr));} }
         @media(max-width:640px){
             header { padding:14px; }
             main { padding:10px; gap:10px; }
@@ -22615,7 +22646,11 @@ RICH_CONTROL_TEMPLATE = """
             .grid,.wide-grid,.switch-grid,.form-grid,.projection-grid,.chart-toolbar { grid-template-columns:1fr; gap:10px; align-items:start; }
             .metric { font-size:23px; }
             button,input,select,textarea { width:100%; min-width:0; }
+            .pmo-layout-toolbar button, .pmo-layout-toolbar select { width:auto; }
             .pill { display:inline-flex; max-width:100%; overflow-wrap:anywhere; margin:2px; }
+            .header-pills .pill { width:auto; }
+            .account-strip { grid-template-columns:1fr 1fr; }
+            .account-chip-value { font-size:15px; }
             .table-wrap table { min-width:620px; }
             .chart-shell { height:390px; }
             .alpaca-chart-shell { height:330px; }
@@ -22633,7 +22668,17 @@ RICH_CONTROL_TEMPLATE = """
             <div class="sub">Maurice Morrison PMO Bot Control Center | Paper-safe command view | {{ now }} ET</div>
         </div>
     </div>
-    <div>
+    <div class="header-actions">
+        <div class="account-strip" aria-label="PMO account snapshots">
+            {% for row in account_strip %}
+            <div class="account-chip {{ 'whale' if row.is_whale else '' }}">
+                <div class="account-chip-head"><span>{{ row.label }}</span><span class="{{ 'green' if row.ok else 'yellow' }}">{{ row.status }}</span></div>
+                <div class="account-chip-value {{ 'green' if row.day_pnl >= 0 else 'red' }}">${{ "%.2f"|format(row.equity or 0) }}</div>
+                <div class="account-chip-meta">BP ${{ "%.2f"|format(row.buying_power or 0) }} | Day ${{ "%.2f"|format(row.day_pnl or 0) }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="header-pills">
         <button class="pill status-action" type="button" data-pmo-shortcut="mode" data-pmo-jump="settings" data-pmo-target="master-switchboard" onclick="pmoJumpToSection('settings','master-switchboard')" title="Open Settings / Master Switchboard">PMO MODE {{ settings.BOT_MODE }}</button>
         <button class="pill status-action {{ 'ok' if settings.ALPACA_PAPER else 'bad' }}" type="button" data-pmo-shortcut="paper-safety" data-pmo-jump="overview" data-pmo-target="quick-safety-controls" onclick="pmoJumpToSection('overview','quick-safety-controls')" title="Open Quick Safety Controls">PAPER SAFETY {{ settings.ALPACA_PAPER }}</button>
         <button class="pill status-action" type="button" data-pmo-shortcut="capital-tier" data-pmo-jump="risk" data-pmo-target="micro-mode-dashboard" onclick="pmoJumpToSection('risk','micro-mode-dashboard')" title="Open capital and micro-mode risk board">CAPITAL TIER {{ capital_tier }}</button>
@@ -22645,6 +22690,7 @@ RICH_CONTROL_TEMPLATE = """
         <button class="pill status-action ok" type="button" data-pmo-shortcut="micro-mode" data-pmo-jump="risk" data-pmo-target="micro-mode-dashboard" onclick="pmoJumpToSection('risk','micro-mode-dashboard')" title="Open Micro Mode dashboard">{{ micro_mode.label }}</button>
         {% endif %}
         <a class="pill mini-link" href="/api/install/windows">WINDOWS INSTALLER</a>
+        </div>
     </div>
 </header>
 
@@ -27009,6 +27055,39 @@ def control():
         "risk_on_total": len([row for row in regime_checks if row.get("group") == "risk_on"]) or 5,
         "defensive_total": len([row for row in regime_checks if row.get("group") == "defensive"]) or 4,
     }
+    account_profiles = []
+    for profile in [getattr(bot, "alpaca_profile", "DEFAULT"), *pmo_profile_list(bot.settings.get("PMO_PAPER_EXECUTION_PROFILES", []))]:
+        slug = env_key_slug(profile or "DEFAULT")
+        if slug and slug not in account_profiles:
+            account_profiles.append(slug)
+    account_strip = []
+    for profile in account_profiles[:4]:
+        try:
+            profile_account = account if profile == env_key_slug(getattr(bot, "alpaca_profile", "DEFAULT")) else bot.account_snapshot_for_profile(profile)
+        except Exception as exc:
+            profile_account = {"ok": False, "profile": profile, "status": "OFFLINE", "error": str(exc)[:80]}
+        status_text = str(profile_account.get("status") or profile_account.get("error") or "UNKNOWN").upper()
+        account_strip.append({
+            "profile": profile,
+            "label": "WHALE" if profile == "PMO_WHALE" else profile.replace("PMO_", "") if profile.startswith("PMO_") else profile,
+            "is_whale": profile == "PMO_WHALE",
+            "ok": bool(profile_account.get("ok")),
+            "status": status_text[:14],
+            "equity": safe_float(profile_account.get("equity") or profile_account.get("portfolio_value"), 0),
+            "buying_power": safe_float(profile_account.get("buying_power"), 0),
+            "day_pnl": safe_float(profile_account.get("day_pnl"), 0),
+        })
+    if not account_strip:
+        account_strip.append({
+            "profile": "DEFAULT",
+            "label": "DEFAULT",
+            "is_whale": False,
+            "ok": bool(account.get("ok")),
+            "status": str(account.get("status") or account.get("error") or "UNKNOWN").upper()[:14],
+            "equity": safe_float(account.get("equity") or account.get("portfolio_value"), 0),
+            "buying_power": safe_float(account.get("buying_power"), 0),
+            "day_pnl": safe_float(account.get("day_pnl"), 0),
+        })
     live_snapshot = {
         "rows": [
             {"metric": "Account Equity", "value": f"${safe_float(account.get('equity')):.2f}", "detail": account.get("status") or account.get("error", "")},
@@ -27054,6 +27133,7 @@ def control():
         settings=bot.settings,
         editable=EDITABLE_SETTINGS,
         account=account,
+        account_strip=account_strip,
         health=health,
         regime=regime,
         live_ops=live_ops_dashboard(bot.settings, account, positions, health, regime),
@@ -28445,6 +28525,22 @@ def api_financial_dataset_strategy_status():
     if not PMO_FINANCIAL_DATASET_ENGINE_AVAILABLE or strategy_lab_status is None:
         return jsonify({"ok": False, "error": PMO_FINANCIAL_DATASET_ENGINE_ERROR or "strategy lab unavailable", "orders_placed": False, "live_trading_changed": False}), 500
     return jsonify(strategy_lab_status(REPORT_DIR))
+
+
+@app.route("/api/strategy-catalog", methods=["GET"])
+@app.route("/api/financial-dataset/strategy/catalog", methods=["GET"])
+def api_strategy_catalog():
+    limit_arg = request.args.get("limit")
+    limit = int(max(0, min(250, safe_float(limit_arg, 0)))) if limit_arg not in (None, "") else None
+    if not PMO_STRATEGY_KNOWLEDGE_AVAILABLE or pmo_strategy_catalog_snapshot is None:
+        return jsonify({
+            "ok": False,
+            "error": PMO_STRATEGY_KNOWLEDGE_ERROR or "strategy catalog unavailable",
+            "orders_placed": False,
+            "live_trading_changed": False,
+            "research_only": True,
+        }), 500
+    return jsonify(pmo_strategy_catalog_snapshot(max_rows=limit))
 
 
 @app.route("/api/financial-dataset/strategy/ai-generate", methods=["POST"])
@@ -30858,6 +30954,59 @@ def api_deck_snapshot():
     journal_summary = trade_journal_summary(limit=20)
     account = pmo_fast_account_snapshot(settings)
     paper_proof = pmo_fast_paper_proof_snapshot(settings)
+    account_profiles = []
+    for profile in [getattr(bot, "alpaca_profile", "DEFAULT"), *pmo_profile_list(settings.get("PMO_PAPER_EXECUTION_PROFILES", []))]:
+        slug = env_key_slug(profile or "DEFAULT")
+        if slug and slug not in account_profiles:
+            account_profiles.append(slug)
+    profile_cache = getattr(bot, "_deck_profile_account_cache", {})
+    if not isinstance(profile_cache, dict):
+        profile_cache = {}
+    account_profile_rows = []
+    primary_profile = env_key_slug(getattr(bot, "alpaca_profile", "DEFAULT"))
+    now_ts = time.time()
+    for profile in account_profiles[:4]:
+        if profile == primary_profile:
+            profile_account = account
+        else:
+            cached = profile_cache.get(profile) if isinstance(profile_cache.get(profile), dict) else {}
+            if cached and now_ts - safe_float(cached.get("_cached_at"), 0) <= 30:
+                profile_account = dict(cached.get("account") or {})
+            else:
+                try:
+                    profile_account = bot.account_snapshot_for_profile(profile)
+                except Exception as exc:
+                    profile_account = {"ok": False, "profile": profile, "status": "OFFLINE", "error": str(exc)[:120]}
+                profile_cache[profile] = {"_cached_at": now_ts, "account": dict(profile_account)}
+    bot._deck_profile_account_cache = profile_cache
+    for profile in account_profiles[:4]:
+        profile_account = account if profile == primary_profile else dict((profile_cache.get(profile) or {}).get("account") or {})
+        status_text = str(profile_account.get("status") or profile_account.get("error") or "UNKNOWN").upper()
+        account_profile_rows.append({
+            "profile": profile,
+            "label": "WHALE" if profile == "PMO_WHALE" else profile.replace("PMO_", "") if profile.startswith("PMO_") else profile,
+            "is_whale": profile == "PMO_WHALE",
+            "ok": bool(profile_account.get("ok")),
+            "paper": bool(profile_account.get("paper", settings.get("ALPACA_PAPER", True))),
+            "status": status_text[:22],
+            "equity": round(safe_float(profile_account.get("equity") or profile_account.get("portfolio_value"), 0), 2),
+            "buying_power": round(safe_float(profile_account.get("buying_power"), 0), 2),
+            "day_pnl": round(safe_float(profile_account.get("day_pnl"), 0), 2),
+            "day_pnl_percent": round(safe_float(profile_account.get("day_pnl_percent"), 0), 4),
+        })
+    if not account_profile_rows:
+        account_profile_rows.append({
+            "profile": primary_profile or "DEFAULT",
+            "label": primary_profile or "DEFAULT",
+            "is_whale": False,
+            "ok": bool(account.get("ok")),
+            "paper": bool(account.get("paper", settings.get("ALPACA_PAPER", True))),
+            "status": str(account.get("status") or account.get("error") or "UNKNOWN").upper()[:22],
+            "equity": round(safe_float(account.get("equity") or account.get("portfolio_value"), 0), 2),
+            "buying_power": round(safe_float(account.get("buying_power"), 0), 2),
+            "day_pnl": round(safe_float(account.get("day_pnl"), 0), 2),
+            "day_pnl_percent": round(safe_float(account.get("day_pnl_percent"), 0), 4),
+        })
 
     trade_rows = recent_csv_rows(TRADE_JOURNAL_FILE, 5000)
     trade_status_counts: Dict[str, int] = {}
@@ -31077,12 +31226,24 @@ def api_deck_snapshot():
         current_state={"regime": regime_label, "score": 70, "rvol": 1.5},
         record=False,
     )
+    strategy_catalog = (
+        pmo_strategy_catalog_snapshot(max_rows=12)
+        if PMO_STRATEGY_KNOWLEDGE_AVAILABLE and pmo_strategy_catalog_snapshot
+        else {
+            "ok": False,
+            "error": PMO_STRATEGY_KNOWLEDGE_ERROR,
+            "research_only": True,
+            "orders_placed": False,
+            "live_unlocked": False,
+        }
+    )
 
     return jsonify({
         "ok": True,
         "updated": now_et().isoformat(),
         "mode": "SNAPSHOT",
         "account": account,
+        "account_profiles": account_profile_rows,
         "paper_safe": paper_safe,
         "execution_mode": execution_mode,
         "why_not_on": why_not_on,
@@ -31138,6 +31299,7 @@ def api_deck_snapshot():
         "tier_ab17": tier_ab17_snapshot,
         "barchart_context": pmo_barchart_index_context(settings),
         "dashboard_polish": dashboard_polish,
+        "strategy_catalog": strategy_catalog,
         "meta_strategy": meta_strategy,
         "vault_intelligence": vault_intelligence,
     })
