@@ -348,6 +348,32 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertIn("live_readiness", payload)
         self.assertIn("broker_reconciliation", payload)
 
+    def test_journal_reconciliation_is_read_only_lot_classifier(self):
+        response = self.client.get("/api/journal-reconciliation")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload.get("ok"))
+        recon = payload.get("journal_reconciliation", {})
+        self.assertTrue(recon.get("read_only"))
+        self.assertFalse(recon.get("orders_placed"))
+        self.assertFalse(recon.get("live_unlocked"))
+        self.assertIn("unresolved_unique_lots", recon)
+        self.assertIn("broker_symbol_matched_lots", recon)
+        self.assertIn("orphan_no_broker_symbol_lots", recon)
+        self.assertIn("repeated_lifecycle_event_count", recon)
+
+    def test_deck_snapshot_includes_compact_journal_lot_reconciliation(self):
+        response = self.client.get("/api/deck/snapshot")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        lot_recon = payload.get("journal_lot_reconciliation", {})
+        self.assertTrue(lot_recon.get("read_only"))
+        self.assertFalse(lot_recon.get("orders_placed"))
+        self.assertFalse(lot_recon.get("live_unlocked"))
+        self.assertIn("broker_position_count", lot_recon)
+        self.assertIn("unresolved_unique_lots", lot_recon)
+        self.assertIn("repeated_lifecycle_rows", lot_recon)
+
     def test_orbital_deck_escapes_log_messages(self):
         html = (self.mod.PMO_DIR / "deck" / "pmo_orbital_command_deck.html").read_text(encoding="utf-8")
         self.assertIn("${esc(time)}</span><span class=\"le-m\">${esc(msg)}</span>", html)

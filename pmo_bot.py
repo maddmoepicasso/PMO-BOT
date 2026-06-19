@@ -10222,6 +10222,115 @@ def broker_reconciliation_snapshot(settings: Dict[str, Any], account: Dict[str, 
     }
 
 
+def pmo_journal_lot_reconciliation_snapshot(positions: Optional[List[Dict[str, Any]]] = None, record: bool = False) -> Dict[str, Any]:
+    """Classify unresolved journal lots against broker-held symbols without mutating history."""
+    trade_rows = [
+        row for row in recent_csv_rows(TRADE_JOURNAL_FILE, 10000)
+        if str(row.get("symbol") or "").strip()
+    ]
+
+    def lot_key(row: Dict[str, Any]) -> str:
+        for field in ("source_order_id", "order_id", "client_order_id", "trade_plan_id", "sync_key"):
+            value = str(row.get(field) or "").strip()
+            if value:
+                return value.split(":")[0]
+        return "|".join(str(row.get(field) or "").strip().upper() for field in ("symbol", "side", "entry_price"))
+
+    def lot_status(row: Dict[str, Any]) -> str:
+        return str(row.get("status") or row.get("result") or row.get("outcome") or "UNKNOWN").strip().upper() or "UNKNOWN"
+
+    def lot_timestamp(row: Dict[str, Any]) -> float:
+        parsed = parse_pmo_timestamp(row.get("timestamp") or row.get("time") or row.get("created_at"))
+        return parsed.timestamp() if parsed else 0.0
+
+    terminal_keys = {
+        lot_key(row)
+        for row in trade_rows
+        if lot_status(row).startswith(("CLOSED", "VOID_"))
+    }
+    latest_unresolved: Dict[str, Dict[str, Any]] = {}
+    key_counts: Dict[str, int] = {}
+    key_status_counts: Dict[str, int] = {}
+    for row in trade_rows:
+        key = lot_key(row)
+        if not key:
+            continue
+        key_counts[key] = key_counts.get(key, 0) + 1
+        status_key = f"{key}|{lot_status(row)}"
+        key_status_counts[status_key] = key_status_counts.get(status_key, 0) + 1
+        if key in terminal_keys:
+            continue
+        current = latest_unresolved.get(key)
+        if current is None or lot_timestamp(row) >= lot_timestamp(current):
+            latest_unresolved[key] = row
+
+    broker_symbols = sorted({
+        str(row.get("symbol") or "").upper().strip()
+        for row in (positions or [])
+        if str(row.get("symbol") or "").strip()
+    })
+    broker_symbol_set = set(broker_symbols)
+    symbol_groups: Dict[str, List[Dict[str, Any]]] = {}
+    for row in latest_unresolved.values():
+        symbol = str(row.get("symbol") or "").upper().strip() or "UNKNOWN"
+        symbol_groups.setdefault(symbol, []).append(row)
+
+    classifications = []
+    for symbol, rows in sorted(symbol_groups.items()):
+        if symbol in {"", "SYSTEM", "UNKNOWN"}:
+            class_name = "SYSTEM_OR_NON_TRADE"
+        elif symbol in broker_symbol_set:
+            class_name = "BROKER_SYMBOL_MATCHED_OPEN_LOTS"
+        else:
+            class_name = "ORPHAN_NO_BROKER_SYMBOL"
+        statuses: Dict[str, int] = {}
+        times = []
+        for row in rows:
+            statuses[lot_status(row)] = statuses.get(lot_status(row), 0) + 1
+            parsed = parse_pmo_timestamp(row.get("timestamp") or row.get("time") or row.get("created_at"))
+            if parsed:
+                times.append(parsed.isoformat())
+        classifications.append({
+            "symbol": symbol,
+            "class": class_name,
+            "unresolved_lots": len(rows),
+            "statuses": statuses,
+            "first_time": min(times) if times else "",
+            "last_time": max(times) if times else "",
+            "sample_keys": [lot_key(row) for row in sorted(rows, key=lot_timestamp, reverse=True)[:5]],
+        })
+
+    repeated_lifecycle_events = sorted(key for key, count in key_status_counts.items() if count > 1)
+    repeated_lifecycle_rows = sum(count - 1 for count in key_status_counts.values() if count > 1)
+    lifecycle_keys = sorted(key for key, count in key_counts.items() if count > 1)
+    payload = {
+        "ok": True,
+        "updated": now_et().isoformat(),
+        "read_only": True,
+        "orders_placed": False,
+        "live_unlocked": False,
+        "source": str(TRADE_JOURNAL_FILE),
+        "broker_position_count": len(broker_symbols),
+        "broker_symbols": broker_symbols,
+        "unresolved_unique_lots": len(latest_unresolved),
+        "broker_symbol_matched_lots": sum(row["unresolved_lots"] for row in classifications if row["class"] == "BROKER_SYMBOL_MATCHED_OPEN_LOTS"),
+        "orphan_no_broker_symbol_lots": sum(row["unresolved_lots"] for row in classifications if row["class"] == "ORPHAN_NO_BROKER_SYMBOL"),
+        "system_or_non_trade_lots": sum(row["unresolved_lots"] for row in classifications if row["class"] == "SYSTEM_OR_NON_TRADE"),
+        "lifecycle_key_count": len(lifecycle_keys),
+        "repeated_lifecycle_event_count": len(repeated_lifecycle_events),
+        "repeated_lifecycle_rows": repeated_lifecycle_rows,
+        "classifications": classifications,
+        "recommendation": "Reconcile by appending audit markers after broker evidence review. Do not purge journal history.",
+    }
+    if record:
+        out_dir = REPORT_DIR / "reconciliation"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_file = out_dir / "pmo_unresolved_lot_classification.json"
+        out_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        payload["report"] = str(out_file)
+    return payload
+
+
 def sector_budget_rows() -> List[Dict[str, Any]]:
     rows = recent_csv_rows(CSV_DIR / "pmo_sector_trade_limits.csv", 20)
     latest: Dict[str, Dict[str, Any]] = {}
@@ -30832,6 +30941,13 @@ def api_broker_reconciliation():
     return jsonify({"ok": True, "broker_reconciliation": broker_reconciliation_snapshot(settings, account, positions)})
 
 
+@app.route("/api/journal-reconciliation", methods=["GET", "POST"])
+def api_journal_reconciliation():
+    positions = open_positions()
+    record = request.method == "POST" and bool((request.get_json(force=True, silent=True) or {}).get("record", False))
+    return jsonify({"ok": True, "journal_reconciliation": pmo_journal_lot_reconciliation_snapshot(positions, record=record)})
+
+
 @app.route("/api/order-origin-audit", methods=["POST"])
 def api_order_origin_audit():
     payload = request.get_json(force=True, silent=True) or {}
@@ -31323,6 +31439,7 @@ def api_deck_snapshot():
             "live_unlocked": False,
         }
     )
+    journal_lot_reconciliation = pmo_journal_lot_reconciliation_snapshot(broker_positions, record=False)
 
     return jsonify({
         "ok": True,
@@ -31399,6 +31516,21 @@ def api_deck_snapshot():
         "tier_ab17": tier_ab17_snapshot,
         "barchart_context": pmo_barchart_index_context(settings),
         "dashboard_polish": dashboard_polish,
+        "journal_lot_reconciliation": {
+            "ok": journal_lot_reconciliation.get("ok", False),
+            "read_only": True,
+            "broker_position_count": journal_lot_reconciliation.get("broker_position_count", 0),
+            "broker_symbols": journal_lot_reconciliation.get("broker_symbols", []),
+            "unresolved_unique_lots": journal_lot_reconciliation.get("unresolved_unique_lots", 0),
+            "broker_symbol_matched_lots": journal_lot_reconciliation.get("broker_symbol_matched_lots", 0),
+            "orphan_no_broker_symbol_lots": journal_lot_reconciliation.get("orphan_no_broker_symbol_lots", 0),
+            "system_or_non_trade_lots": journal_lot_reconciliation.get("system_or_non_trade_lots", 0),
+            "repeated_lifecycle_event_count": journal_lot_reconciliation.get("repeated_lifecycle_event_count", 0),
+            "repeated_lifecycle_rows": journal_lot_reconciliation.get("repeated_lifecycle_rows", 0),
+            "top_symbols": journal_lot_reconciliation.get("classifications", [])[:8],
+            "orders_placed": False,
+            "live_unlocked": False,
+        },
         "strategy_catalog": strategy_catalog,
         "meta_strategy": meta_strategy,
         "vault_intelligence": vault_intelligence,
