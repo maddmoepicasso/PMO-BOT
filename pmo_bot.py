@@ -19686,31 +19686,62 @@ def pmo_save_mode_change(mode: str, before: Dict[str, Any], after: Dict[str, Any
     return {"ok": True, "mode": mode, "diff": diff, "file": str(PMO_MODE_CHANGE_EVENTS_FILE)}
 
 
+PMO_EQUITY_MARKET_HOLIDAYS = {
+    "2026-01-01": "New Year's Day",
+    "2026-01-19": "Martin Luther King Jr. Day",
+    "2026-02-16": "Washington's Birthday",
+    "2026-04-03": "Good Friday",
+    "2026-05-25": "Memorial Day",
+    "2026-06-19": "Juneteenth National Independence Day",
+    "2026-07-03": "Independence Day observed",
+    "2026-09-07": "Labor Day",
+    "2026-11-26": "Thanksgiving Day",
+    "2026-12-25": "Christmas Day",
+}
+
+
 def pmo_market_session_now() -> Dict[str, Any]:
     current = now_et()
     minutes = current.hour * 60 + current.minute
     weekday = current.weekday()
-    if weekday >= 5:
+    date_key = current.date().isoformat()
+    holiday_name = PMO_EQUITY_MARKET_HOLIDAYS.get(date_key, "")
+    if holiday_name:
+        session = "MARKET_CLOSED"
+        equity_open = False
+        reason = holiday_name
+    elif weekday >= 5:
         session = "WEEKEND"
         equity_open = False
+        reason = "Weekend"
     elif 4 * 60 <= minutes < 9 * 60 + 30:
         session = "PRE_MARKET"
         equity_open = False
+        reason = "Before regular NYSE/Nasdaq session"
     elif 9 * 60 + 30 <= minutes < 16 * 60:
         session = "REGULAR"
         equity_open = True
+        reason = "Regular NYSE/Nasdaq session"
     elif 16 * 60 <= minutes < 20 * 60:
         session = "AFTER_HOURS"
         equity_open = False
+        reason = "After regular NYSE/Nasdaq session"
     else:
         session = "OVERNIGHT"
         equity_open = False
+        reason = "Outside equity trading hours"
     return {
         "ok": True,
         "timestamp": current.isoformat(),
+        "date": date_key,
         "session": session,
         "weekday": current.strftime("%A"),
         "equity_regular_open": equity_open,
+        "equity_market_open": equity_open,
+        "holiday": bool(holiday_name),
+        "holiday_name": holiday_name,
+        "reason": reason,
+        "display": f"MARKET CLOSED - {holiday_name}" if holiday_name else session.replace("_", " "),
         "crypto_24_7": True,
         "note": "Extended-hours equities stay research or guarded paper-only unless the dedicated PMO switch is enabled.",
     }
@@ -30954,6 +30985,20 @@ def api_deck_snapshot():
     journal_summary = trade_journal_summary(limit=20)
     account = pmo_fast_account_snapshot(settings)
     paper_proof = pmo_fast_paper_proof_snapshot(settings)
+    market_session = pmo_market_session_now()
+    snapshot_ts = time.time()
+    positions_cache = getattr(bot, "_deck_open_positions_cache", {})
+    if not isinstance(positions_cache, dict):
+        positions_cache = {}
+    if positions_cache and snapshot_ts - safe_float(positions_cache.get("_cached_at"), 0) <= 15:
+        broker_positions = list(positions_cache.get("positions") or [])
+    else:
+        try:
+            broker_positions = open_positions()
+        except Exception:
+            broker_positions = []
+        bot._deck_open_positions_cache = {"_cached_at": snapshot_ts, "positions": list(broker_positions)}
+    broker_reconciliation = broker_reconciliation_snapshot(settings, account, broker_positions)
     account_profiles = []
     for profile in [getattr(bot, "alpaca_profile", "DEFAULT"), *pmo_profile_list(settings.get("PMO_PAPER_EXECUTION_PROFILES", []))]:
         slug = env_key_slug(profile or "DEFAULT")
@@ -31023,6 +31068,12 @@ def api_deck_snapshot():
                 return value.split(":")[0]
         return "|".join(str(row.get(field) or "").strip().upper() for field in ("symbol", "side", "entry_price"))
 
+    all_trade_keys: Dict[str, int] = {}
+    for row in trade_rows:
+        key = journal_trade_key(row)
+        if key:
+            all_trade_keys[key] = all_trade_keys.get(key, 0) + 1
+    duplicate_trade_keys = sorted(key for key, count in all_trade_keys.items() if count > 1)
     terminal_trade_keys = {
         journal_trade_key(row)
         for row in trade_rows
@@ -31032,6 +31083,16 @@ def api_deck_snapshot():
         row for row in trade_rows
         if journal_trade_key(row) not in terminal_trade_keys
     ]
+    latest_unresolved_by_key: Dict[str, Dict[str, Any]] = {}
+    for row in unresolved_trade_rows:
+        key = journal_trade_key(row)
+        if not key:
+            continue
+        current = latest_unresolved_by_key.get(key)
+        row_dt = parse_pmo_timestamp(row.get("timestamp"))
+        cur_dt = parse_pmo_timestamp(current.get("timestamp")) if current else None
+        if current is None or ((row_dt.timestamp() if row_dt else 0) >= (cur_dt.timestamp() if cur_dt else 0)):
+            latest_unresolved_by_key[key] = row
 
     v112_report = paper_proof.get("v112") if isinstance(paper_proof.get("v112"), dict) else {}
     if not v112_report:
@@ -31146,12 +31207,28 @@ def api_deck_snapshot():
             "msg": f"{len(missing_symbols)}/{len(watchlist_symbols)} watchlist symbols have no backtest history: {preview}{suffix}",
             "fix": "Fetch daily history for missing symbols before trusting strategy research.",
         })
+    if market_session.get("holiday"):
+        dq_issues.insert(0, {
+            "code": "EQUITY_MARKET_CLOSED",
+            "severity": "INFO",
+            "msg": f"NYSE/Nasdaq regular equity session is closed for {market_session.get('holiday_name')}. Equity signals are scan-only.",
+            "fix": "Do not submit equity entries today; keep data collection to scan/log or crypto-only tracks.",
+        })
     if md_age_seconds is not None and md_age_seconds > 300:
+        market_closed = not bool(market_session.get("equity_regular_open"))
         dq_issues.append({
             "code": "STALE_MARKET_DATA",
-            "severity": "WARN",
-            "msg": f"Market data last updated {int(md_age_seconds)}s ago (>300s threshold).",
-            "fix": "POST /api/watchlist/refresh to pull fresh prices.",
+            "severity": "INFO" if market_closed else "WARN",
+            "msg": (
+                f"Market data last updated {int(md_age_seconds)}s ago while equities are closed."
+                if market_closed
+                else f"Market data last updated {int(md_age_seconds)}s ago (>300s threshold)."
+            ),
+            "fix": (
+                "No equity action needed while NYSE/Nasdaq are closed; crypto remains the only 24/7 track."
+                if market_closed
+                else "POST /api/watchlist/refresh to pull fresh prices."
+            ),
         })
     if bool(settings.get("ENABLE_PMO_CRYPTO_WEBSOCKET_FEEDS", True)):
         crypto_age = crypto_ws.get("age_seconds")
@@ -31253,6 +31330,8 @@ def api_deck_snapshot():
         "bg_last_status": str(bg_state.get("last_status", "")),
         "regime": regime_label,
         "regime_reason": regime.get("reason", ""),
+        "market_session": market_session,
+        "broker_reconciliation": broker_reconciliation,
         "vix": vix_price,
         "spy": spy_price,
         "market_data_status": md_status,
@@ -31277,6 +31356,13 @@ def api_deck_snapshot():
             "open_filled": open_filled,
             "stop_reached_open": stop_open,
             "target_reached_open": target_open,
+            "stop_target_open": not_yet_closed,
+            "unresolved_unique": len(latest_unresolved_by_key),
+            "unresolved_rows": len(unresolved_trade_rows),
+            "duplicate_key_count": len(duplicate_trade_keys),
+            "duplicate_keys": duplicate_trade_keys[:20],
+            "broker_positions": len(broker_positions),
+            "broker_position_symbols": broker_reconciliation.get("position_symbols", []),
         },
         "v112": {
             "closed": v112_closed,

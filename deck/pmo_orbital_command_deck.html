@@ -122,6 +122,9 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
 .account-mini-status{font-family:var(--mono);font-size:8px}
 .account-mini-value{font-family:var(--mono);font-size:15px;font-weight:800;line-height:1.05;margin-top:3px}
 .account-mini-sub{font-size:8px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.session-banner{display:none;align-items:center;justify-content:space-between;gap:12px;padding:8px 18px;border-bottom:1px solid var(--border);background:rgba(255,176,32,.08);color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+.session-banner.show{display:flex}.session-banner.good{background:rgba(0,255,179,.07);color:var(--green)}.session-banner.warn{background:rgba(255,176,32,.08);color:var(--amber)}.session-banner.danger{background:rgba(255,79,119,.08);color:var(--red)}
+.session-banner span:last-child{color:var(--text3);text-transform:none;letter-spacing:0;font-weight:700}
 
 /* MAIN GRID */
 .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border)}
@@ -324,8 +327,8 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
 .pattern-badge{display:inline-flex;align-items:center;justify-content:center;gap:4px;max-width:100%;min-height:18px;padding:2px 6px;border-radius:5px;border:1px solid rgba(132,92,255,.45);background:rgba(132,92,255,.16);color:#d8caff;font-family:var(--mono);font-size:8px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pattern-bull{border-color:rgba(0,245,155,.55);background:rgba(0,245,155,.14);color:#91ffd1}.pattern-bear{border-color:rgba(255,69,69,.58);background:rgba(255,69,69,.13);color:#ffaaaa}.pattern-neutral{border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.12);color:#a7f3ff}.pattern-none{opacity:.68;color:var(--text3);background:rgba(100,116,139,.11);border-color:var(--border)}
 .fvg-badge{display:inline-flex;align-items:center;justify-content:center;gap:4px;max-width:100%;min-height:18px;padding:2px 6px;border-radius:5px;border:1px solid rgba(168,85,247,.5);background:rgba(88,28,135,.22);color:#e9d5ff;font-family:var(--mono);font-size:8px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fvg-bull{border-color:rgba(0,245,155,.58);background:rgba(0,245,155,.13);color:#91ffd1}.fvg-bear{border-color:rgba(255,69,69,.58);background:rgba(255,69,69,.13);color:#ffb4b4}.fvg-against{border-color:rgba(255,176,32,.65);background:rgba(255,176,32,.14);color:#ffd58a}.fvg-none{opacity:.68;color:var(--text3);background:rgba(100,116,139,.11);border-color:var(--border)}
 .truth-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;margin-bottom:8px}.truth-card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px}.truth-k{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em}.truth-v{font-family:var(--mono);font-size:15px;font-weight:800;margin-top:3px}.truth-v.danger{color:var(--red)}.truth-v.warn{color:var(--amber)}.truth-v.good{color:var(--green)}
-.truth-grid{display:grid;grid-template-columns:minmax(280px,.85fr) minmax(0,1.15fr);gap:10px}.truth-title{font-size:8px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.1em;margin:3px 0 7px}.truth-list{display:flex;flex-direction:column;gap:6px;max-height:264px;overflow:auto}.truth-issue,.truth-check{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px}.truth-issue.critical,.truth-check.missing{border-color:var(--rd);background:var(--rbg)}.truth-issue.warn,.truth-check.warn{border-color:var(--ad);background:var(--abg)}.truth-issue.pass,.truth-check.pass{border-color:var(--gd);background:var(--gbg)}
-.truth-line{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}.truth-name{font-size:9px;font-weight:800;color:var(--text2);line-height:1.25}.truth-pill{font-family:var(--mono);font-size:8px;font-weight:800;text-transform:uppercase;border:1px solid var(--border2);border-radius:4px;padding:2px 5px;white-space:nowrap}.truth-pill.pass{color:var(--green);border-color:var(--gd);background:var(--gbg)}.truth-pill.warn{color:var(--amber);border-color:var(--ad);background:var(--abg)}.truth-pill.missing,.truth-pill.critical{color:var(--red);border-color:var(--rd);background:var(--rbg)}
+.truth-grid{display:grid;grid-template-columns:minmax(280px,.85fr) minmax(0,1.15fr);gap:10px}.truth-title{font-size:8px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.1em;margin:3px 0 7px}.truth-list{display:flex;flex-direction:column;gap:6px;max-height:264px;overflow:auto}.truth-issue,.truth-check{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px}.truth-issue.critical,.truth-check.missing{border-color:var(--rd);background:var(--rbg)}.truth-issue.warn,.truth-check.warn{border-color:var(--ad);background:var(--abg)}.truth-issue.pass,.truth-check.pass{border-color:var(--gd);background:var(--gbg)}.truth-issue.info{border-color:var(--bd);background:var(--bbg)}
+.truth-line{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}.truth-name{font-size:9px;font-weight:800;color:var(--text2);line-height:1.25}.truth-pill{font-family:var(--mono);font-size:8px;font-weight:800;text-transform:uppercase;border:1px solid var(--border2);border-radius:4px;padding:2px 5px;white-space:nowrap}.truth-pill.pass{color:var(--green);border-color:var(--gd);background:var(--gbg)}.truth-pill.warn{color:var(--amber);border-color:var(--ad);background:var(--abg)}.truth-pill.info{color:var(--blue);border-color:var(--bd);background:var(--bbg)}.truth-pill.missing,.truth-pill.critical{color:var(--red);border-color:var(--rd);background:var(--rbg)}
 .truth-metric{font-family:var(--mono);font-size:8px;color:var(--text3);line-height:1.35}.truth-fix{font-size:8px;color:var(--text3);line-height:1.35;margin-top:4px}.truth-funnel{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:8px 0 10px}.truth-step{background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:6px;padding:8px;text-align:center}.truth-step b{display:block;font-family:var(--mono);font-size:16px}.truth-step span{font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}.truth-note{font-family:var(--mono);font-size:8px;color:var(--text3);line-height:1.45;background:rgba(0,0,0,.18);border:1px solid var(--border);border-radius:5px;padding:7px}
 .report-list{display:flex;flex-direction:column;gap:6px;max-height:160px;overflow:auto}.report-line{background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:7px 9px;font-size:9px;color:var(--text2);line-height:1.35}
 .handoff-box{font-family:var(--mono);font-size:8px;line-height:1.45;color:var(--text2);background:rgba(0,0,0,.18);border:1px solid var(--border);border-radius:6px;padding:10px;max-height:185px;overflow:auto;white-space:pre-wrap}
@@ -666,6 +669,10 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
     <div class="account-mini-value" style="color:var(--text3)">--</div>
     <div class="account-mini-sub">Awaiting /api/deck/snapshot</div>
   </div>
+</div>
+<div class="session-banner" id="marketSessionBanner">
+  <span id="marketSessionTitle">Awaiting market session</span>
+  <span id="marketSessionDetail">Equity session state will load from PMO Bot.</span>
 </div>
 
 <!-- ADMIN TOKEN -->
@@ -1664,16 +1671,16 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
   <div class="truth-summary">
     <div class="truth-card"><div class="truth-k">Trust Level</div><div class="truth-v danger" id="truthTrust">-</div></div>
     <div class="truth-card"><div class="truth-k">Readiness</div><div class="truth-v" id="truthReadiness">-</div></div>
-    <div class="truth-card"><div class="truth-k">Open Trades</div><div class="truth-v warn" id="truthOpen">-</div></div>
+    <div class="truth-card"><div class="truth-k">Broker Positions</div><div class="truth-v warn" id="truthOpen">-</div></div>
     <div class="truth-card"><div class="truth-k">Closed Trades</div><div class="truth-v" id="truthClosed">-</div></div>
     <div class="truth-card"><div class="truth-k">DQ Issues</div><div class="truth-v warn" id="truthIssuesCount">-</div></div>
     <div class="truth-card"><div class="truth-k">Crypto WS</div><div class="truth-v" id="truthCryptoWs">-</div></div>
   </div>
   <div class="truth-funnel">
     <div class="truth-step"><b id="truthRowsTotal">-</b><span>Journal Rows</span></div>
-    <div class="truth-step"><b id="truthOpenFilled">-</b><span>Open Filled</span></div>
+    <div class="truth-step"><b id="truthOpenFilled">-</b><span>Unique Open</span></div>
     <div class="truth-step"><b id="truthHitsOpen">-</b><span>Hit Stop/Target</span></div>
-    <div class="truth-step"><b id="truthStillOpen">-</b><span>Still Open</span></div>
+    <div class="truth-step"><b id="truthStillOpen">-</b><span>Duplicate Rows</span></div>
     <div class="truth-step"><b id="truthClosedOutcomes">-</b><span>Closed Outcomes</span></div>
   </div>
   <div class="truth-grid">
@@ -2891,6 +2898,10 @@ function updateNav(){
 function updateMetrics(){
   const a=liveData.account||{};
   const s=liveSettings;
+  const session=liveData.market_session||{};
+  const sessionName=String(session.display||session.session||'').toUpperCase();
+  const equityOpen=!!session.equity_regular_open;
+  const sessionClosed=!!session.holiday||['MARKET_CLOSED','WEEKEND','OVERNIGHT'].includes(String(session.session||'').toUpperCase());
 
   const equity=numVal(a.equity,a.portfolio_value,a.account_value);
   const bp=numVal(a.buying_power,a.daytrading_buying_power,a.non_marginable_buying_power);
@@ -2917,17 +2928,19 @@ function updateMetrics(){
   set('mBotModeSub',s.ALPACA_PAPER?'Paper safe':'Check mode');
 
   const regime2=typeof currentRegime==='function'?currentRegime():'SYNC';
-  set('mRegime',regime2);
-  set('mRegimeSub',regime2==='SYNC'?'Awaiting market scan':'Market data live');
-  document.getElementById('mRegime').style.color=regime2==='BULLISH'?'var(--green)':regime2==='BEARISH'?'var(--red)':regime2==='SYNC'?'var(--steel)':'var(--amber)';
+  set('mRegime',sessionClosed?'MARKET CLOSED':regime2);
+  set('mRegimeSub',sessionClosed?(session.holiday_name||sessionName||'Equities closed'):(regime2==='SYNC'?'Awaiting market scan':'Market data live'));
+  document.getElementById('mRegime').style.color=sessionClosed?'var(--amber)':regime2==='BULLISH'?'var(--green)':regime2==='BEARISH'?'var(--red)':regime2==='SYNC'?'var(--steel)':'var(--amber)';
 
   const journal2=currentJournal();
   const jRows2=Array.isArray(journal2.rows)?journal2.rows:[];
-  const openJournalRows2=jRows2.filter(r=>String(r.status||'').toUpperCase().includes('OPEN')).length;
+  const snapJournal=liveData.journal||{};
+  const brokerRecon=liveData.broker_reconciliation||{};
+  const openJournalRows2=Number(firstDefined(snapJournal.unresolved_unique,snapJournal.open_filled,jRows2.filter(r=>String(r.status||'').toUpperCase().includes('OPEN')).length))||0;
   const longValue2=parseFloat(liveData.account?.long_market_value||0);
-  const posCount2=parseInt(liveData.account?.open_positions||liveData.positions_count||openJournalRows2||0);
-  set('mPos',posCount2>0?String(posCount2):(longValue2>0?'Active':'0'));
-  set('mPosSub',posCount2>0?'Open paper trade(s)':'No open paper positions');
+  const brokerPositions=Number(firstDefined(brokerRecon.positions_count,snapJournal.broker_positions,liveData.account?.open_positions,liveData.positions_count,0))||0;
+  set('mPos',brokerPositions>0?String(brokerPositions):(longValue2>0?'Active':'0'));
+  set('mPosSub',brokerPositions>0?('Broker positions | journal '+openJournalRows2):('Broker flat | journal '+openJournalRows2));
 
   const today2=new Date().toISOString().slice(0,10);
   const tradesToday2=jRows2.filter(r=>String(r.timestamp||r.time||r.created_at||'').slice(0,10)===today2).length;
@@ -2950,9 +2963,27 @@ function updateMetrics(){
 
   set('mDayLoss','$0.00');
   set('mDayLossSub','of $'+(s.PMO_MICRO_CAUTION_LOSS_USD||1.5)+' caution');
+  updateMarketSessionBanner(session,regime2,equityOpen,sessionClosed);
 }
 
 function set(id,val){const el=document.getElementById(id);if(el)el.textContent=val;}
+
+function updateMarketSessionBanner(session,regime,equityOpen,sessionClosed){
+  const banner=document.getElementById('marketSessionBanner');
+  if(!banner)return;
+  const title=document.getElementById('marketSessionTitle');
+  const detail=document.getElementById('marketSessionDetail');
+  const sessionCode=String(session.session||'UNKNOWN').toUpperCase();
+  if(equityOpen){
+    banner.className='session-banner show good';
+    if(title)title.textContent='EQUITY MARKET OPEN';
+    if(detail)detail.textContent=`Regular session active · regime ${regime||'UNKNOWN'} · paper gates still apply.`;
+    return;
+  }
+  banner.className='session-banner show '+(sessionClosed?'warn':'warn');
+  if(title)title.textContent=session.holiday?`EQUITY MARKET CLOSED · ${session.holiday_name||'Holiday'}`:`EQUITY SESSION ${sessionCode.replaceAll('_',' ')}`;
+  if(detail)detail.textContent='Equity signals are scan/log only while regular session is closed. Crypto remains the only 24/7 track.';
+}
 
 function renderAccountProfiles(){
   const holder=document.getElementById('accountProfileRow');
@@ -5198,6 +5229,7 @@ function normalizedTrustClass(trust){
 function normalizeIssueClass(v){
   const s=String(v||'').toUpperCase();
   if(s.includes('PASS')||s.includes('OK')||s.includes('READY'))return 'pass';
+  if(s.includes('INFO')||s.includes('NOTICE'))return 'info';
   if(s.includes('CRIT')||s.includes('FAIL')||s.includes('MISS')||s.includes('NO_')||s.includes('DO_NOT'))return 'critical';
   return 'warn';
 }
@@ -5220,7 +5252,11 @@ function updateTradeTruthCockpit(){
   const truthJournal=truth.journal||truth.journal_summary||{};
   const journal=currentJournal();
   const rowsTotal=Number(firstDefined(snapJournal.total_rows,snapJournal.journal_rows,snapJournal.rows,truthJournal.total_rows,truthJournal.rows,journal.journal_rows,journal.rows,0))||0;
-  const openFilled=Number(firstDefined(snapJournal.open_filled,snapJournal.open_trades,truthJournal.open_trades,journal.open_trades,0))||0;
+  const brokerRecon=snap.broker_reconciliation||{};
+  const brokerPositions=Number(firstDefined(brokerRecon.positions_count,snapJournal.broker_positions,0))||0;
+  const openFilled=Number(firstDefined(snapJournal.unresolved_unique,snapJournal.open_filled,snapJournal.open_trades,truthJournal.open_trades,journal.open_trades,0))||0;
+  const unresolvedRows=Number(firstDefined(snapJournal.unresolved_rows,openFilled,0))||0;
+  const duplicateRows=Number(firstDefined(snapJournal.duplicate_key_count,Math.max(0,unresolvedRows-openFilled),0))||0;
   const closed=Number(firstDefined(snapJournal.closed_trades,snapJournal.closed_outcomes,snapJournal.closed,truthJournal.closed_trades,truthJournal.closed,journal.closed_trades,journal.closed,0))||0;
   const stopOpen=Number(firstDefined(snapJournal.stop_reached_open,truthJournal.stop_reached_open,journal.stop_reached_open,0))||0;
   const targetOpen=Number(firstDefined(snapJournal.target_reached_open,truthJournal.target_reached_open,journal.target_reached_open,0))||0;
@@ -5241,14 +5277,14 @@ function updateTradeTruthCockpit(){
 
   set('truthTrust',String(trust).replaceAll('_',' '));
   set('truthReadiness',Math.round(readiness*100)+'%');
-  set('truthOpen',String(openFilled));
+  set('truthOpen',String(brokerPositions));
   set('truthClosed',String(closed));
   set('truthIssuesCount',String(issues.length));
   set('truthCryptoWs',(cryptoConnected&&!cryptoStale?cryptoProvider:'DOWN')+' '+cryptoAgeText);
   set('truthRowsTotal',String(rowsTotal));
   set('truthOpenFilled',String(openFilled));
   set('truthHitsOpen',String(hitOpenCount));
-  set('truthStillOpen',String(stillOpen));
+  set('truthStillOpen',String(duplicateRows));
   set('truthClosedOutcomes',String(closed));
 
   const trustEl=document.getElementById('truthTrust');
@@ -5259,7 +5295,8 @@ function updateTradeTruthCockpit(){
   if(cryptoEl)cryptoEl.className='truth-v '+(cryptoConnected&&!cryptoStale?'good':'danger');
   const badge=document.getElementById('truthBadge');
   if(badge){
-    const blocking=String(trust).toUpperCase().includes('DO_NOT')||issues.length>0||closed<10;
+    const hardIssues=issues.filter(item=>!['INFO','NOTICE','PASS','OK'].includes(String(item.severity||item.status||item.level||'').toUpperCase()));
+    const blocking=String(trust).toUpperCase().includes('DO_NOT')||hardIssues.length>0||closed<10;
     badge.textContent=blocking?'Do Not Trust Live':'Truth OK';
     badge.className='badge '+(blocking?'br':'bg');
   }
