@@ -28062,6 +28062,59 @@ def api_health():
     })
 
 
+def pmo_stream_account_profile_rows(settings: Dict[str, Any], account: Dict[str, Any]) -> List[Dict[str, Any]]:
+    account_profiles = []
+    for profile in [getattr(bot, "alpaca_profile", "DEFAULT"), *pmo_profile_list(settings.get("PMO_PAPER_EXECUTION_PROFILES", []))]:
+        slug = env_key_slug(profile or "DEFAULT")
+        if slug and slug not in account_profiles:
+            account_profiles.append(slug)
+    primary_profile = env_key_slug(getattr(bot, "alpaca_profile", "DEFAULT"))
+    profile_cache = getattr(bot, "_deck_profile_account_cache", {})
+    if not isinstance(profile_cache, dict):
+        profile_cache = {}
+    now_ts = time.time()
+    rows = []
+    for profile in account_profiles[:4]:
+        if profile == primary_profile:
+            profile_account = account
+        else:
+            cached = profile_cache.get(profile) if isinstance(profile_cache.get(profile), dict) else {}
+            if cached and now_ts - safe_float(cached.get("_cached_at"), 0) <= 30:
+                profile_account = dict(cached.get("account") or {})
+            else:
+                try:
+                    profile_account = bot.account_snapshot_for_profile(profile)
+                except Exception as exc:
+                    profile_account = {"ok": False, "profile": profile, "status": "OFFLINE", "error": str(exc)[:120]}
+                profile_cache[profile] = {"_cached_at": now_ts, "account": dict(profile_account)}
+        status_text = str(profile_account.get("status") or profile_account.get("error") or "UNKNOWN").upper()
+        rows.append({
+            "profile": profile,
+            "label": "WHALE" if profile == "PMO_WHALE" else profile.replace("PMO_", "") if profile.startswith("PMO_") else profile,
+            "is_whale": profile == "PMO_WHALE",
+            "ok": bool(profile_account.get("ok")),
+            "paper": bool(profile_account.get("paper", settings.get("ALPACA_PAPER", True))),
+            "status": status_text[:22],
+            "equity": round(safe_float(profile_account.get("equity") or profile_account.get("portfolio_value"), 0), 2),
+            "buying_power": round(safe_float(profile_account.get("buying_power"), 0), 2),
+            "day_pnl": round(safe_float(profile_account.get("day_pnl"), 0), 2),
+            "day_pnl_percent": round(safe_float(profile_account.get("day_pnl_percent"), 0), 4),
+        })
+    bot._deck_profile_account_cache = profile_cache
+    return rows or [{
+        "profile": primary_profile or "DEFAULT",
+        "label": "DEFAULT",
+        "is_whale": False,
+        "ok": bool(account.get("ok")),
+        "paper": bool(settings.get("ALPACA_PAPER", True)),
+        "status": str(account.get("status") or account.get("error") or "UNKNOWN").upper()[:22],
+        "equity": round(safe_float(account.get("equity") or account.get("portfolio_value"), 0), 2),
+        "buying_power": round(safe_float(account.get("buying_power"), 0), 2),
+        "day_pnl": round(safe_float(account.get("day_pnl"), 0), 2),
+        "day_pnl_percent": round(safe_float(account.get("day_pnl_percent"), 0), 4),
+    }]
+
+
 def pmo_realtime_stream_snapshot() -> Dict[str, Any]:
     settings = load_settings()
     bot.settings = settings
@@ -28073,6 +28126,7 @@ def pmo_realtime_stream_snapshot() -> Dict[str, Any]:
         "updated": now_et().isoformat(),
         "settings": settings,
         "account": account,
+        "account_profiles": pmo_stream_account_profile_rows(settings, account),
         "market_data_status": getattr(bot, "market_data_status", {}) or {},
         "execution": {
             "broker_order_executor_installed": True,

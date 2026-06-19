@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -632,7 +632,7 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
 <!-- TOP NAV -->
 <nav class="topnav">
   <div class="logo">
-    <div class="logo-mark"><img src="/logo.png?v=pmoai" alt="PMO AI"></div>
+    <div class="logo-mark"><img src="http://127.0.0.1:8091/logo.png?v=pmoai" alt="PMO AI"></div>
     <div>
       <div class="logo-text">PMO Orbital Command Deck</div>
       <div class="logo-sub" id="navSub">v206 - Awaiting connection...</div>
@@ -764,7 +764,7 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
 
 <!-- PMO DESK COMMANDER AI -->
 <div class="panel sp3 desk-ai-panel" id="panelDeskCommanderAI">
-  <div class="ph"><span class="pt">PMO Desk Commander AI</span><span class="pmoai-panel-brand"><img class="pmoai-panel-logo" src="/logo.png?v=pmoai" alt="PMO AI"><span class="badge bv" id="deskAIBadge">Loading</span></span></div>
+  <div class="ph"><span class="pt">PMO Desk Commander AI</span><span class="pmoai-panel-brand"><img class="pmoai-panel-logo" src="http://127.0.0.1:8091/logo.png?v=pmoai" alt="PMO AI"><span class="badge bv" id="deskAIBadge">Loading</span></span></div>
   <div class="desk-ai-top">
     <div class="desk-ai-card"><div class="desk-ai-k">Mode</div><div class="desk-ai-v" id="deskAIMode">--</div><div class="ms" id="deskAIModeSub">Desk copilot</div></div>
     <div class="desk-ai-card"><div class="desk-ai-k">Voice</div><div class="desk-ai-v" id="deskAIVoice">--</div><div class="ms" id="deskAIVoiceSub">Push-to-talk</div></div>
@@ -1885,10 +1885,10 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
 </div>
 <div class="toast" id="toast"></div>
 
-<button id="aiChatToggle" onclick="toggleAIChat()" title="PMO AI Assistant" aria-label="PMO AI Assistant"><img class="ai-chat-toggle-logo" src="/logo.png?v=pmoai" alt="PMO AI"></button>
+<button id="aiChatToggle" onclick="toggleAIChat()" title="PMO AI Assistant" aria-label="PMO AI Assistant"><img class="ai-chat-toggle-logo" src="http://127.0.0.1:8091/logo.png?v=pmoai" alt="PMO AI"></button>
 <div id="aiChatPanel" aria-label="PMO AI Assistant">
   <div class="ai-chat-hd">
-    <div class="ai-chat-avatar"><img src="/logo.png?v=pmoai" alt="PMO AI"></div>
+    <div class="ai-chat-avatar"><img src="http://127.0.0.1:8091/logo.png?v=pmoai" alt="PMO AI"></div>
     <div style="flex:1;min-width:0">
       <div class="ai-chat-title">PMO AI Assistant</div>
       <div class="ai-chat-sub" id="aiChatSubtitle">Loading PMO context...</div>
@@ -1908,7 +1908,7 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--text);min-height:
   </div>
   <div class="ai-chat-msgs" id="aiChatMsgs">
     <div class="ai-msg assistant">
-      <div class="ai-msg-avatar"><img src="/logo.png?v=pmoai" alt="PMO AI"></div>
+      <div class="ai-msg-avatar"><img src="http://127.0.0.1:8091/logo.png?v=pmoai" alt="PMO AI"></div>
       <div>
         <div class="ai-msg-bubble">PMO AI is ready. I can explain the live PMO state, blocked trades, proof metrics, score inversion, and next fixes. I cannot place orders, change settings, or unlock live trading.</div>
         <div class="ai-msg-ts">PMO AI ready</div>
@@ -2569,7 +2569,7 @@ function addAIChatMessage(role,content){
   const row=document.createElement('div');
   row.className='ai-msg '+role;
   const who=role==='user'?'You':'PMO AI';
-  const icon=role==='user'?'U':'<img src="/logo.png?v=pmoai" alt="PMO AI">';
+  const icon=role==='user'?'U':'<img src="http://127.0.0.1:8091/logo.png?v=pmoai" alt="PMO AI">';
   row.innerHTML=(role==='assistant'?'<div class="ai-msg-avatar">'+icon+'</div>':'')+
     '<div><div class="ai-msg-bubble">'+esc(content).replace(/\n/g,'<br>')+'</div><div class="ai-msg-ts">'+who+' | '+now()+'</div></div>'+
     (role==='user'?'<div class="ai-msg-avatar">'+icon+'</div>':'');
@@ -2583,7 +2583,7 @@ function addAITyping(){
   if(!box)return null;
   const row=document.createElement('div');
   row.className='ai-msg assistant';
-  row.innerHTML='<div class="ai-msg-avatar"><img src="/logo.png?v=pmoai" alt="PMO AI"></div><div class="ai-msg-bubble"><div class="ai-typing"><span></span><span></span><span></span></div></div>';
+  row.innerHTML='<div class="ai-msg-avatar"><img src="http://127.0.0.1:8091/logo.png?v=pmoai" alt="PMO AI"></div><div class="ai-msg-bubble"><div class="ai-typing"><span></span><span></span><span></span></div></div>';
   box.appendChild(row);
   box.scrollTop=box.scrollHeight;
   return row;
@@ -2989,7 +2989,12 @@ function updateMarketSessionBanner(session,regime,equityOpen,sessionClosed){
 function renderAccountProfiles(){
   const holder=document.getElementById('accountProfileRow');
   if(!holder)return;
-  const rows=Array.isArray(liveData.account_profiles)&&liveData.account_profiles.length?liveData.account_profiles:[{
+  const profileRows=
+    (Array.isArray(liveData.account_profiles)&&liveData.account_profiles.length&&liveData.account_profiles)||
+    (Array.isArray(deckSnapshotData?.account_profiles)&&deckSnapshotData.account_profiles.length&&deckSnapshotData.account_profiles)||
+    (Array.isArray(liveData.deckSnapshot?.account_profiles)&&liveData.deckSnapshot.account_profiles.length&&liveData.deckSnapshot.account_profiles)||
+    null;
+  const rows=profileRows||[{
     label:(liveData.account&&liveData.account.profile)||'DEFAULT',
     status:(liveData.account&&liveData.account.status)||'SYNC',
     ok:!!(liveData.account&&liveData.account.ok),
@@ -7118,4 +7123,5 @@ startRealtimeEngine();
 </script>
 </body>
 </html>
+
 

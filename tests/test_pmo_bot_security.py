@@ -381,6 +381,51 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertIn("unresolved_unique_lots", lot_recon)
         self.assertIn("repeated_lifecycle_rows", lot_recon)
 
+    def test_realtime_stream_snapshot_includes_account_profiles(self):
+        original_load_settings = self.mod.load_settings
+        original_fast_account = self.mod.pmo_fast_account_snapshot
+        original_fast_proof = self.mod.pmo_fast_paper_proof_snapshot
+        original_profile_account = self.mod.bot.account_snapshot_for_profile
+        original_profile = self.mod.bot.alpaca_profile
+        try:
+            self.mod.load_settings = lambda: {
+                **self.mod.DEFAULT_SETTINGS,
+                "ALPACA_PAPER": True,
+                "PMO_PAPER_EXECUTION_PROFILES": ["PMO_WHALE", "PMO_BOT2"],
+            }
+            self.mod.bot.alpaca_profile = "PMO_WHALE"
+            self.mod.pmo_fast_account_snapshot = lambda settings: {
+                "ok": True,
+                "profile": "PMO_WHALE",
+                "status": "ACTIVE",
+                "equity": 150573.99,
+                "buying_power": 601431.09,
+                "day_pnl": 0,
+                "paper": True,
+            }
+            self.mod.pmo_fast_paper_proof_snapshot = lambda settings: {"ok": True, "score": 100}
+            self.mod.bot.account_snapshot_for_profile = lambda profile: {
+                "ok": True,
+                "profile": profile,
+                "status": "ACTIVE",
+                "equity": 200.49,
+                "buying_power": 15.22,
+                "day_pnl": 0,
+                "paper": True,
+            }
+            snapshot = self.mod.pmo_realtime_stream_snapshot()
+            profiles = snapshot.get("account_profiles", [])
+            self.assertEqual(len(profiles), 2)
+            self.assertEqual([row["profile"] for row in profiles], ["PMO_WHALE", "PMO_BOT2"])
+            self.assertTrue(snapshot["stream"])
+            self.assertTrue(snapshot["ok"])
+        finally:
+            self.mod.load_settings = original_load_settings
+            self.mod.pmo_fast_account_snapshot = original_fast_account
+            self.mod.pmo_fast_paper_proof_snapshot = original_fast_proof
+            self.mod.bot.account_snapshot_for_profile = original_profile_account
+            self.mod.bot.alpaca_profile = original_profile
+
     def test_journal_reconciliation_reconcile_requires_admin_and_confirmation(self):
         locked = self.client.post("/api/journal-reconciliation/reconcile", json={"record": False})
         self.assertEqual(locked.status_code, 403)
