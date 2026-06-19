@@ -229,36 +229,48 @@
             .pmo-layout-toolbar {
                 position:fixed;
                 left:12px;
-                right:12px;
+                right:auto;
                 top:10px;
                 z-index:2147482600;
                 display:flex;
                 align-items:center;
-                gap:8px;
+                gap:6px;
                 flex-wrap:wrap;
-                padding:9px;
-                background:rgba(7,10,15,.94);
-                border:1px solid rgba(122,183,255,.42);
+                width:max-content;
+                max-width:calc(100vw - 24px);
+                padding:6px;
+                background:linear-gradient(180deg, rgba(13,20,32,.96), rgba(4,8,14,.94));
+                border:1px solid rgba(122,183,255,.34);
                 border-radius:8px;
-                box-shadow:0 18px 42px rgba(0,0,0,.34);
+                box-shadow:0 12px 32px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.05);
                 backdrop-filter:blur(10px);
+            }
+            .pmo-layout-toolbar.is-collapsed {
+                gap:5px;
+                padding:5px;
+                max-width:260px;
+            }
+            .pmo-layout-toolbar.is-collapsed [data-toolbar-control],
+            .pmo-layout-toolbar.is-collapsed .pmo-status {
+                display:none !important;
             }
             .pmo-toolbar-drag-handle {
                 display:inline-flex;
                 align-items:center;
-                gap:7px;
-                min-height:32px;
+                gap:6px;
+                min-height:28px;
                 border:1px solid rgba(122,183,255,.38);
                 border-radius:6px;
-                padding:6px 9px;
+                padding:4px 8px;
                 background:#0b121c;
                 color:#bfffe8;
-                font-size:13px;
+                font-size:12px;
                 font-weight:bold;
                 margin-right:2px;
                 cursor:move;
                 user-select:none;
                 touch-action:none;
+                white-space:nowrap;
             }
             .pmo-toolbar-drag-handle::before {
                 content:'::::';
@@ -277,18 +289,22 @@
             .pmo-editor-panel button,
             .pmo-editor-panel input,
             .pmo-editor-panel select {
-                min-height:32px;
+                min-height:28px;
                 border-radius:6px;
                 border:1px solid #34475f;
                 background:#172130;
                 color:#edf4ff;
-                padding:6px 8px;
+                padding:4px 8px;
                 font:inherit;
-                font-size:12px;
+                font-size:11px;
+            }
+            .pmo-layout-toolbar select {
+                max-width:138px;
             }
             .pmo-layout-toolbar button {
                 cursor:pointer;
                 font-weight:bold;
+                white-space:nowrap;
             }
             .pmo-layout-toolbar button.is-on {
                 border-color:rgba(0,255,157,.68);
@@ -303,6 +319,12 @@
                 opacity:.48;
                 cursor:not-allowed;
             }
+            .pmo-layout-toolbar button[data-action="move-top"]:disabled,
+            .pmo-layout-toolbar button[data-action="move-bottom"]:disabled,
+            .pmo-layout-toolbar [data-action="show-hidden"]:disabled,
+            .pmo-layout-toolbar [data-role="hidden-select"]:disabled {
+                display:none;
+            }
             .pmo-layout-toolbar button.is-danger,
             .pmo-editor-panel button.is-danger {
                 border-color:rgba(255,92,122,.7);
@@ -311,10 +333,12 @@
             }
             .pmo-layout-toolbar .pmo-status {
                 color:#9fb3c8;
-                font-size:12px;
-                margin-left:auto;
-                min-width:96px;
+                font-size:11px;
+                min-width:54px;
                 text-align:right;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
             }
             .pmo-editor-panel {
                 position:fixed;
@@ -396,10 +420,11 @@
             @media(max-width:760px) {
                 .pmo-layout-toolbar {
                     left:8px;
-                    right:8px;
+                    right:auto;
                     top:8px;
-                    gap:6px;
-                    max-height:44vh;
+                    gap:5px;
+                    max-width:calc(100vw - 16px);
+                    max-height:36vh;
                     overflow:auto;
                 }
                 .pmo-layout-toolbar .pmo-status {
@@ -726,17 +751,18 @@
         toolbar = document.createElement('div');
         toolbar.className = 'pmo-layout-toolbar';
         toolbar.innerHTML = `
-            <span class="pmo-toolbar-drag-handle" data-action="move-toolbar" title="Drag to move Layout Builder. Double-click to reset position.">Layout Builder</span>
-            <button type="button" data-action="toggle-edit">Edit Mode</button>
-            <button type="button" data-action="free-mode">Free Move</button>
-            <button type="button" data-action="snap-mode">Snap Grid</button>
-            <button type="button" data-action="move-top" title="Move selected block to the top of the dashboard">To Top</button>
-            <button type="button" data-action="move-bottom" title="Move selected block to the bottom of the dashboard">To Bottom</button>
-            <button type="button" data-action="preview">Preview Mode</button>
-            <button type="button" data-action="save">Save Layout</button>
-            <button type="button" data-action="reset" class="is-warn">Reset Layout</button>
-            <select data-role="hidden-select" aria-label="Hidden blocks"><option value="">Hidden blocks</option></select>
-            <button type="button" data-action="show-hidden">Show</button>
+            <span class="pmo-toolbar-drag-handle" data-action="move-toolbar" title="Drag to move Layout Builder. Double-click to reset position.">Layout</span>
+            <button type="button" data-action="toggle-toolbar-compact" title="Shrink or expand this toolbar">-</button>
+            <button type="button" data-action="toggle-edit" data-toolbar-control title="Turn dashboard drag editing on or off">Edit</button>
+            <button type="button" data-action="free-mode" data-toolbar-control title="Drag panels freely without snapping">Free</button>
+            <button type="button" data-action="snap-mode" data-toolbar-control title="Snap panel movement to a grid">Snap</button>
+            <button type="button" data-action="move-top" data-toolbar-control title="Move selected panel to the top of the dashboard">Top</button>
+            <button type="button" data-action="move-bottom" data-toolbar-control title="Move selected panel to the bottom of the dashboard">Bottom</button>
+            <button type="button" data-action="preview" data-toolbar-control title="Preview the dashboard without edit controls">Preview</button>
+            <button type="button" data-action="save" data-toolbar-control title="Save the current panel layout">Save</button>
+            <button type="button" data-action="reset" data-toolbar-control class="is-warn" title="Clear saved panel positions and reload defaults">Reset</button>
+            <select data-role="hidden-select" data-toolbar-control aria-label="Hidden panels"><option value="">Hidden</option></select>
+            <button type="button" data-action="show-hidden" data-toolbar-control title="Show the selected hidden panel">Show</button>
             <span class="pmo-status" data-role="status">Ready</span>
         `;
         document.body.appendChild(toolbar);
@@ -749,6 +775,7 @@
         toolbar.addEventListener('click', onToolbarClick);
         toolbar.addEventListener('change', (event) => {
             if (event.target.matches('[data-role="hidden-select"]') && event.target.value) {
+                updateHiddenSelect();
                 selectWidget(event.target.value, true);
             }
         });
@@ -915,6 +942,7 @@
             toolbar.style.right = '';
             toolbar.style.top = '';
             toolbar.style.width = '';
+            toolbar.classList.toggle('is-collapsed', Boolean(saved.collapsed));
             return;
         }
         const next = clampToolbarPosition(saved);
@@ -922,19 +950,27 @@
         toolbar.style.left = next.x + 'px';
         toolbar.style.top = next.y + 'px';
         toolbar.style.right = 'auto';
-        toolbar.style.width = Math.max(280, next.width || Math.min(window.innerWidth - 24, 960)) + 'px';
+        toolbar.style.width = Math.max(toolbarMinWidth(next.collapsed), next.width || Math.min(window.innerWidth - 24, 720)) + 'px';
+        toolbar.classList.toggle('is-collapsed', Boolean(next.collapsed));
     }
 
     function clampToolbarPosition(position) {
         const margin = 8;
-        const width = Math.min(Math.max(280, Number(position.width || toolbar?.offsetWidth || 560)), Math.max(280, window.innerWidth - (margin * 2)));
+        const collapsed = Boolean(position.collapsed);
+        const minWidth = toolbarMinWidth(collapsed);
+        const width = Math.min(Math.max(minWidth, Number(position.width || toolbar?.offsetWidth || 420)), Math.max(minWidth, window.innerWidth - (margin * 2)));
         const maxX = Math.max(margin, window.innerWidth - width - margin);
         const maxY = Math.max(margin, window.innerHeight - 52);
         return {
             x: Math.round(Math.min(Math.max(margin, Number(position.x || margin)), maxX)),
             y: Math.round(Math.min(Math.max(margin, Number(position.y || margin)), maxY)),
-            width: Math.round(width)
+            width: Math.round(width),
+            collapsed
         };
+    }
+
+    function toolbarMinWidth(collapsed) {
+        return collapsed ? 104 : 220;
     }
 
     function resetToolbarPosition(event) {
@@ -981,6 +1017,13 @@
             saveStateSoon();
         } else if (action === 'move-top' || action === 'move-bottom') {
             moveSelectedToPageEdge(action === 'move-top' ? 'top' : 'bottom');
+        } else if (action === 'toggle-toolbar-compact') {
+            const current = state.toolbar && typeof state.toolbar === 'object' ? state.toolbar : {};
+            state.toolbar = Object.assign({}, current, { collapsed: !current.collapsed });
+            applyToolbarPosition(true);
+            updateToolbar();
+            setStatus(state.toolbar.collapsed ? 'Shrunk' : 'Expanded');
+            saveStateSoon();
         } else if (action === 'preview') {
             state.previewMode = true;
             state.editMode = false;
@@ -1391,18 +1434,27 @@
         const edit = toolbar.querySelector('[data-action="toggle-edit"]');
         const snap = toolbar.querySelector('[data-action="snap-mode"], [data-action="toggle-snap"]');
         const free = toolbar.querySelector('[data-action="free-mode"]');
+        const compact = toolbar.querySelector('[data-action="toggle-toolbar-compact"]');
+        const currentToolbar = state.toolbar && typeof state.toolbar === 'object' ? state.toolbar : {};
+        toolbar.classList.toggle('is-collapsed', Boolean(currentToolbar.collapsed));
+        if (compact) {
+            compact.textContent = currentToolbar.collapsed ? '+' : '-';
+            compact.setAttribute('aria-label', currentToolbar.collapsed ? 'Expand Layout Builder' : 'Shrink Layout Builder');
+            compact.title = currentToolbar.collapsed ? 'Expand Layout Builder controls' : 'Shrink Layout Builder controls';
+        }
         if (edit) {
-            edit.textContent = state.editMode ? 'Locked Mode' : 'Edit Mode';
+            edit.textContent = state.editMode ? 'Lock' : 'Edit';
             edit.classList.toggle('is-on', state.editMode);
+            edit.title = state.editMode ? 'Lock dashboard editing' : 'Turn on dashboard editing';
         }
         if (free) {
-            free.textContent = state.editMode && !state.snap ? 'Free Move On' : 'Free Move';
-            free.classList.toggle('is-on', !state.snap);
+            free.textContent = state.editMode && !state.snap ? 'Free On' : 'Free';
+            free.classList.toggle('is-on', state.editMode && !state.snap);
             free.title = 'Enter edit mode and move blocks without grid snapping.';
         }
         if (snap) {
-            snap.textContent = state.editMode && state.snap ? 'Snap Grid On' : 'Snap Grid';
-            snap.classList.toggle('is-on', state.snap);
+            snap.textContent = state.editMode && state.snap ? 'Snap On' : 'Snap';
+            snap.classList.toggle('is-on', state.editMode && state.snap);
             snap.title = 'Enter edit mode and snap movement to clean grid steps.';
         }
         toolbar.querySelectorAll('[data-action="move-top"], [data-action="move-bottom"]').forEach((button) => {
@@ -1413,7 +1465,8 @@
     function updateHiddenSelect() {
         if (!hiddenSelect) return;
         const selected = hiddenSelect.value;
-        hiddenSelect.innerHTML = '<option value="">Hidden blocks</option>';
+        hiddenSelect.innerHTML = '<option value="">Hidden</option>';
+        let hiddenCount = 0;
         widgets.forEach((el, id) => {
             const layout = normalizedLayout(id);
             if (layout.visible === false && !layout.deleted) {
@@ -1421,9 +1474,13 @@
                 option.value = id;
                 option.textContent = layout.title || readTitle(el) || id;
                 hiddenSelect.appendChild(option);
+                hiddenCount += 1;
             }
         });
         if (selected) hiddenSelect.value = selected;
+        hiddenSelect.disabled = hiddenCount === 0;
+        const showButton = toolbar && toolbar.querySelector('[data-action="show-hidden"]');
+        if (showButton) showButton.disabled = hiddenCount === 0 || !hiddenSelect.value;
     }
 
     function setStatus(message) {

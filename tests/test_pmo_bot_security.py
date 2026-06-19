@@ -320,11 +320,25 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         editor_js = self.mod.PMO_LAYOUT_EDITOR_ASSET.read_text(encoding="utf-8")
         self.assertIn("function installPMOLayoutEditor()", html)
         self.assertIn("BOT_HOST+'/assets/pmo-layout-editor.js", html)
+        self.assertIn("dashboard-toolbar-compact", html)
         self.assertIn("script.dataset.root='.grid'", html)
         self.assertIn("script.dataset.storageVersion='v4'", html)
         self.assertIn("'.panel'", editor_js)
         self.assertIn("body.pmo-layout-editing .pmo-layout-widget iframe", editor_js)
         self.assertIn("localStorage.setItem(storageKey", editor_js)
+
+    def test_layout_toolbar_is_compact_and_shrinkable(self):
+        editor_js = self.mod.PMO_LAYOUT_EDITOR_ASSET.read_text(encoding="utf-8")
+        self.assertIn('right:auto;', editor_js)
+        self.assertIn('width:max-content;', editor_js)
+        self.assertIn('data-action="toggle-toolbar-compact"', editor_js)
+        self.assertIn('toolbarMinWidth(collapsed)', editor_js)
+        self.assertIn("toolbar.classList.toggle('is-collapsed'", editor_js)
+        self.assertIn('data-toolbar-control', editor_js)
+        self.assertIn('Hidden</option>', editor_js)
+        self.assertIn('showButton.disabled = hiddenCount === 0 || !hiddenSelect.value', editor_js)
+        self.assertIn("free.classList.toggle('is-on', state.editMode && !state.snap)", editor_js)
+        self.assertIn("snap.classList.toggle('is-on', state.editMode && state.snap)", editor_js)
 
     def test_reports_route_blocks_env_and_source_files(self):
         blocked_paths = [
