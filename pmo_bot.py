@@ -10222,6 +10222,18 @@ def broker_reconciliation_snapshot(settings: Dict[str, Any], account: Dict[str, 
     }
 
 
+PMO_JOURNAL_RECONCILIATION_STATUSES = {
+    "BROKER_CONSOLIDATED",
+    "STALE_RECONCILED",
+    "SYSTEM_NON_TRADE",
+}
+
+
+def pmo_is_journal_reconciliation_terminal(status: Any) -> bool:
+    clean = str(status or "").strip().upper()
+    return clean.startswith(("CLOSED", "VOID_")) or clean in PMO_JOURNAL_RECONCILIATION_STATUSES
+
+
 def pmo_journal_lot_reconciliation_snapshot(positions: Optional[List[Dict[str, Any]]] = None, record: bool = False) -> Dict[str, Any]:
     """Classify unresolved journal lots against broker-held symbols without mutating history."""
     trade_rows = [
@@ -10246,7 +10258,7 @@ def pmo_journal_lot_reconciliation_snapshot(positions: Optional[List[Dict[str, A
     terminal_keys = {
         lot_key(row)
         for row in trade_rows
-        if lot_status(row).startswith(("CLOSED", "VOID_"))
+        if pmo_is_journal_reconciliation_terminal(lot_status(row))
     }
     latest_unresolved: Dict[str, Dict[str, Any]] = {}
     key_counts: Dict[str, int] = {}
@@ -10329,6 +10341,108 @@ def pmo_journal_lot_reconciliation_snapshot(positions: Optional[List[Dict[str, A
         out_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         payload["report"] = str(out_file)
     return payload
+
+
+def pmo_apply_journal_lot_reconciliation(
+    positions: Optional[List[Dict[str, Any]]] = None,
+    *,
+    record: bool = False,
+    max_markers: int = 500,
+) -> Dict[str, Any]:
+    """Append reconciliation marker rows for unresolved lots; never deletes or rewrites history."""
+    trade_rows = [
+        row for row in recent_csv_rows(TRADE_JOURNAL_FILE, 10000)
+        if str(row.get("symbol") or "").strip()
+    ]
+
+    def lot_key(row: Dict[str, Any]) -> str:
+        for field in ("source_order_id", "order_id", "client_order_id", "trade_plan_id", "sync_key"):
+            value = str(row.get(field) or "").strip()
+            if value:
+                return value.split(":")[0]
+        return "|".join(str(row.get(field) or "").strip().upper() for field in ("symbol", "side", "entry_price"))
+
+    def lot_status(row: Dict[str, Any]) -> str:
+        return str(row.get("status") or row.get("result") or row.get("outcome") or "UNKNOWN").strip().upper() or "UNKNOWN"
+
+    def lot_timestamp(row: Dict[str, Any]) -> float:
+        parsed = parse_pmo_timestamp(row.get("timestamp") or row.get("time") or row.get("created_at"))
+        return parsed.timestamp() if parsed else 0.0
+
+    terminal_keys = {
+        lot_key(row)
+        for row in trade_rows
+        if pmo_is_journal_reconciliation_terminal(lot_status(row))
+    }
+    latest_unresolved: Dict[str, Dict[str, Any]] = {}
+    for row in trade_rows:
+        key = lot_key(row)
+        if not key or key in terminal_keys:
+            continue
+        current = latest_unresolved.get(key)
+        if current is None or lot_timestamp(row) >= lot_timestamp(current):
+            latest_unresolved[key] = row
+
+    broker_symbols = {
+        str(row.get("symbol") or "").upper().strip()
+        for row in (positions or [])
+        if str(row.get("symbol") or "").strip()
+    }
+    markers = []
+    for key, row in sorted(latest_unresolved.items(), key=lambda item: (str(item[1].get("symbol") or ""), lot_timestamp(item[1]))):
+        symbol = str(row.get("symbol") or "").upper().strip()
+        if symbol in {"", "SYSTEM", "UNKNOWN"}:
+            marker_status = "SYSTEM_NON_TRADE"
+            reason = "System/non-trade journal row excluded from open-lot reconciliation."
+        elif symbol in broker_symbols:
+            marker_status = "BROKER_CONSOLIDATED"
+            reason = "Unresolved PMO lot maps to a broker-held symbol; broker position is source of truth."
+        else:
+            marker_status = "STALE_RECONCILED"
+            reason = "Unresolved PMO lot has no broker-held symbol counterpart at reconciliation time."
+        marker = {
+            "timestamp": now_et().isoformat(),
+            "symbol": symbol or row.get("symbol") or "UNKNOWN",
+            "side": row.get("side", ""),
+            "status": marker_status,
+            "source_order_id": row.get("source_order_id", ""),
+            "client_order_id": row.get("client_order_id", ""),
+            "trade_plan_id": row.get("trade_plan_id", ""),
+            "sync_key": f"{key}:{marker_status}",
+            "entry_price": row.get("entry_price", ""),
+            "reconciliation_key": key,
+            "reconciliation_marker": "TRUE",
+            "reconciliation_reason": reason,
+            "reconciliation_source_status": lot_status(row),
+            "reconciliation_source_sync_key": row.get("sync_key", ""),
+            "reconciliation_read_only_note": "Append-only audit marker; not a broker-confirmed close and not proof P&L.",
+        }
+        markers.append(marker)
+        if len(markers) >= max_markers:
+            break
+
+    written = 0
+    if record:
+        for marker in markers:
+            csv_append(TRADE_JOURNAL_FILE, marker)
+            written += 1
+    return {
+        "ok": True,
+        "updated": now_et().isoformat(),
+        "record": bool(record),
+        "read_only_when_record_false": True,
+        "orders_placed": False,
+        "live_unlocked": False,
+        "markers_planned": len(markers),
+        "markers_written": written,
+        "max_markers": max_markers,
+        "status_counts": {
+            status: sum(1 for marker in markers if marker.get("status") == status)
+            for status in sorted(PMO_JOURNAL_RECONCILIATION_STATUSES)
+        },
+        "markers_preview": markers[:20],
+        "note": "Markers are append-only audit rows. They do not count as CLOSED_WIN/CLOSED_LOSS proof outcomes.",
+    }
 
 
 def sector_budget_rows() -> List[Dict[str, Any]]:
@@ -22435,6 +22549,7 @@ PMO_ADMIN_REQUIRED_POST_PATHS = {
     "/api/dashboard/paper-trade/approve",
     "/api/paper-trade/approve",
     "/api/trade-journal/sync",
+    "/api/journal-reconciliation/reconcile",
     "/api/tradingview/test-alert",
     "/api/all-day/watchtower/start",
     "/api/safety/preset",
@@ -30948,6 +31063,34 @@ def api_journal_reconciliation():
     return jsonify({"ok": True, "journal_reconciliation": pmo_journal_lot_reconciliation_snapshot(positions, record=record)})
 
 
+@app.route("/api/journal-reconciliation/reconcile", methods=["POST"])
+def api_journal_reconciliation_reconcile():
+    payload = request.get_json(force=True, silent=True) or {}
+    positions = open_positions()
+    record = bool(payload.get("record", False))
+    confirm = str(payload.get("confirm") or "").strip().upper()
+    if record and confirm != "APPEND_RECONCILIATION_MARKERS":
+        preview = pmo_apply_journal_lot_reconciliation(
+            positions,
+            record=False,
+            max_markers=int(safe_float(payload.get("max_markers"), 500)),
+        )
+        return jsonify({
+            "ok": False,
+            "locked": True,
+            "message": "Typed confirmation required: APPEND_RECONCILIATION_MARKERS",
+            "dry_run": preview,
+            "orders_placed": False,
+            "live_unlocked": False,
+        }), 400
+    result = pmo_apply_journal_lot_reconciliation(
+        positions,
+        record=record,
+        max_markers=int(safe_float(payload.get("max_markers"), 500)),
+    )
+    return jsonify({"ok": True, "journal_reconciliation_reconcile": result})
+
+
 @app.route("/api/order-origin-audit", methods=["POST"])
 def api_order_origin_audit():
     payload = request.get_json(force=True, silent=True) or {}
@@ -31202,7 +31345,7 @@ def api_deck_snapshot():
     terminal_trade_keys = {
         journal_trade_key(row)
         for row in trade_rows
-        if str(row.get("status") or row.get("result") or row.get("outcome") or "").upper().startswith(("CLOSED", "VOID_"))
+        if pmo_is_journal_reconciliation_terminal(row.get("status") or row.get("result") or row.get("outcome"))
     }
     unresolved_trade_rows = [
         row for row in trade_rows
@@ -31589,7 +31732,7 @@ def api_trade_truth():
     terminal_keys = {
         journal_trade_key(row)
         for row in rows
-        if row_status(row).startswith(("CLOSED", "VOID_"))
+        if pmo_is_journal_reconciliation_terminal(row_status(row))
     }
     unresolved_by_key: Dict[str, Dict[str, Any]] = {}
     for row in rows:

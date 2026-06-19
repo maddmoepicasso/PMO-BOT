@@ -374,6 +374,69 @@ class PMOBotSecuritySmokeTests(unittest.TestCase):
         self.assertIn("unresolved_unique_lots", lot_recon)
         self.assertIn("repeated_lifecycle_rows", lot_recon)
 
+    def test_journal_reconciliation_reconcile_requires_admin_and_confirmation(self):
+        locked = self.client.post("/api/journal-reconciliation/reconcile", json={"record": False})
+        self.assertEqual(locked.status_code, 403)
+        self.assertTrue(locked.get_json()["locked"])
+
+        token = self.mod.first_env("PMO_BOT_ADMIN_TOKEN")
+        needs_confirm = self.client.post(
+            "/api/journal-reconciliation/reconcile",
+            json={"record": True},
+            headers={"X-PMO-BOT-ADMIN-TOKEN": token},
+        )
+        self.assertEqual(needs_confirm.status_code, 400)
+        body = needs_confirm.get_json()
+        self.assertFalse(body["ok"])
+        self.assertTrue(body["locked"])
+        self.assertFalse(body["orders_placed"])
+        self.assertFalse(body["live_unlocked"])
+        self.assertIn("dry_run", body)
+
+    def test_journal_reconciliation_markers_are_append_only_not_proof(self):
+        original_trade_journal = self.mod.TRADE_JOURNAL_FILE
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                self.mod.TRADE_JOURNAL_FILE = Path(tmp) / "pmo_bot_trade_journal.csv"
+                self.mod.csv_append(self.mod.TRADE_JOURNAL_FILE, {
+                    "timestamp": "2026-06-18T10:00:00-04:00",
+                    "status": "OPEN_FILLED",
+                    "symbol": "TEST",
+                    "side": "LONG",
+                    "source_order_id": "broker-matched-1",
+                    "client_order_id": "broker-matched-1",
+                    "trade_plan_id": "plan-1",
+                    "sync_key": "broker-matched-1",
+                    "entry_price": "10.00",
+                })
+                self.mod.csv_append(self.mod.TRADE_JOURNAL_FILE, {
+                    "timestamp": "2026-06-18T10:01:00-04:00",
+                    "status": "OPEN_FILLED",
+                    "symbol": "STALE",
+                    "side": "LONG",
+                    "source_order_id": "stale-1",
+                    "client_order_id": "stale-1",
+                    "trade_plan_id": "plan-2",
+                    "sync_key": "stale-1",
+                    "entry_price": "20.00",
+                })
+                result = self.mod.pmo_apply_journal_lot_reconciliation(
+                    positions=[{"symbol": "TEST"}],
+                    record=True,
+                )
+                self.assertEqual(result["markers_written"], 2)
+                rows = self.mod.recent_csv_rows(self.mod.TRADE_JOURNAL_FILE, 20)
+                statuses = {row.get("status") for row in rows}
+                self.assertIn("BROKER_CONSOLIDATED", statuses)
+                self.assertIn("STALE_RECONCILED", statuses)
+
+                after = self.mod.pmo_journal_lot_reconciliation_snapshot(positions=[{"symbol": "TEST"}])
+                self.assertEqual(after["unresolved_unique_lots"], 0)
+                summary = self.mod.trade_journal_summary(limit=20)
+                self.assertEqual(summary["closed_trades"], 0)
+        finally:
+            self.mod.TRADE_JOURNAL_FILE = original_trade_journal
+
     def test_orbital_deck_escapes_log_messages(self):
         html = (self.mod.PMO_DIR / "deck" / "pmo_orbital_command_deck.html").read_text(encoding="utf-8")
         self.assertIn("${esc(time)}</span><span class=\"le-m\">${esc(msg)}</span>", html)
